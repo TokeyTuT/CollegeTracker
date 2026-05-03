@@ -211,12 +211,16 @@ QMainWindow {
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>
-        <widget class="QLabel" name="label">
-         <property name="enabled">
-          <bool>true</bool>
+        <widget class="QLabel" name="currentPageLbl">
+         <property name="styleSheet">
+          <string notr="true">/* 例如在样式表中设置 */
+color: #333;
+font-size: 18px;
+font-weight: bold;
+qproperty-alignment: 'AlignCenter';</string>
          </property>
          <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;当前页面&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
         </widget>
        </item>
@@ -225,8 +229,14 @@ QMainWindow {
          <property name="enabled">
           <bool>true</bool>
          </property>
+         <property name="currentIndex">
+          <number>1</number>
+         </property>
          <widget class="QWidget" name="homePage"/>
          <widget class="QWidget" name="coursePage"/>
+         <widget class="QWidget" name="expPage"/>
+         <widget class="QWidget" name="awardPage"/>
+         <widget class="QWidget" name="profilePage"/>
         </widget>
        </item>
       </layout>

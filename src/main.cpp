@@ -4,9 +4,15 @@
 #include <QLocale>
 #include <QTranslator>
 
+#include"DatabaseMannager.h"
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+
+
+    DatabaseManager &db = DatabaseManager::getInstance();
+    db.initDatabase();
+
 
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();
@@ -20,4 +26,6 @@ int main(int argc, char *argv[])
     MainWindow w;
     w.show();
     return QCoreApplication::exec();
+
+
 }

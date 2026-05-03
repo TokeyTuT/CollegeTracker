@@ -29,6 +29,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(CollegeTracker
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        src/models/DatabaseMannager.h
+        src/models/DatabaseMannager.cpp
     )
     qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 else()
