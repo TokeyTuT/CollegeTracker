@@ -22,6 +22,8 @@ public:
 
     // 初始化数据库
     bool initDatabase();
+    //更新状态
+    QVariantMap getTotalStats();
 
 private:
     DatabaseManager(); // 构造函数私有化, 不能被外部初始化

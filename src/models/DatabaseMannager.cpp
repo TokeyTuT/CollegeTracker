@@ -34,6 +34,34 @@ bool DatabaseManager::initDatabase(){
     return createTables();
 }
 
+QVariantMap DatabaseManager::getTotalStats() {
+    QVariantMap stats;
+    QSqlQuery query;
+
+    //计算总数、算术平均分、加权总分、总学分
+    QString sql = "SELECT "
+                  "COUNT(*), "
+                  "AVG(score), "
+                  "SUM(score * credit), "
+                  "SUM(credit) "
+                  "FROM courses";
+
+    if (query.exec(sql) && query.next()) {
+        int count = query.value(0).toInt();
+        double avgScore = query.value(1).toDouble();
+        double sumWeighted = query.value(2).toDouble();
+        double sumCredits = query.value(3).toDouble();
+
+        double gpa = (sumCredits > 0) ? (sumWeighted / sumCredits) : 0.0;
+
+        stats["count"] = count;
+        stats["avg"] = avgScore;
+        stats["gpa"] = gpa;
+        stats["totalCredits"] = sumCredits;
+    }
+    return stats;
+}
+
 //建表
 bool DatabaseManager::createTables(){
     QSqlQuery query;

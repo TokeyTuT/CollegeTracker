@@ -209,13 +209,95 @@ QMainWindow {
       <property name="frameShadow">
        <enum>QFrame::Shadow::Raised</enum>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_4">
-       <item>
-        <widget class="QLabel" name="currentPageLbl">
+      <widget class="QLabel" name="currentPageLbl">
+       <property name="geometry">
+        <rect>
+         <x>13</x>
+         <y>13</y>
+         <width>584</width>
+         <height>44</height>
+        </rect>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">/* 例如在样式表中设置 */
+color: #333;
+font-size: 18px;
+font-weight: bold;
+qproperty-alignment: 'AlignCenter';</string>
+       </property>
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+      <widget class="QStackedWidget" name="stackedWidget">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="geometry">
+        <rect>
+         <x>13</x>
+         <y>65</y>
+         <width>584</width>
+         <height>341</height>
+        </rect>
+       </property>
+       <property name="currentIndex">
+        <number>1</number>
+       </property>
+       <widget class="QWidget" name="homePage"/>
+       <widget class="QWidget" name="coursePage">
+        <widget class="QPushButton" name="addCourseBtn">
+         <property name="geometry">
+          <rect>
+           <x>290</x>
+           <y>90</y>
+           <width>81</width>
+           <height>32</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>添加课程</string>
+         </property>
+        </widget>
+        <widget class="QTableView" name="courseTableView">
+         <property name="geometry">
+          <rect>
+           <x>80</x>
+           <y>120</y>
+           <width>411</width>
+           <height>192</height>
+          </rect>
+         </property>
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="deleteCourseBtn">
+         <property name="geometry">
+          <rect>
+           <x>380</x>
+           <y>90</y>
+           <width>121</width>
+           <height>32</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>删除选定课程</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="labelStats">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>320</y>
+           <width>584</width>
+           <height>16</height>
+          </rect>
+         </property>
          <property name="styleSheet">
           <string notr="true">/* 例如在样式表中设置 */
 color: #333;
-font-size: 18px;
+font-size: 14px;
 font-weight: bold;
 qproperty-alignment: 'AlignCenter';</string>
          </property>
@@ -223,23 +305,11 @@ qproperty-alignment: 'AlignCenter';</string>
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
         </widget>
-       </item>
-       <item>
-        <widget class="QStackedWidget" name="stackedWidget">
-         <property name="enabled">
-          <bool>true</bool>
-         </property>
-         <property name="currentIndex">
-          <number>1</number>
-         </property>
-         <widget class="QWidget" name="homePage"/>
-         <widget class="QWidget" name="coursePage"/>
-         <widget class="QWidget" name="expPage"/>
-         <widget class="QWidget" name="awardPage"/>
-         <widget class="QWidget" name="profilePage"/>
-        </widget>
-       </item>
-      </layout>
+       </widget>
+       <widget class="QWidget" name="expPage"/>
+       <widget class="QWidget" name="awardPage"/>
+       <widget class="QWidget" name="profilePage"/>
+      </widget>
      </widget>
     </item>
    </layout>

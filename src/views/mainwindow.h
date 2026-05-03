@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include<QSqlTableModel>
+#include<QMessageBox>
+#include<QInputDialog>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -29,7 +31,15 @@ private slots:
 
     void on_navAwardBtn_clicked();
 
+
+    void on_addCourseBtn_clicked();
+
+    void on_deleteCourseBtn_clicked();
+
 private:
     Ui::MainWindow *ui;
+    QSqlTableModel *courseModel; //从数据库中读取课程表，转为模型
+    void setupCourseModel();
+    void updateTotalStats();
 };
 #endif // MAINWINDOW_H

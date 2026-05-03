@@ -31,6 +31,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         ${PROJECT_SOURCES}
         src/models/DatabaseMannager.h
         src/models/DatabaseMannager.cpp
+        src/views/AddCourseDialog.h
+        src/views/AddCourseDialog.cpp
     )
     qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 else()
