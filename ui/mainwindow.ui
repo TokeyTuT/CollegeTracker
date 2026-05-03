@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>850</width>
+    <height>529</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">/* 全局背景与字体 */
+QMainWindow {
+    background-color: #F4F7FA; /* 极淡的现代灰蓝色 */
+    font-family: &quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;;
+}
+
+/* 左侧侧边栏 (精准定位到 sidebarFrame) */
+#sidebarFrame {
+    background-color: #FFFFFF;
+    border-right: 1px solid #E2E8F0;
+    margin: 0px;
+}
+
+/* 左侧导航按钮的统一样式 */
+#sidebarFrame QPushButton {
+    background-color: transparent;
+    border: none;
+    padding: 12px 20px;
+    text-align: left;
+    font-size: 14px;
+    color: #4A5568;
+    border-radius: 8px;
+    margin: 4px 10px;
+}
+
+/* 鼠标悬停时的按钮反馈 */
+#sidebarFrame QPushButton:hover {
+    background-color: #EDF2F7;
+    color: #3182CE;
+    font-weight: bold;
+}
+
+/* 用户信息区块容器 */
+#userProfileWidget {
+    background-color: transparent;
+    padding: 20px 15px; /* 增加上下边距 */
+    border-bottom: 1px solid #EDF2F7; /* 下方加一条极淡的分隔线 */
+    margin-bottom: 10px;
+}
+
+/* 姓名样式：粗体、大号、深色 */
+#userNameLbl {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2D3748;
+}
+
+/* 专业样式：小号、灰色、换行处理 */
+#userMajorLbl {
+    font-size: 11px;
+    color: #718096;
+    margin-top: 4px;
+}</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QFrame" name="sidebarFrame">
+      <property name="minimumSize">
+       <size>
+        <width>200</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>200</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::Shape::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Shadow::Raised</enum>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="QWidget" name="userProfileWidget" native="true">
+         <layout class="QVBoxLayout" name="verticalLayout">
+          <item>
+           <widget class="QLabel" name="userNameLbl">
+            <property name="text">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Tokey&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="majorLbl">
+            <property name="text">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;数据科学与大数据技术&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_2">
+         <item>
+          <spacer name="verticalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Orientation::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="navHomeBtn">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="text">
+            <string>首页总览</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="navCourseBtn">
+           <property name="text">
+            <string>课程与成绩</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="navExpBtn">
+           <property name="text">
+            <string>课外活动</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="navAwardBtn">
+           <property name="text">
+            <string>个人荣誉</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="navExportBtn">
+           <property name="text">
+            <string>简历导出</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="verticalSpacer">
+           <property name="orientation">
+            <enum>Qt::Orientation::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QFrame" name="mainContentFrame">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::Shape::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Shadow::Raised</enum>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <widget class="QLabel" name="label">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="text">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;当前页面&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QStackedWidget" name="stackedWidget">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <widget class="QWidget" name="homePage"/>
+         <widget class="QWidget" name="coursePage"/>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>850</width>
+     <height>33</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <tabstops>
+  <tabstop>navHomeBtn</tabstop>
+  <tabstop>navCourseBtn</tabstop>
+  <tabstop>navExpBtn</tabstop>
+  <tabstop>navAwardBtn</tabstop>
+  <tabstop>navExportBtn</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>
