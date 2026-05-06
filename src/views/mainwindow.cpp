@@ -154,8 +154,11 @@ void MainWindow::on_addCourseBtn_clicked() {
         }
     }
 }
+//添加经历，指定三种经历 —— 实习，竞赛，项目
+void MainWindow::on_addExpBtn_clicked()
+{
 
-
+}
 
 // 删除选定的列(单行删除)
 void MainWindow::on_deleteCourseBtn_clicked()
@@ -182,4 +185,7 @@ void MainWindow::on_deleteCourseBtn_clicked()
         qDebug() << "提交失败";
     }
 }
+
+
+
 

@@ -10,7 +10,7 @@
 
 class DatabaseManager {
 public:
-    // 单例模式：禁止拷贝
+    // 单例模式
     DatabaseManager(const DatabaseManager&) = delete;
     DatabaseManager& operator=(const DatabaseManager&) = delete;
 
