@@ -321,7 +321,7 @@ qproperty-alignment: 'AlignCenter';</string>
          <property name="geometry">
           <rect>
            <x>10</x>
-           <y>169</y>
+           <y>159</y>
            <width>561</width>
            <height>191</height>
           </rect>
@@ -361,13 +361,13 @@ qproperty-alignment: 'AlignCenter';</string>
            </size>
           </property>
          </widget>
-         <widget class="QWidget" name="">
+         <widget class="QWidget" name="layoutWidget">
           <property name="geometry">
            <rect>
-            <x>60</x>
-            <y>150</y>
-            <width>441</width>
-            <height>32</height>
+            <x>40</x>
+            <y>151</y>
+            <width>451</width>
+            <height>41</height>
            </rect>
           </property>
           <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -400,13 +400,13 @@ qproperty-alignment: 'AlignCenter';</string>
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="">
+         <widget class="QWidget" name="layoutWidget">
           <property name="geometry">
            <rect>
-            <x>20</x>
-            <y>20</y>
-            <width>164</width>
-            <height>133</height>
+            <x>10</x>
+            <y>10</y>
+            <width>201</width>
+            <height>142</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -414,8 +414,20 @@ qproperty-alignment: 'AlignCenter';</string>
             <layout class="QHBoxLayout" name="horizontalLayout_3">
              <item>
               <widget class="QLabel" name="addExpTypeLbl">
+               <property name="minimumSize">
+                <size>
+                 <width>24</width>
+                 <height>2</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>24</width>
+                 <height>16777215</height>
+                </size>
+               </property>
                <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;类型&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;类型&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
               </widget>
              </item>
@@ -436,11 +448,17 @@ qproperty-alignment: 'AlignCenter';</string>
               </widget>
              </item>
              <item>
-              <widget class="Line" name="line">
+              <spacer name="horizontalSpacer_4">
                <property name="orientation">
                 <enum>Qt::Orientation::Horizontal</enum>
                </property>
-              </widget>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
              </item>
             </layout>
            </item>
@@ -449,7 +467,7 @@ qproperty-alignment: 'AlignCenter';</string>
              <item>
               <widget class="QLabel" name="addExpTitleLbl">
                <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;标题&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;标题&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
               </widget>
              </item>
@@ -459,16 +477,62 @@ qproperty-alignment: 'AlignCenter';</string>
             </layout>
            </item>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_5">
+            <layout class="QHBoxLayout" name="horizontalLayout_7">
              <item>
-              <widget class="QLabel" name="addExpCharacterLbl">
+              <widget class="QLabel" name="addExpDateLbl">
+               <property name="minimumSize">
+                <size>
+                 <width>24</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>24</width>
+                 <height>24</height>
+                </size>
+               </property>
                <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;角色&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;日期&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="addExpCharacterLine"/>
+              <widget class="QDateEdit" name="addExpDateLine">
+               <property name="styleSheet">
+                <string notr="true">/* 针对 QDateEdit 的美化 */
+QDateEdit {
+    border: 1px solid #DCDFE6;
+    border-radius: 8px;
+    padding: 5px 10px;
+    background: white;
+    selection-background-color: #5B56F1; /* 选中时的颜色 */
+}
+
+
+
+/* 甚至可以给弹出的日历窗口也换个皮肤 */
+QCalendarWidget QWidget {
+    background-color: white;
+}
+QCalendarWidget QAbstractItemView:enabled {
+    selection-background-color: #5B56F1;
+}</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer_3">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
              </item>
             </layout>
            </item>

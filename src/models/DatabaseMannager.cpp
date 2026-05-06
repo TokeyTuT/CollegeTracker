@@ -80,6 +80,7 @@ bool DatabaseManager::createTables(){
     QString sqlExp = "CREATE TABLE IF NOT EXISTS experiences ("
                      "id INTEGER PRIMARY KEY AUTOINCREMENT, "
                      "title TEXT NOT NULL, " // 项目/实习名称
+                     "type TEXT NOT NULL,"
                      "date TEXT, "           // 时间点
                      "content TEXT"          // 详细内容
                      ");";

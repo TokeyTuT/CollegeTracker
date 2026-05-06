@@ -20,6 +20,8 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
+
+
 private slots:
     void on_navHomeBtn_clicked();
 
@@ -38,10 +40,20 @@ private slots:
 
     void on_addExpBtn_clicked();
 
+    void on_DelExpBtn_clicked();
+
 private:
     Ui::MainWindow *ui;
     QSqlTableModel *courseModel; //从数据库中读取课程表，转为模型
-    void setupCourseModel();
-    void updateTotalStats();
+    QSqlTableModel *expModel; // 从数据库中读取经历表，转为模型
+
+    void InitFrame(); //初始化导航栏
+
+    void InitCoursePage(); //初始化课程页
+
+    void InitExpPage(); //初始化课外经历页
+
+
+    void updateTotalStats(); //更新课程状态栏  —— (计算 GPA)
 };
 #endif // MAINWINDOW_H
