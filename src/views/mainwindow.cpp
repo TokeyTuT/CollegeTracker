@@ -341,14 +341,14 @@ void MainWindow::on_DelExpBtn_clicked()
 
 //以下为个人荣誉的代码
 //添加荣誉
-void MainWindow::on_addAwardBtn_clicked()
-{
-    //参考上面添加经历的代码，基本上一样，只要改几个关键参数即可
-}
+// void MainWindow::on_addAwardBtn_clicked()
+// {
+//     //参考上面添加经历的代码，基本上一样，只要改几个关键参数即可
+// }
 
 // 删除选定行的列(单行删除)
-void MainWindow::on_delAwardBtn_clicked()
-{
-    //参考上面删除经历的代码，基本上一样，只要改几个关键参数即可
-}
+// void MainWindow::on_delAwardBtn_clicked()
+// {
+//     //参考上面删除经历的代码，基本上一样，只要改几个关键参数即可
+// }
 

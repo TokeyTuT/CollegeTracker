@@ -10,13 +10,11 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 【修改点 1】: 添加了 Sql 模块，为你后续使用 SQLite 数据库做准备
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Sql LinguistTools)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Sql LinguistTools)
 
 set(TS_FILES CollegeTracker_zh_CN.ts)
 
-# 【修改点 2】: 更新了物理文件的相对路径，匹配我们的 MVC 架构
 set(PROJECT_SOURCES
         src/main.cpp
         src/views/mainwindow.cpp
@@ -33,6 +31,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/models/DatabaseMannager.cpp
         src/views/AddCourseDialog.h
         src/views/AddCourseDialog.cpp
+        src/views/LoginDialog.h
+        src/views/LoginDialog.cpp
 
     )
     qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
@@ -49,14 +49,13 @@ else()
     qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 endif()
 
-# 【修改点 3】: 告诉编译器去哪里寻找头文件，这样你在其他文件里包含头文件时就不需要写长长的路径了
+
 target_include_directories(CollegeTracker PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/views
     ${CMAKE_CURRENT_SOURCE_DIR}/src/models
     ${CMAKE_CURRENT_SOURCE_DIR}/src/controllers
 )
 
-# 【修改点 4】: 链接 Sql 库，确保 C++ 能够调用数据库功能
 target_link_libraries(CollegeTracker PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Sql

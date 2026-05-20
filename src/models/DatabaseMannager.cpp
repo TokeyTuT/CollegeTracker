@@ -66,6 +66,15 @@ QVariantMap DatabaseManager::getTotalStats() {
 bool DatabaseManager::createTables(){
     QSqlQuery query;
     bool success = true;
+
+    // 0. 用户表 (Users)
+    QString sqlUsers = "CREATE TABLE IF NOT EXISTS users ("
+                       "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                       "username TEXT UNIQUE NOT NULL, "
+                       "password TEXT NOT NULL"
+                       ");";
+    if (!query.exec(sqlUsers)) success = false;
+
     // 1. 课程与成绩表 (Courses)
     QString sqlCourses = "CREATE TABLE IF NOT EXISTS courses ("
                          "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -100,4 +109,37 @@ bool DatabaseManager::createTables(){
     }
     qDebug()<<"所有表创建成功！";
     return success;
+}
+
+bool DatabaseManager::registerUser(const QString &username, const QString &password) {
+    QSqlQuery query;
+    query.prepare("INSERT INTO users (username, password) VALUES (:username, :password)");
+    query.addBindValue(username);
+    query.addBindValue(password);
+    return query.exec();
+}
+
+bool DatabaseManager::loginUser(const QString &username, const QString &password) {
+    QSqlQuery query;
+    query.prepare("SELECT * FROM users WHERE username = :username AND password = :password");
+    query.addBindValue(username);
+    query.addBindValue(password);
+
+    if (query.exec() && query.next()) {
+        m_currentUser = username;
+        return true;
+    }
+    return false;
+}
+
+QString DatabaseManager::getCurrentUser() const {
+    return m_currentUser;
+}
+
+void DatabaseManager::setCurrentUser(const QString &username) {
+    m_currentUser = username;
+}
+
+void DatabaseManager::logout() {
+    m_currentUser = "";
 }
