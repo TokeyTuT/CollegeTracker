@@ -23,27 +23,36 @@ set(PROJECT_SOURCES
         ${TS_FILES}
 )
 
+set(EXTRA_SOURCES
+    src/models/DatabaseMannager.h
+    src/models/DatabaseMannager.cpp
+    src/views/AddCourseDialog.h
+    src/views/AddCourseDialog.cpp
+    src/views/LoginDialog.h
+    src/views/LoginDialog.cpp
+    src/views/RegisterDialog.h
+    src/views/RegisterDialog.cpp
+    src/models/User.h
+    src/models/User.cpp
+)
+
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(CollegeTracker
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        src/models/DatabaseMannager.h
-        src/models/DatabaseMannager.cpp
-        src/views/AddCourseDialog.h
-        src/views/AddCourseDialog.cpp
-        src/views/LoginDialog.h
-        src/views/LoginDialog.cpp
-
+        ${EXTRA_SOURCES}
     )
     qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 else()
     if(ANDROID)
         add_library(CollegeTracker SHARED
             ${PROJECT_SOURCES}
+            ${EXTRA_SOURCES}
         )
     else()
         add_executable(CollegeTracker
             ${PROJECT_SOURCES}
+            ${EXTRA_SOURCES}
         )
     endif()
     qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})

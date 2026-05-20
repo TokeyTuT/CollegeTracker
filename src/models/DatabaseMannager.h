@@ -6,41 +6,39 @@
 #include <QSqlError>
 #include <QDebug>
 #include <QString>
-#include<QCoreApplication>
+#include <QVariantMap>
+#include <QCoreApplication>
 
 class DatabaseManager {
 public:
-    // 单例模式  —— 禁止外部访问创建数据库对象，防止重复加载
     DatabaseManager(const DatabaseManager&) = delete;
     DatabaseManager& operator=(const DatabaseManager&) = delete;
 
-    // 获取唯一实例的入口
     static DatabaseManager& getInstance() {
         static DatabaseManager instance;
         return instance;
     }
 
-    // 初始化数据库
     bool initDatabase();
-    //更新状态
-    QVariantMap getTotalStats();
+
+    // 统计（按用户过滤）
+    QVariantMap getTotalStats(int userId);
 
     // 用户管理
-    bool registerUser(const QString &username, const QString &password);
-    bool loginUser(const QString &username, const QString &password);
-    QString getCurrentUser() const;
-    void setCurrentUser(const QString &username);
-    void logout();
+    bool registerUser(const QString &username, const QString &password,
+                      const QString &grade, const QString &gender, const QString &major);
+    int loginUser(const QString &username, const QString &password); // 返回 user id，-1 表示失败
+    QVariantMap getUserInfo(int userId);
 
 private:
-    DatabaseManager(); // 构造函数私有化, 不能被外部初始化
+    DatabaseManager();
     ~DatabaseManager();
 
     QSqlDatabase m_db;
-    QString m_currentUser;
 
-    // 辅助函数：创建初始表结构
     bool createTables();
+    //后序维护，给每个表添加了外键
+    void migrateTables();
 };
 
 #endif // DATABASEMANAGER_H

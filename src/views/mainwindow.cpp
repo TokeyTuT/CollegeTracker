@@ -2,210 +2,92 @@
 #include "./ui_mainwindow.h"
 
 #include "DatabaseMannager.h"
-#include"addCourseDialog.h"
-
+#include "User.h"
+#include "AddCourseDialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
-
-
     ui->setupUi(this);
 
-    //初始化 sideBar 与 mainFrame
     InitFrame();
-
-    //初始化课程页
+    updateSidebarUserInfo();
     InitCoursePage();
-
-    //初始化课外经历页
     InitExpPage();
-
-    //初始化个人荣誉页（待写）
     InitAwardPage();
-
 }
-
-
 
 MainWindow::~MainWindow()
 {
     delete courseModel;
+    delete expModel;
+    delete awardModel;
     delete ui;
 }
 
-//初始化总体 UI 框架
-void MainWindow::InitFrame(){
-    //设置初始时主页面的标题与页面
+void MainWindow::InitFrame() {
     QString defaultTitle = QString("首页总览");
     ui->stackedWidget->setCurrentIndex(0);
-    //将左侧导航栏的按钮与翻页关联
     ui->currentPageLbl->setText(defaultTitle);
-    connect(ui->navHomeBtn,&QPushButton::clicked,this,[=]{
+    connect(ui->navHomeBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(0);
     });
-    connect(ui->navCourseBtn,&QPushButton::clicked,this,[=]{
+    connect(ui->navCourseBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(1);
     });
-    connect(ui->navExpBtn,&QPushButton::clicked,this,[=]{
+    connect(ui->navExpBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(2);
     });
-    connect(ui->navAwardBtn,&QPushButton::clicked,this,[=]{
+    connect(ui->navAwardBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(3);
     });
-    connect(ui->navExportBtn,&QPushButton::clicked,this,[=]{
+    connect(ui->navExportBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(4);
     });
 }
 
-//初始化课程页
-void MainWindow::InitCoursePage()
-{
-    // 确保点击单元格时是选中整行，而不是只选中一个格
+void MainWindow::updateSidebarUserInfo() {
+    User &user = User::getInstance();
+    if (user.isLoggedIn()) {
+        ui->userNameLbl->setText(user.getUsername());
+        ui->majorLbl->setText(user.getMajor());
+        QString detail = user.getGrade();
+        if (!user.getGender().isEmpty()) {
+            detail = user.getGrade() + " | " + user.getGender();
+        }
+        ui->detailLbl->setText(detail);
+    }
+}
+
+// ==================== 课程页 ====================
+
+void MainWindow::InitCoursePage() {
+    int userId = User::getInstance().getId();
+
     ui->courseTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    // 限制用户只能选中一行，方便下面单行删除
     ui->courseTableView->setSelectionMode(QAbstractItemView::SingleSelection);
-    //初始化模型
+
     courseModel = new QSqlTableModel(this);
     courseModel->setTable("courses");
-
-    //设置策略 —— 点击保存后才提交
     courseModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+    courseModel->setFilter(QString("user_id = %1").arg(userId));
 
-    //设置表头
-    courseModel->setHeaderData(1, Qt::Horizontal, "课程名称");
-    courseModel->setHeaderData(2, Qt::Horizontal, "学分");
-    courseModel->setHeaderData(3, Qt::Horizontal, "成绩");
-    courseModel->setHeaderData(4, Qt::Horizontal, "学期");
+    courseModel->setHeaderData(2, Qt::Horizontal, "课程名称");
+    courseModel->setHeaderData(3, Qt::Horizontal, "学分");
+    courseModel->setHeaderData(4, Qt::Horizontal, "成绩");
+    courseModel->setHeaderData(5, Qt::Horizontal, "学期");
 
-    //将模型添加到 Table View 中
     ui->courseTableView->setModel(courseModel);
+    ui->courseTableView->setColumnHidden(0, true);
+    ui->courseTableView->setColumnHidden(1, true);
 
-    //隐藏主键
-    ui->courseTableView->setColumnHidden(0,true);
-
-    //数据查询
     courseModel->select();
-    //更新状态栏
     updateTotalStats();
 }
 
-//初始化个人经历页
-void MainWindow::InitExpPage()
-{
-    //给添加addExpCBox设置下拉菜单
-    ui->addExpTypeCBox->addItem("实习");
-    ui->addExpTypeCBox->addItem("竞赛");
-    ui->addExpTypeCBox->addItem("项目");
-    ui->addExpTypeCBox->addItem("其他");
-    ui->addExpTypeCBox->setCurrentIndex(0);//设置起始索引
-    //添加课外生活时，给日期遍历组件初始化
-    ui->addExpDateLine->setCalendarPopup(true); //弹出日期选择框
-    ui->addExpDateLine->setDate(QDate::currentDate()); //默认显示今天
-    ui->addExpDateLine->setDisplayFormat("yyyy-MM-dd");//显示的格式
-
-    //给文本框添加默认文字
-    ui->addExpTitleLine->setPlaceholderText("示例:家里蹲算法工程师）");
-    ui->addExpDescLine->setPlaceholderText("示例:天天蹲家里打代码😃");
-
-
-    //初始化 expTableView
-    ui->expTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->expTableView->setSelectionMode(QAbstractItemView::SingleSelection);
-    // 初始化模型
-    expModel = new QSqlTableModel(this);
-    expModel->setTable("Experiences");
-
-    // 设置车落，点击保存后才能提交
-    expModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
-
-    //设置表头
-    expModel->setHeaderData(1,Qt::Horizontal,"标题");
-    expModel->setHeaderData(2,Qt::Horizontal,"类型");
-    expModel->setHeaderData(3,Qt::Horizontal,"时间");
-    expModel->setHeaderData(4,Qt::Horizontal,"描述");
-
-    //将模型添加到 TableView 中
-    ui->expTableView->setModel(expModel);
-    ui->expTableView->setColumnHidden(0,true);
-
-    //数据查询
-    expModel->select();
-}
-
-//参考上面的 InitExpPage 和 InitCoursePage 初始化
-void MainWindow::InitAwardPage()
-{
-    //给 addAwardCBox 设置下拉菜单
-
-
-    //给日期遍历组件初始化
-
-
-    //给文本框添加默认文字(可选，可写可不写)
-
-
-    //初始化 awardTableView
-
-
-    //初始化模型
-
-
-    //设置表头(奖项等级、奖项标题、获奖时间)
-
-
-    //数据查询
-
-}
-
-
-
-
-//将左侧 sidebar 栏导航按钮绑定到各自的 page 中
-void MainWindow::on_navHomeBtn_clicked()
-{
-    ui->currentPageLbl->setText(ui->navHomeBtn->text());
-}
-void MainWindow::on_navCourseBtn_clicked()
-{
-    ui->currentPageLbl->setText(ui->navCourseBtn->text());
-}
-void MainWindow::on_navExpBtn_clicked()
-{
-    ui->currentPageLbl->setText(ui->navExpBtn->text());
-}
-void MainWindow::on_navExportBtn_clicked()
-{
-    ui->currentPageLbl->setText(ui->navExportBtn->text());
-}
-void MainWindow::on_navAwardBtn_clicked()
-{
-    ui->currentPageLbl->setText(ui->navAwardBtn->text());
-}
-
-
-
-//以下为课程页的实现代码
-//课程列状态栏更新结果（每次删除，添加更新成绩信息）
-void MainWindow::updateTotalStats() {
-    //从数据库中查找
-    QVariantMap stats = DatabaseManager::getInstance().getTotalStats();
-
-    if (stats["count"].toInt() == 0) {
-        ui->labelStats->setText("暂无数据");
-        return;
-    }
-
-    ui->labelStats->setText(QString("总课程: %1 | 算术平均: %2 | 加权 GPA: %3 | 总学分: %4")
-                                .arg(stats["count"].toInt())
-                                .arg(stats["avg"].toDouble(), 0, 'f', 2)
-                                .arg(stats["gpa"].toDouble(), 0, 'f', 2)
-                                .arg(stats["totalCredits"].toDouble(), 0, 'f', 1));
-}
-
-//添加课程
 void MainWindow::on_addCourseBtn_clicked() {
+    int userId = User::getInstance().getId();
     AddCourseDialog dialog(this);
 
     if (dialog.exec() == QDialog::Accepted) {
@@ -218,11 +100,11 @@ void MainWindow::on_addCourseBtn_clicked() {
 
         int row = courseModel->rowCount();
         if (courseModel->insertRow(row)) {
-            // 按照数据库字段顺序填充
-            courseModel->setData(courseModel->index(row, 1), name);
-            courseModel->setData(courseModel->index(row, 2), credit);
-            courseModel->setData(courseModel->index(row, 3), score);
-            courseModel->setData(courseModel->index(row, 4), semester);
+            courseModel->setData(courseModel->index(row, 1), userId);
+            courseModel->setData(courseModel->index(row, 2), name);
+            courseModel->setData(courseModel->index(row, 3), credit);
+            courseModel->setData(courseModel->index(row, 4), score);
+            courseModel->setData(courseModel->index(row, 5), semester);
 
             if (courseModel->submitAll()) {
                 ui->courseTableView->selectRow(row);
@@ -236,11 +118,9 @@ void MainWindow::on_addCourseBtn_clicked() {
     }
 }
 
-// 删除选定的列(单行删除)
-void MainWindow::on_deleteCourseBtn_clicked()
-{
+void MainWindow::on_deleteCourseBtn_clicked() {
     QModelIndex currentIndex = ui->courseTableView->currentIndex();
-    if(!currentIndex.isValid()){
+    if (!currentIndex.isValid()) {
         QMessageBox::warning(this, "提示", "请先在表格中点击选择一行内容");
         return;
     }
@@ -248,107 +128,239 @@ void MainWindow::on_deleteCourseBtn_clicked()
     auto result = QMessageBox::question(this, "确认删除", "确定要删除该门课程吗？");
     if (result != QMessageBox::Yes) return;
 
-    // 执行删除
     int row = currentIndex.row();
     courseModel->removeRow(row);
 
-    // 提交更改到数据库文件
     if (courseModel->submitAll()) {
         qDebug() << "行号" << row << "已成功从数据库抹除";
         updateTotalStats();
     } else {
-        courseModel->revertAll(); // 提交失败则恢复界面状态
+        courseModel->revertAll();
         qDebug() << "提交失败";
         QMessageBox::critical(this, "错误", "数据库写入失败！");
     }
 }
 
+void MainWindow::updateTotalStats() {
+    int userId = User::getInstance().getId();
+    QVariantMap stats = DatabaseManager::getInstance().getTotalStats(userId);
 
+    if (stats["count"].toInt() == 0) {
+        ui->labelStats->setText("暂无数据");
+        return;
+    }
 
+    ui->labelStats->setText(QString("总课程: %1 | 算术平均: %2 | 加权 GPA: %3 | 总学分: %4")
+                                .arg(stats["count"].toInt())
+                                .arg(stats["avg"].toDouble(), 0, 'f', 2)
+                                .arg(stats["gpa"].toDouble(), 0, 'f', 2)
+                                .arg(stats["totalCredits"].toDouble(), 0, 'f', 1));
+}
 
-//以下为课外经历的代码
-//添加经历，指定三种经历 —— 实习，竞赛，项目，其他
-void MainWindow::on_addExpBtn_clicked()
-{
+// ==================== 课外经历页 ====================
+
+void MainWindow::InitExpPage() {
+    int userId = User::getInstance().getId();
+
+    ui->addExpTypeCBox->addItem("实习");
+    ui->addExpTypeCBox->addItem("竞赛");
+    ui->addExpTypeCBox->addItem("项目");
+    ui->addExpTypeCBox->addItem("其他");
+    ui->addExpTypeCBox->setCurrentIndex(0);
+
+    ui->addExpDateLine->setCalendarPopup(true);
+    ui->addExpDateLine->setDate(QDate::currentDate());
+    ui->addExpDateLine->setDisplayFormat("yyyy-MM-dd");
+
+    ui->addExpTitleLine->setPlaceholderText("示例:家里蹲算法工程师）");
+    ui->addExpDescLine->setPlaceholderText("示例:天天蹲家里打代码😃");
+
+    ui->expTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->expTableView->setSelectionMode(QAbstractItemView::SingleSelection);
+
+    expModel = new QSqlTableModel(this);
+    expModel->setTable("experiences");
+    expModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+    expModel->setFilter(QString("user_id = %1").arg(userId));
+
+    expModel->setHeaderData(2, Qt::Horizontal, "标题");
+    expModel->setHeaderData(3, Qt::Horizontal, "类型");
+    expModel->setHeaderData(4, Qt::Horizontal, "时间");
+    expModel->setHeaderData(5, Qt::Horizontal, "描述");
+
+    ui->expTableView->setModel(expModel);
+    ui->expTableView->setColumnHidden(0, true);
+    ui->expTableView->setColumnHidden(1, true);
+
+    expModel->select();
+}
+
+void MainWindow::on_addExpBtn_clicked() {
+    int userId = User::getInstance().getId();
     QString title = ui->addExpTitleLine->text();
     QString type = ui->addExpTypeCBox->currentText();
     QDate temp_date = ui->addExpDateLine->date();
-    if(temp_date > QDate::currentDate()){ // 不能选比今天还大的日期
+
+    if (temp_date > QDate::currentDate()) {
         QMessageBox::warning(this, "提示", "不能选择比今天还大的日期！");
-    }
-    else{
+    } else {
         QString desc = ui->addExpDescLine->text();
-
-
-        //存储日期的时候要用字符串，所以还要格式化成字符串s
         QString date = temp_date.toString("yyyy-MM-dd");
 
-        if(type.isEmpty() || title.isEmpty()){
+        if (type.isEmpty() || title.isEmpty()) {
             QMessageBox::warning(this, "提示", "标题不能为空！");
-        }
-        else{
+        } else {
             int row = expModel->rowCount();
-            if(expModel->insertRow(row)){
-                // 按照数据库填充
-                expModel->setData(expModel->index(row,1),title);
-                expModel->setData(expModel->index(row,2),type);
-                expModel->setData(expModel->index(row,3),date);
-                expModel->setData(expModel->index(row,4),desc);
+            if (expModel->insertRow(row)) {
+                expModel->setData(expModel->index(row, 1), userId);
+                expModel->setData(expModel->index(row, 2), title);
+                expModel->setData(expModel->index(row, 3), type);
+                expModel->setData(expModel->index(row, 4), date);
+                expModel->setData(expModel->index(row, 5), desc);
 
-                if(expModel->submitAll()){
+                if (expModel->submitAll()) {
                     ui->expTableView->selectRow(row);
-                    qDebug()<<"写入成功";
-                }else{
-                    qDebug()<<"数据库写入失败";
+                    qDebug() << "写入成功";
+                } else {
+                    qDebug() << "数据库写入失败";
                 }
             }
         }
     }
-    //清空输入框
+
     ui->addExpTitleLine->clear();
     ui->addExpDateLine->setDate(QDate::currentDate());
     ui->addExpTypeCBox->setCurrentIndex(0);
     ui->addExpDescLine->clear();
 }
 
-//删除选定的列 (单行删除)
-void MainWindow::on_DelExpBtn_clicked()
-{
+void MainWindow::on_DelExpBtn_clicked() {
     QModelIndex currentIndex = ui->expTableView->currentIndex();
-    if(!currentIndex.isValid()){
+    if (!currentIndex.isValid()) {
         QMessageBox::warning(this, "提示", "请先在表格中点击选择一行内容");
         return;
     }
-    auto result = QMessageBox::question(this,"确认删除","确定要删除该经历吗?");
-    if(result!=QMessageBox::Yes){
+    auto result = QMessageBox::question(this, "确认删除", "确定要删除该经历吗?");
+    if (result != QMessageBox::Yes) {
         return;
     }
 
-    //执行删除
     int row = currentIndex.row();
     expModel->removeRow(row);
 
-    //提交
-    if(expModel->submitAll()){
-        qDebug()<<"行号"<<row<<"已从数据库中抹除";
-    }else{
-        //失败就回溯恢复界面
-        expModel->revert();
-        qDebug()<<"提交失败";
+    if (expModel->submitAll()) {
+        qDebug() << "行号" << row << "已从数据库中抹除";
+    } else {
+        expModel->revertAll();
+        qDebug() << "提交失败";
         QMessageBox::critical(this, "错误", "数据库写入失败！");
     }
 }
 
-//以下为个人荣誉的代码
-//添加荣誉
-// void MainWindow::on_addAwardBtn_clicked()
-// {
-//     //参考上面添加经历的代码，基本上一样，只要改几个关键参数即可
-// }
+// ==================== 个人荣誉页 ====================
 
-// 删除选定行的列(单行删除)
-// void MainWindow::on_delAwardBtn_clicked()
-// {
-//     //参考上面删除经历的代码，基本上一样，只要改几个关键参数即可
-// }
+void MainWindow::InitAwardPage() {
+    int userId = User::getInstance().getId();
 
+    ui->addAwardDateLine->setCalendarPopup(true);
+    ui->addAwardDateLine->setDate(QDate::currentDate());
+    ui->addAwardDateLine->setDisplayFormat("yyyy-MM-dd");
+
+    ui->addAwardLine->setPlaceholderText("示例: 全国大学生数学建模一等奖");
+
+    ui->awardTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->awardTableView->setSelectionMode(QAbstractItemView::SingleSelection);
+
+    awardModel = new QSqlTableModel(this);
+    awardModel->setTable("awards");
+    awardModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+    awardModel->setFilter(QString("user_id = %1").arg(userId));
+
+    awardModel->setHeaderData(2, Qt::Horizontal, "奖项名称");
+    awardModel->setHeaderData(3, Qt::Horizontal, "奖项等级");
+    awardModel->setHeaderData(4, Qt::Horizontal, "获奖时间");
+
+    ui->awardTableView->setModel(awardModel);
+    ui->awardTableView->setColumnHidden(0, true);
+    ui->awardTableView->setColumnHidden(1, true);
+
+    awardModel->select();
+}
+
+void MainWindow::on_addAwardBtn_clicked() {
+    int userId = User::getInstance().getId();
+    QString name = ui->addAwardLine->text();
+    QString level = ui->addAwardLevelCBox->currentText();
+    QDate temp_date = ui->addAwardDateLine->date();
+
+    if (temp_date > QDate::currentDate()) {
+        QMessageBox::warning(this, "提示", "不能选择比今天还大的日期！");
+        return;
+    }
+
+    if (name.isEmpty()) {
+        QMessageBox::warning(this, "提示", "奖项名称不能为空！");
+        return;
+    }
+
+    QString date = temp_date.toString("yyyy-MM-dd");
+
+    int row = awardModel->rowCount();
+    if (awardModel->insertRow(row)) {
+        awardModel->setData(awardModel->index(row, 1), userId);
+        awardModel->setData(awardModel->index(row, 2), name);
+        awardModel->setData(awardModel->index(row, 3), level);
+        awardModel->setData(awardModel->index(row, 4), date);
+
+        if (awardModel->submitAll()) {
+            ui->awardTableView->selectRow(row);
+            qDebug() << "荣誉写入成功";
+        } else {
+            qDebug() << "数据库写入失败";
+        }
+    }
+
+    ui->addAwardLine->clear();
+    ui->addAwardDateLine->setDate(QDate::currentDate());
+}
+
+void MainWindow::on_delAwardBtn_clicked() {
+    QModelIndex currentIndex = ui->awardTableView->currentIndex();
+    if (!currentIndex.isValid()) {
+        QMessageBox::warning(this, "提示", "请先在表格中点击选择一行内容");
+        return;
+    }
+    auto result = QMessageBox::question(this, "确认删除", "确定要删除该荣誉吗?");
+    if (result != QMessageBox::Yes) {
+        return;
+    }
+
+    int row = currentIndex.row();
+    awardModel->removeRow(row);
+
+    if (awardModel->submitAll()) {
+        qDebug() << "行号" << row << "已从数据库中抹除";
+    } else {
+        awardModel->revertAll();
+        qDebug() << "提交失败";
+        QMessageBox::critical(this, "错误", "数据库写入失败！");
+    }
+}
+
+// ==================== 导航栏按钮 ====================
+
+void MainWindow::on_navHomeBtn_clicked() {
+    ui->currentPageLbl->setText(ui->navHomeBtn->text());
+}
+void MainWindow::on_navCourseBtn_clicked() {
+    ui->currentPageLbl->setText(ui->navCourseBtn->text());
+}
+void MainWindow::on_navExpBtn_clicked() {
+    ui->currentPageLbl->setText(ui->navExpBtn->text());
+}
+void MainWindow::on_navExportBtn_clicked() {
+    ui->currentPageLbl->setText(ui->navExportBtn->text());
+}
+void MainWindow::on_navAwardBtn_clicked() {
+    ui->currentPageLbl->setText(ui->navAwardBtn->text());
+}

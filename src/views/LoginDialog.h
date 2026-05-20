@@ -15,7 +15,7 @@ public:
 
 private slots:
     void onLoginClicked();
-    void onRegisterClicked();
+    void onOpenRegister();
 
 private:
     QLineEdit *m_usernameEdit;

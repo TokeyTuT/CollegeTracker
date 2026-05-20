@@ -1,52 +1,109 @@
-#include"DatabaseMannager.h"
-// DatabaseManager::DatabaseManager(){
-//     //指定sqlite驱动
-//     m_db = QSqlDatabase::addDatabase("QSQLITE");
+#include "DatabaseMannager.h"
 
-
-
-//     m_db.setDatabaseName("college_tracker.db");
-// }
 DatabaseManager::DatabaseManager() {
     m_db = QSqlDatabase::addDatabase("QSQLITE");
-
-    //修改数据库的位置
     QString dbPath = "college_tracker.db";
     m_db.setDatabaseName(dbPath);
-
     qDebug() << "数据库创建成功";
 }
 
-DatabaseManager::~DatabaseManager(){
-    //按时关闭数据库
-    if(m_db.isOpen()){
+DatabaseManager::~DatabaseManager() {
+    if (m_db.isOpen()) {
         m_db.close();
     }
 }
 
-bool DatabaseManager::initDatabase(){
-    if(!m_db.open()){
-        qDebug() << "错误：数据库连接失败"<<m_db.lastError().text();
+bool DatabaseManager::initDatabase() {
+    if (!m_db.open()) {
+        qDebug() << "错误：数据库连接失败" << m_db.lastError().text();
         return false;
     }
-
-    qDebug()<<"数据库连接成功";
-    return createTables();
+    qDebug() << "数据库连接成功";
+    if (!createTables()) return false;
+    migrateTables();
+    return true;
 }
 
-QVariantMap DatabaseManager::getTotalStats() {
+bool DatabaseManager::createTables() {
+    QSqlQuery query;
+    bool success = true;
+
+    QString sqlUsers = "CREATE TABLE IF NOT EXISTS users ("
+                       "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                       "username TEXT UNIQUE NOT NULL, "
+                       "password TEXT NOT NULL, "
+                       "grade TEXT DEFAULT '', "
+                       "gender TEXT DEFAULT '', "
+                       "major TEXT DEFAULT ''"
+                       ");";
+    if (!query.exec(sqlUsers)) success = false;
+
+    QString sqlCourses = "CREATE TABLE IF NOT EXISTS courses ("
+                         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                         "user_id INTEGER NOT NULL, "
+                         "name TEXT NOT NULL, "
+                         "credit REAL, "
+                         "score REAL, "
+                         "semester TEXT"
+                         ");";
+    if (!query.exec(sqlCourses)) success = false;
+
+    QString sqlExp = "CREATE TABLE IF NOT EXISTS experiences ("
+                     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                     "user_id INTEGER NOT NULL, "
+                     "title TEXT NOT NULL, "
+                     "type TEXT NOT NULL, "
+                     "date TEXT, "
+                     "content TEXT"
+                     ");";
+    if (!query.exec(sqlExp)) success = false;
+
+    QString sqlAwards = "CREATE TABLE IF NOT EXISTS awards ("
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                        "user_id INTEGER NOT NULL, "
+                        "name TEXT NOT NULL, "
+                        "level TEXT, "
+                        "date TEXT"
+                        ");";
+    if (!query.exec(sqlAwards)) success = false;
+
+    if (!success) {
+        qDebug() << "部分表创建失败：" << query.lastError().text();
+    }
+    qDebug() << "所有表创建成功！";
+    return success;
+}
+
+void DatabaseManager::migrateTables() {
+    QSqlQuery query;
+
+    // 为已有的 users 表添加新列（如果不存在则忽略错误）
+    query.exec("ALTER TABLE users ADD COLUMN grade TEXT DEFAULT ''");
+    query.exec("ALTER TABLE users ADD COLUMN gender TEXT DEFAULT ''");
+    query.exec("ALTER TABLE users ADD COLUMN major TEXT DEFAULT ''");
+
+    // 为已有的数据表添加 user_id 列
+    query.exec("ALTER TABLE courses ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1");
+    query.exec("ALTER TABLE experiences ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1");
+    query.exec("ALTER TABLE awards ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1");
+
+    qDebug() << "数据库迁移完成";
+}
+
+QVariantMap DatabaseManager::getTotalStats(int userId) {
     QVariantMap stats;
     QSqlQuery query;
 
-    //计算总数、算术平均分、加权总分、总学分
     QString sql = "SELECT "
                   "COUNT(*), "
                   "AVG(score), "
                   "SUM(score * credit), "
                   "SUM(credit) "
-                  "FROM courses";
+                  "FROM courses WHERE user_id = :uid";
+    query.prepare(sql);
+    query.bindValue(":uid", userId);
 
-    if (query.exec(sql) && query.next()) {
+    if (query.exec() && query.next()) {
         int count = query.value(0).toInt();
         double avgScore = query.value(1).toDouble();
         double sumWeighted = query.value(2).toDouble();
@@ -62,84 +119,43 @@ QVariantMap DatabaseManager::getTotalStats() {
     return stats;
 }
 
-//建表
-bool DatabaseManager::createTables(){
+bool DatabaseManager::registerUser(const QString &username, const QString &password,
+                                    const QString &grade, const QString &gender, const QString &major) {
     QSqlQuery query;
-    bool success = true;
-
-    // 0. 用户表 (Users)
-    QString sqlUsers = "CREATE TABLE IF NOT EXISTS users ("
-                       "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                       "username TEXT UNIQUE NOT NULL, "
-                       "password TEXT NOT NULL"
-                       ");";
-    if (!query.exec(sqlUsers)) success = false;
-
-    // 1. 课程与成绩表 (Courses)
-    QString sqlCourses = "CREATE TABLE IF NOT EXISTS courses ("
-                         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                         "name TEXT NOT NULL, "
-                         "credit REAL, "     // 学分
-                         "score REAL, "      // 成绩
-                         "semester TEXT"     // 学期
-                         ");";
-    if (!query.exec(sqlCourses)) success = false;
-
-    // 2. 课外经历表 (Experiences)
-    QString sqlExp = "CREATE TABLE IF NOT EXISTS experiences ("
-                     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                     "title TEXT NOT NULL, " // 项目/实习名称
-                     "type TEXT NOT NULL,"
-                     "date TEXT, "           // 时间点
-                     "content TEXT"          // 详细内容
-                     ");";
-    if (!query.exec(sqlExp)) success = false;
-
-    // 3. 个人荣誉/成就表 (Awards)
-    QString sqlAwards = "CREATE TABLE IF NOT EXISTS awards ("
-                        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                        "name TEXT NOT NULL, "  // 奖项名称
-                        "level TEXT, "          // 级别 (如：校级、国家级)
-                        "date TEXT"             // 获奖时间
-                        ");";
-    if (!query.exec(sqlAwards)) success = false;
-
-    if (!success) {
-        qDebug() << "部分表创建失败：" << query.lastError().text();
-    }
-    qDebug()<<"所有表创建成功！";
-    return success;
-}
-
-bool DatabaseManager::registerUser(const QString &username, const QString &password) {
-    QSqlQuery query;
-    query.prepare("INSERT INTO users (username, password) VALUES (:username, :password)");
-    query.addBindValue(username);
-    query.addBindValue(password);
+    query.prepare("INSERT INTO users (username, password, grade, gender, major) "
+                  "VALUES (:username, :password, :grade, :gender, :major)");
+    query.bindValue(":username", username);
+    query.bindValue(":password", password);
+    query.bindValue(":grade", grade);
+    query.bindValue(":gender", gender);
+    query.bindValue(":major", major);
     return query.exec();
 }
 
-bool DatabaseManager::loginUser(const QString &username, const QString &password) {
+int DatabaseManager::loginUser(const QString &username, const QString &password) {
     QSqlQuery query;
-    query.prepare("SELECT * FROM users WHERE username = :username AND password = :password");
-    query.addBindValue(username);
-    query.addBindValue(password);
+    query.prepare("SELECT id FROM users WHERE username = :username AND password = :password");
+    query.bindValue(":username", username);
+    query.bindValue(":password", password);
 
     if (query.exec() && query.next()) {
-        m_currentUser = username;
-        return true;
+        return query.value(0).toInt();
     }
-    return false;
+    return -1;
 }
 
-QString DatabaseManager::getCurrentUser() const {
-    return m_currentUser;
-}
+QVariantMap DatabaseManager::getUserInfo(int userId) {
+    QVariantMap info;
+    QSqlQuery query;
+    query.prepare("SELECT id, username, grade, gender, major FROM users WHERE id = :id");
+    query.bindValue(":id", userId);
 
-void DatabaseManager::setCurrentUser(const QString &username) {
-    m_currentUser = username;
-}
-
-void DatabaseManager::logout() {
-    m_currentUser = "";
+    if (query.exec() && query.next()) {
+        info["id"] = query.value(0).toInt();
+        info["username"] = query.value(1).toString();
+        info["grade"] = query.value(2).toString();
+        info["gender"] = query.value(3).toString();
+        info["major"] = query.value(4).toString();
+    }
+    return info;
 }
