@@ -33,7 +33,6 @@ private slots:
 
     void on_navAwardBtn_clicked();
 
-
     void on_addCourseBtn_clicked();
 
     void on_deleteCourseBtn_clicked();
@@ -44,8 +43,10 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    QSqlTableModel *courseModel; //从数据库中读取课程表，转为模型
-    QSqlTableModel *expModel; // 从数据库中读取经历表，转为模型
+    QSqlTableModel *courseModel; //课程表模型
+    QSqlTableModel *expModel; // 经历表模型
+    QSqlTableModel *awardModel; // 荣誉表模型
+
 
     void InitFrame(); //初始化导航栏
 
@@ -53,7 +54,10 @@ private:
 
     void InitExpPage(); //初始化课外经历页
 
+    void InitAwardPage(); // 初始化个人荣誉页
 
+
+    //辅助函数
     void updateTotalStats(); //更新课程状态栏  —— (计算 GPA)
 };
 #endif // MAINWINDOW_H
