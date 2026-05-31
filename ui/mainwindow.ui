@@ -236,7 +236,7 @@ qproperty-alignment: 'AlignCenter';</string>
         </rect>
        </property>
        <property name="currentIndex">
-        <number>3</number>
+        <number>4</number>
        </property>
        <widget class="QWidget" name="homePage"/>
        <widget class="QWidget" name="coursePage">
