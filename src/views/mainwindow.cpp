@@ -45,6 +45,19 @@ void MainWindow::InitFrame() {
     connect(ui->navExportBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(4);
     });
+
+    // 登出按钮样式（红色调，区别于导航按钮）
+    ui->navLogoutBtn->setStyleSheet(
+        "QPushButton {"
+        "  color: #e74c3c;"
+        "  font-size: 13px;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: #fdecea;"
+        "  color: #c0392b;"
+        "  font-weight: bold;"
+        "}"
+    );
 }
 
 void MainWindow::updateSidebarUserInfo() {
@@ -363,4 +376,18 @@ void MainWindow::on_navExportBtn_clicked() {
 }
 void MainWindow::on_navAwardBtn_clicked() {
     ui->currentPageLbl->setText(ui->navAwardBtn->text());
+}
+
+void MainWindow::on_navLogoutBtn_clicked() {
+    auto result = QMessageBox::question(
+        this, "确认登出",
+        "确定要退出登入吗？\n退出后需要重新输入用户名和密码。",
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No
+    );
+    if (result != QMessageBox::Yes) return;
+
+    User::getInstance().logout();
+    emit loggedOut();
+    close();
 }
