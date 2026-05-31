@@ -5,8 +5,6 @@
 #include <QSqlTableModel>
 #include <QMessageBox>
 #include <QInputDialog>
-#include <QGridLayout>
-#include <QFrame>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -45,23 +43,13 @@ private:
     QSqlTableModel *expModel;
     QSqlTableModel *awardModel;
 
-    // Dashboard 卡片数值标签
-    QLabel *dashCourseCount;
-    QLabel *dashAvgScore;
-    QLabel *dashGPA;
-    QLabel *dashTotalCredits;
-    QLabel *dashExpCount;
-    QLabel *dashAwardCount;
-
     void InitFrame();
-    void InitHomePage();
     void InitCoursePage();
     void InitExpPage();
     void InitAwardPage();
 
     void updateTotalStats();
     void updateSidebarUserInfo();
-    void setActiveNavButton(QPushButton *activeBtn);
 };
 
 #endif // MAINWINDOW_H

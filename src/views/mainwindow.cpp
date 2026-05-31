@@ -3,24 +3,16 @@
 
 #include "DatabaseMannager.h"
 #include "User.h"
-
-#include <QGraphicsDropShadowEffect>
+#include "AddCourseDialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , dashCourseCount(nullptr)
-    , dashAvgScore(nullptr)
-    , dashGPA(nullptr)
-    , dashTotalCredits(nullptr)
-    , dashExpCount(nullptr)
-    , dashAwardCount(nullptr)
 {
     ui->setupUi(this);
 
     InitFrame();
     updateSidebarUserInfo();
-    InitHomePage();
     InitCoursePage();
     InitExpPage();
     InitAwardPage();
@@ -38,41 +30,20 @@ void MainWindow::InitFrame() {
     QString defaultTitle = QString("首页总览");
     ui->stackedWidget->setCurrentIndex(0);
     ui->currentPageLbl->setText(defaultTitle);
-    setActiveNavButton(ui->navHomeBtn);
-
-    // 侧边栏 3D 立体阴影（向右投射，分隔侧边栏与内容区）
-    QGraphicsDropShadowEffect *sidebarShadow = new QGraphicsDropShadowEffect(this);
-    sidebarShadow->setBlurRadius(24);
-    sidebarShadow->setXOffset(4);
-    sidebarShadow->setYOffset(0);
-    sidebarShadow->setColor(QColor(0, 0, 0, 50));
-    ui->sidebarFrame->setGraphicsEffect(sidebarShadow);
-
     connect(ui->navHomeBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(0);
-        ui->currentPageLbl->setText(QString("首页总览"));
-        setActiveNavButton(ui->navHomeBtn);
-        updateTotalStats();
     });
     connect(ui->navCourseBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(1);
-        ui->currentPageLbl->setText(QString("课程与成绩"));
-        setActiveNavButton(ui->navCourseBtn);
     });
     connect(ui->navExpBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(2);
-        ui->currentPageLbl->setText(QString("课外活动"));
-        setActiveNavButton(ui->navExpBtn);
     });
     connect(ui->navAwardBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(3);
-        ui->currentPageLbl->setText(QString("个人荣誉"));
-        setActiveNavButton(ui->navAwardBtn);
     });
     connect(ui->navExportBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(4);
-        ui->currentPageLbl->setText(QString("简历导出"));
-        setActiveNavButton(ui->navExportBtn);
     });
 
     // 登出按钮样式（红色调，区别于导航按钮）
@@ -130,39 +101,34 @@ void MainWindow::InitCoursePage() {
 
 void MainWindow::on_addCourseBtn_clicked() {
     int userId = User::getInstance().getId();
-    QString name = ui->addCourseNameLine->text().trimmed();
-    double credit = ui->addCourseCreditSpin->value();
-    double score = ui->addCourseScoreSpin->value();
-    QString semester = ui->addCourseSemesterLine->text().trimmed();
+    AddCourseDialog dialog(this);
 
-    if (name.isEmpty()) {
-        QMessageBox::warning(this, "提示", "课程名不能为空！");
-        return;
-    }
+    if (dialog.exec() == QDialog::Accepted) {
+        QString name = dialog.getName();
+        double credit = dialog.getCredit();
+        double score = dialog.getScore();
+        QString semester = dialog.getSemester();
 
-    int row = courseModel->rowCount();
-    if (courseModel->insertRow(row)) {
-        courseModel->setData(courseModel->index(row, 1), userId);
-        courseModel->setData(courseModel->index(row, 2), name);
-        courseModel->setData(courseModel->index(row, 3), credit);
-        courseModel->setData(courseModel->index(row, 4), score);
-        courseModel->setData(courseModel->index(row, 5), semester);
+        if (name.isEmpty()) return;
 
-        if (courseModel->submitAll()) {
-            ui->courseTableView->selectRow(row);
-            qDebug() << "成功录入：" << name << " | " << semester;
-            updateTotalStats();
-        } else {
-            courseModel->revertAll();
-            qDebug() << "数据库写入失败";
+        int row = courseModel->rowCount();
+        if (courseModel->insertRow(row)) {
+            courseModel->setData(courseModel->index(row, 1), userId);
+            courseModel->setData(courseModel->index(row, 2), name);
+            courseModel->setData(courseModel->index(row, 3), credit);
+            courseModel->setData(courseModel->index(row, 4), score);
+            courseModel->setData(courseModel->index(row, 5), semester);
+
+            if (courseModel->submitAll()) {
+                ui->courseTableView->selectRow(row);
+                qDebug() << "成功录入：" << name << " | " << semester;
+                updateTotalStats();
+            } else {
+                courseModel->revertAll();
+                qDebug() << "数据库写入失败";
+            }
         }
     }
-
-    // 清空输入栏
-    ui->addCourseNameLine->clear();
-    ui->addCourseCreditSpin->setValue(3.0);
-    ui->addCourseScoreSpin->setValue(0.0);
-    ui->addCourseSemesterLine->clear();
 }
 
 void MainWindow::on_deleteCourseBtn_clicked() {
@@ -192,45 +158,16 @@ void MainWindow::updateTotalStats() {
     int userId = User::getInstance().getId();
     QVariantMap stats = DatabaseManager::getInstance().getTotalStats(userId);
 
-    int courseCount = stats["count"].toInt();
-    double avgScore = stats["avg"].toDouble();
-    double gpa = stats["gpa"].toDouble();
-    double totalCredits = stats["totalCredits"].toDouble();
-
-    // 更新课程页统计标签
-    if (courseCount == 0) {
+    if (stats["count"].toInt() == 0) {
         ui->labelStats->setText("暂无数据");
-    } else {
-        ui->labelStats->setText(QString("总课程: %1 | 算术平均: %2 | 加权 GPA: %3 | 总学分: %4")
-                                    .arg(courseCount)
-                                    .arg(avgScore, 0, 'f', 2)
-                                    .arg(gpa, 0, 'f', 2)
-                                    .arg(totalCredits, 0, 'f', 1));
+        return;
     }
 
-    // 更新 Dashboard 卡片（如果已初始化）
-    if (dashCourseCount) {
-        dashCourseCount->setText(QString::number(courseCount));
-    }
-    if (dashAvgScore) {
-        dashAvgScore->setText(courseCount > 0 ? QString::number(avgScore, 'f', 1) : "—");
-    }
-    if (dashGPA) {
-        dashGPA->setText(courseCount > 0 ? QString::number(gpa, 'f', 2) : "—");
-    }
-    if (dashTotalCredits) {
-        dashTotalCredits->setText(courseCount > 0 ? QString::number(totalCredits, 'f', 1) : "—");
-    }
-
-    // 课外经历 & 荣誉奖项（model 可能在首次调用时尚未初始化）
-    if (dashExpCount) {
-        int expCount = expModel ? expModel->rowCount() : 0;
-        dashExpCount->setText(QString::number(expCount));
-    }
-    if (dashAwardCount) {
-        int awardCount = awardModel ? awardModel->rowCount() : 0;
-        dashAwardCount->setText(QString::number(awardCount));
-    }
+    ui->labelStats->setText(QString("总课程: %1 | 算术平均: %2 | 加权 GPA: %3 | 总学分: %4")
+                                .arg(stats["count"].toInt())
+                                .arg(stats["avg"].toDouble(), 0, 'f', 2)
+                                .arg(stats["gpa"].toDouble(), 0, 'f', 2)
+                                .arg(stats["totalCredits"].toDouble(), 0, 'f', 1));
 }
 
 // ==================== 课外经历页 ====================
@@ -425,90 +362,20 @@ void MainWindow::on_delAwardBtn_clicked() {
 
 // ==================== 导航栏按钮 ====================
 
-void MainWindow::setActiveNavButton(QPushButton *activeBtn) {
-    // 清除所有按钮的 active 状态
-    QList<QPushButton*> navBtns = {
-        ui->navHomeBtn, ui->navCourseBtn, ui->navExpBtn,
-        ui->navAwardBtn, ui->navExportBtn
-    };
-    for (auto *btn : navBtns) {
-        btn->setProperty("active", false);
-        btn->style()->unpolish(btn);
-        btn->style()->polish(btn);
-    }
-    // 设置当前按钮为 active
-    activeBtn->setProperty("active", true);
-    activeBtn->style()->unpolish(activeBtn);
-    activeBtn->style()->polish(activeBtn);
+void MainWindow::on_navHomeBtn_clicked() {
+    ui->currentPageLbl->setText(ui->navHomeBtn->text());
 }
-
-// ==================== 首页 Dashboard ====================
-
-void MainWindow::InitHomePage() {
-    QGridLayout *grid = new QGridLayout(ui->homePage);
-    grid->setContentsMargins(0, 0, 0, 0);
-    grid->setSpacing(20);
-
-    struct CardInfo {
-        QString title;
-        QLabel **valuePtr;
-    };
-
-    QList<CardInfo> cards = {
-        {"总课程数", &dashCourseCount},
-        {"平均成绩", &dashAvgScore},
-        {"加权 GPA", &dashGPA},
-        {"总学分",   &dashTotalCredits},
-        {"课外经历", &dashExpCount},
-        {"荣誉奖项", &dashAwardCount},
-    };
-
-    for (int i = 0; i < cards.size(); ++i) {
-        const CardInfo &info = cards[i];
-
-        // 卡片框架 — 半透明立体效果
-        QFrame *card = new QFrame(ui->homePage);
-        card->setObjectName("dashCard");
-        card->setMinimumHeight(120);
-
-        // 3D 投影
-        QGraphicsDropShadowEffect *shadow = new QGraphicsDropShadowEffect(card);
-        shadow->setBlurRadius(30);
-        shadow->setXOffset(0);
-        shadow->setYOffset(6);
-        shadow->setColor(QColor(0, 0, 0, 35));
-        card->setGraphicsEffect(shadow);
-
-        QVBoxLayout *cardLayout = new QVBoxLayout(card);
-        cardLayout->setContentsMargins(24, 20, 24, 20);
-        cardLayout->setSpacing(8);
-
-        // 数值（大字）
-        QLabel *valueLbl = new QLabel("—", card);
-        valueLbl->setStyleSheet(
-            "font-size: 34px; font-weight: bold; color: #2d3748;"
-            "background: transparent; border: none;"
-        );
-        valueLbl->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        cardLayout->addWidget(valueLbl);
-        *info.valuePtr = valueLbl;
-
-        // 标题（小字灰色）
-        QLabel *titleLbl = new QLabel(info.title, card);
-        titleLbl->setStyleSheet(
-            "font-size: 13px; color: #718096;"
-            "background: transparent; border: none;"
-        );
-        cardLayout->addWidget(titleLbl);
-
-        cardLayout->addStretch();
-
-        int row = i / 3;
-        int col = i % 3;
-        grid->addWidget(card, row, col);
-    }
-
-    ui->homePage->setLayout(grid);
+void MainWindow::on_navCourseBtn_clicked() {
+    ui->currentPageLbl->setText(ui->navCourseBtn->text());
+}
+void MainWindow::on_navExpBtn_clicked() {
+    ui->currentPageLbl->setText(ui->navExpBtn->text());
+}
+void MainWindow::on_navExportBtn_clicked() {
+    ui->currentPageLbl->setText(ui->navExportBtn->text());
+}
+void MainWindow::on_navAwardBtn_clicked() {
+    ui->currentPageLbl->setText(ui->navAwardBtn->text());
 }
 
 void MainWindow::on_navLogoutBtn_clicked() {
