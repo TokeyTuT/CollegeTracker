@@ -26,9 +26,11 @@ public:
 
     // 用户管理
     bool registerUser(const QString &username, const QString &password,
-                      const QString &grade, const QString &gender, const QString &major);
+                      const QString &grade, const QString &gender, const QString &major, const QString &school);
     int loginUser(const QString &username, const QString &password); // 返回 user id，-1 表示失败
     QVariantMap getUserInfo(int userId);
+    bool updateUserInfo(int userId, const QString &grade, const QString &gender, const QString &major, const QString &school);
+    static double scoreToGpa(double score);
 
 private:
     DatabaseManager();

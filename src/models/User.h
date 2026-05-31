@@ -19,12 +19,14 @@ public:
 
     void login(int userId);
     void logout();
+    void refresh();
 
     int getId() const;
     QString getUsername() const;
     QString getGrade() const;
     QString getGender() const;
     QString getMajor() const;
+    QString getSchool() const;
 
 private:
     int m_id = -1;
@@ -32,6 +34,7 @@ private:
     QString m_grade;
     QString m_gender;
     QString m_major;
+    QString m_school;
 
     User();
     ~User();

@@ -8,6 +8,7 @@
 #include <QPushButton>
 #include <QDialogButtonBox>
 #include <QComboBox>
+#include <QLabel>
 
 class AddCourseDialog : public QDialog {
     Q_OBJECT
@@ -19,10 +20,13 @@ public:
     double getScore() const { return scoreSpin->value(); }
     QString getSemester() const{return semesterCombo->currentText();}
 private:
+    double scoreToGpa(double score) const;
+    void updateGpaPreview();
     QLineEdit *nameEdit;
     QDoubleSpinBox *creditSpin;
     QDoubleSpinBox *scoreSpin;
     QComboBox *semesterCombo;
+    QLabel *gpaPreviewLbl;
 };
 
 #endif

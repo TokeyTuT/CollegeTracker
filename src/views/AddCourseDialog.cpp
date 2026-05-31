@@ -1,6 +1,7 @@
 #include"AddCourseDialog.h"
 
 
+
 AddCourseDialog::AddCourseDialog(QWidget *parent):QDialog(parent){
     setWindowTitle("添加课程记录");
 
@@ -25,6 +26,11 @@ AddCourseDialog::AddCourseDialog(QWidget *parent):QDialog(parent){
     scoreSpin->setValue(0.0);
     layout->addRow("成绩:", scoreSpin);
 
+    // 自动换算单门课程绩点
+    gpaPreviewLbl = new QLabel("绩点：0.0", this);
+    gpaPreviewLbl->setStyleSheet("color:#2563EB; font-weight:600;");
+    layout->addRow("自动绩点:", gpaPreviewLbl);
+
     // 课程时间
     semesterCombo = new QComboBox(this);
     semesterCombo->addItems({"大一上", "大一下", "大二上", "大二下", "大三上", "大三下", "大四上", "大四下"});
@@ -37,7 +43,28 @@ AddCourseDialog::AddCourseDialog(QWidget *parent):QDialog(parent){
 
     connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(scoreSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double){ updateGpaPreview(); });
+    updateGpaPreview();
 
     // 默认焦点在名称输入框
     nameEdit->setFocus();
+}
+
+
+double AddCourseDialog::scoreToGpa(double score) const {
+    if (score >= 90.0) return 4.0;
+    if (score >= 85.0) return 3.7;
+    if (score >= 82.0) return 3.3;
+    if (score >= 78.0) return 3.0;
+    if (score >= 75.0) return 2.7;
+    if (score >= 72.0) return 2.3;
+    if (score >= 68.0) return 2.0;
+    if (score >= 64.0) return 1.5;
+    if (score >= 60.0) return 1.0;
+    return 0.0;
+}
+
+void AddCourseDialog::updateGpaPreview() {
+    if (!gpaPreviewLbl) return;
+    gpaPreviewLbl->setText(QString("绩点：%1").arg(scoreToGpa(scoreSpin->value()), 0, 'f', 1));
 }

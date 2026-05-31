@@ -5,6 +5,9 @@
 #include <QSqlTableModel>
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QTableView>
+#include <QLabel>
+#include <QPushButton>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -26,7 +29,6 @@ private slots:
     void on_navExpBtn_clicked();
     void on_navExportBtn_clicked();
     void on_navAwardBtn_clicked();
-    void on_navLogoutBtn_clicked();
     void on_addCourseBtn_clicked();
     void on_deleteCourseBtn_clicked();
     void on_addExpBtn_clicked();
@@ -34,14 +36,20 @@ private slots:
     void on_addAwardBtn_clicked();
     void on_delAwardBtn_clicked();
 
-signals:
-    void loggedOut();
-
 private:
     Ui::MainWindow *ui;
     QSqlTableModel *courseModel;
     QSqlTableModel *expModel;
     QSqlTableModel *awardModel;
+
+    QLabel *homeChartLabel = nullptr;
+    QLabel *homeCourseCountLbl = nullptr;
+    QLabel *homeGpaLbl = nullptr;
+    QLabel *homeCompetitionCountLbl = nullptr;
+    QLabel *homeInternshipCountLbl = nullptr;
+    QLabel *homeProjectCountLbl = nullptr;
+    QLabel *homeAwardCountLbl = nullptr;
+    QPushButton *editProfileBtn = nullptr;
 
     void InitFrame();
     void InitCoursePage();
@@ -50,6 +58,13 @@ private:
 
     void updateTotalStats();
     void updateSidebarUserInfo();
+    void openEditProfileDialog();
+    void applyModernStyle();
+    void setupTableView(QTableView *tableView);
+    void buildHomePage();
+    void buildExportPage();
+    void updateHomePageStats();
+    double scoreToGpa(double score) const;
 };
 
 #endif // MAINWINDOW_H

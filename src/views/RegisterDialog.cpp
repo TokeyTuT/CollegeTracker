@@ -8,7 +8,7 @@ RegisterDialog::RegisterDialog(QWidget *parent)
     : QDialog(parent) {
     setWindowTitle("College Tracker - 注册");
     setModal(true);
-    setFixedSize(400, 620);
+    setFixedSize(400, 700);
 
     setStyleSheet(
         "QDialog {"
@@ -106,6 +106,19 @@ RegisterDialog::RegisterDialog(QWidget *parent)
 
     outerLayout->addSpacing(10);
 
+
+    // 学校
+    QLabel *schoolLabel = new QLabel("学校", this);
+    schoolLabel->setStyleSheet(labelStyle);
+    outerLayout->addWidget(schoolLabel);
+
+    m_schoolEdit = new QLineEdit(this);
+    m_schoolEdit->setPlaceholderText("请输入学校");
+    m_schoolEdit->setFixedHeight(38);
+    m_schoolEdit->setStyleSheet(inputStyle);
+    outerLayout->addWidget(m_schoolEdit);
+
+    outerLayout->addSpacing(10);
     // 年级
     QLabel *gradeLabel = new QLabel("年级", this);
     gradeLabel->setStyleSheet(labelStyle);
@@ -223,9 +236,15 @@ void RegisterDialog::onRegisterClicked() {
     QString grade = m_gradeCombo->currentText();
     QString gender = m_genderCombo->currentText();
     QString major = m_majorEdit->text().trimmed();
+    QString school = m_schoolEdit->text().trimmed();
+
+    if (school.isEmpty() || major.isEmpty()) {
+        showMessage("学校和专业不能为空", true);
+        return;
+    }
 
     DatabaseManager &db = DatabaseManager::getInstance();
-    if (db.registerUser(username, password, grade, gender, major)) {
+    if (db.registerUser(username, password, grade, gender, major, school)) {
         accept();
     } else {
         showMessage("用户名已存在", true);

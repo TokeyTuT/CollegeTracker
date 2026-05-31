@@ -26,6 +26,7 @@ private:
     QComboBox *m_gradeCombo;
     QComboBox *m_genderCombo;
     QLineEdit *m_majorEdit;
+    QLineEdit *m_schoolEdit;
     QPushButton *m_registerBtn;
     QPushButton *m_backBtn;
     QLabel *m_messageLabel;
