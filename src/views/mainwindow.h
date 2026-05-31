@@ -5,6 +5,7 @@
 #include <QSqlTableModel>
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QTableView>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -46,6 +47,10 @@ private:
 
     void updateTotalStats();
     void updateSidebarUserInfo();
+    void applyModernStyle();
+    void setupTableView(QTableView *tableView);
+    void buildHomePage();
+    void buildExportPage();
 };
 
 #endif // MAINWINDOW_H

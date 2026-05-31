@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>College Tracker</string>
   </property>
   <property name="styleSheet">
    <string notr="true">/* 全局背景与字体 */
@@ -236,7 +236,7 @@ qproperty-alignment: 'AlignCenter';</string>
         </rect>
        </property>
        <property name="currentIndex">
-        <number>3</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="homePage"/>
        <widget class="QWidget" name="coursePage">
@@ -358,9 +358,9 @@ qproperty-alignment: 'AlignCenter';</string>
          <widget class="QWidget" name="layoutWidget">
           <property name="geometry">
            <rect>
-            <x>40</x>
-            <y>151</y>
-            <width>451</width>
+            <x>250</x>
+            <y>148</y>
+            <width>390</width>
             <height>41</height>
            </rect>
           </property>
@@ -388,7 +388,7 @@ qproperty-alignment: 'AlignCenter';</string>
            <item>
             <widget class="QPushButton" name="DelExpBtn">
              <property name="text">
-              <string>删除选定列</string>
+              <string>删除选定行</string>
              </property>
             </widget>
            </item>
@@ -397,10 +397,10 @@ qproperty-alignment: 'AlignCenter';</string>
          <widget class="QWidget" name="layoutWidget">
           <property name="geometry">
            <rect>
-            <x>10</x>
-            <y>10</y>
-            <width>201</width>
-            <height>142</height>
+            <x>28</x>
+            <y>18</y>
+            <width>610</width>
+            <height>118</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -616,10 +616,10 @@ QCalendarWidget QAbstractItemView:enabled {
          <widget class="QWidget" name="layoutWidget">
           <property name="geometry">
            <rect>
-            <x>10</x>
-            <y>20</y>
-            <width>190</width>
-            <height>109</height>
+            <x>28</x>
+            <y>24</y>
+            <width>610</width>
+            <height>94</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_5">
