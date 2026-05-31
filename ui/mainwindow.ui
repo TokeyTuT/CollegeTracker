@@ -6,66 +6,305 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>850</width>
-    <height>529</height>
+    <width>980</width>
+    <height>640</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>College Tracker</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">/* 全局背景与字体 */
+   <string notr="true">/* =============================================
+   College Tracker — Typora 风格全局样式表
+   深色侧边栏 + 浅色内容区 + Dashboard 卡片
+   ============================================= */
+
+/* ---------- 全局 ---------- */
 QMainWindow {
-    background-color: #F4F7FA; /* 极淡的现代灰蓝色 */
-    font-family: &quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;;
+    background-color: #FFFAF0;
+    font-family: &quot;PingFang SC&quot;, &quot;Helvetica Neue&quot;, &quot;Microsoft YaHei&quot;;
 }
 
-/* 左侧侧边栏 (精准定位到 sidebarFrame) */
+/* ---------- 米黄色侧边栏 ---------- */
 #sidebarFrame {
-    background-color: #FFFFFF;
-    border-right: 1px solid #E2E8F0;
+    background-color: #FDF5E6;
+    border: none;
+}
+
+/* 用户信息卡片 */
+#userProfileWidget {
+    background-color: transparent;
+    border-bottom: 1px solid #e8ddd0;
+    padding: 24px 16px 20px 16px;
+    margin-bottom: 8px;
+}
+
+#userNameLbl {
+    font-size: 17px;
+    font-weight: bold;
+    color: #2d3748;
+    padding: 0px;
+}
+
+#detailLbl {
+    font-size: 12px;
+    color: #718096;
+    margin-top: 4px;
+}
+
+#majorLbl {
+    font-size: 11px;
+    color: #8a8a8a;
+    margin-top: 2px;
+}
+
+/* 侧边栏导航按钮 */
+#sidebarFrame QPushButton {
+    background-color: transparent;
+    color: #5a4a3a;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: 0px 8px 8px 0px;
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 13px;
+    margin: 2px 10px;
+}
+
+#sidebarFrame QPushButton:hover {
+    background-color: #efe0cc;
+    color: #2d3748;
+    border-left: 3px solid #4a90d9;
+}
+
+#sidebarFrame QPushButton[active=&quot;true&quot;] {
+    background-color: #efe0cc;
+    color: #2d3748;
+    font-weight: bold;
+    border-left: 3px solid #4a90d9;
+}
+
+/* ---------- 内容区 ---------- */
+#mainContentFrame {
+    background-color: #FFFAF0;
+    border: none;
+}
+
+/* 页面标题 */
+#currentPageLbl {
+    color: #2d3748;
+    font-size: 22px;
+    font-weight: bold;
+    padding: 4px 0px;
+    qproperty-alignment: 'AlignLeft | AlignVCenter';
+}
+
+/* ---------- 表格 ---------- */
+QTableView {
+    background-color: #FEF9F0;
+    alternate-background-color: #FBF3E4;
+    border: 1px solid #e0d8c8;
+    border-radius: 12px;
+    gridline-color: transparent;
+    selection-background-color: #f0e5d0;
+    selection-color: #2d3748;
+    font-size: 13px;
+}
+
+QTableView::item {
+    padding: 10px 16px;
+    border-bottom: 1px solid #f0e8d8;
+}
+
+QHeaderView::section {
+    background-color: #F5ECD7;
+    color: #5a4a3a;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 12px 16px;
+    border: none;
+    border-bottom: 2px solid #d8cfb8;
+}
+
+/* ---------- 内容区按钮 ---------- */
+#addCourseBtn, #addExpBtn, #addAwardBtn {
+    background-color: #4a90d9;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 22px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+#addCourseBtn:hover, #addExpBtn:hover, #addAwardBtn:hover {
+    background-color: #357abd;
+}
+
+#addCourseBtn:pressed, #addExpBtn:pressed, #addAwardBtn:pressed {
+    background-color: #2a6cb5;
+}
+
+#deleteCourseBtn, #DelExpBtn, #delAwardBtn {
+    background-color: #ffffff;
+    color: #e53e3e;
+    border: 1px solid #e53e3e;
+    border-radius: 8px;
+    padding: 9px 22px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+#deleteCourseBtn:hover, #DelExpBtn:hover, #delAwardBtn:hover {
+    background-color: #fff5f5;
+}
+
+#deleteCourseBtn:pressed, #DelExpBtn:pressed, #delAwardBtn:pressed {
+    background-color: #fed7d7;
+}
+
+/* ---------- 输入控件 ---------- */
+QLineEdit, QComboBox, QDateEdit, QDoubleSpinBox, QSpinBox {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    background-color: #ffffff;
+    color: #2d3748;
+    font-size: 13px;
+    min-height: 20px;
+}
+
+QLineEdit:focus, QComboBox:focus, QDateEdit:focus,
+QDoubleSpinBox:focus, QSpinBox:focus {
+    border-color: #4a90d9;
+}
+
+QComboBox::drop-down {
+    border: none;
+    padding-right: 8px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    selection-background-color: #e8f0fe;
+    selection-color: #2d3748;
+    padding: 4px;
+}
+
+/* ---------- 日历弹窗 ---------- */
+QCalendarWidget QWidget {
+    background-color: #ffffff;
+}
+
+QCalendarWidget QAbstractItemView:enabled {
+    selection-background-color: #4a90d9;
+    selection-color: #ffffff;
+}
+
+QDateEdit::drop-down {
+    border: none;
+    padding-right: 6px;
+}
+
+/* ---------- 表单框架 (课程/经历/荣誉的添加区域) ---------- */
+#addCourseFrame, #addExpFrame, #addAwardFrame {
+    background-color: #FDF5E6;
+    border: 1px solid #e0d8c8;
+    border-radius: 12px;
+}
+
+/* ---------- 表单标签 ---------- */
+#addCourseNameLbl, #addCourseCreditLbl, #addCourseScoreLbl, #addCourseSemesterLbl,
+#addExpTypeLbl, #addExpTitleLbl, #addExpDateLbl, #addExpDescLbl,
+#addAwardTitleLbl, #addAwardDateLbl, #addAwardLevelLbl {
+    color: #5a4a3a;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+/* ---------- 统计标签 ---------- */
+#labelStats {
+    color: #5a4a3a;
+    font-size: 14px;
+    font-weight: bold;
+    background-color: #F5ECD7;
+    border: 1px solid #e0d8c8;
+    border-radius: 10px;
+    padding: 12px;
+    qproperty-alignment: 'AlignCenter';
+}
+
+/* ---------- 滚动条 ---------- */
+QScrollBar:vertical {
+    background-color: transparent;
+    width: 8px;
     margin: 0px;
 }
 
-/* 左侧导航按钮的统一样式 */
-#sidebarFrame QPushButton {
+QScrollBar::handle:vertical {
+    background-color: #c4c4d4;
+    border-radius: 4px;
+    min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #a0aec0;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollBar:horizontal {
     background-color: transparent;
+    height: 8px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #c4c4d4;
+    border-radius: 4px;
+    min-width: 30px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #a0aec0;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+}
+
+/* ---------- 首页 Dashboard 卡片 ---------- */
+#dashCard {
+    background-color: #F0E5D0;
+    border: 1px solid #e0d5bb;
+    border-radius: 14px;
+}
+
+#dashCard:hover {
+    background-color: #EBDCC2;
+    border: 1px solid #d4c9a8;
+}
+
+/* ---------- 提示框 ---------- */
+QMessageBox {
+    background-color: #ffffff;
+}
+
+QMessageBox QPushButton {
+    background-color: #4a90d9;
+    color: #ffffff;
     border: none;
-    padding: 12px 20px;
-    text-align: left;
-    font-size: 14px;
-    color: #4A5568;
-    border-radius: 8px;
-    margin: 4px 10px;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 13px;
+    min-width: 80px;
 }
 
-/* 鼠标悬停时的按钮反馈 */
-#sidebarFrame QPushButton:hover {
-    background-color: #EDF2F7;
-    color: #3182CE;
-    font-weight: bold;
-}
-
-/* 用户信息区块容器 */
-#userProfileWidget {
-    background-color: transparent;
-    padding: 20px 15px; /* 增加上下边距 */
-    border-bottom: 1px solid #EDF2F7; /* 下方加一条极淡的分隔线 */
-    margin-bottom: 10px;
-}
-
-/* 姓名样式：粗体、大号、深色 */
-#userNameLbl {
-    font-size: 18px;
-    font-weight: bold;
-    color: #2D3748;
-}
-
-/* 专业样式：小号、灰色、换行处理 */
-#userMajorLbl {
-    font-size: 11px;
-    color: #718096;
-    margin-top: 4px;
+QMessageBox QPushButton:hover {
+    background-color: #357abd;
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -73,48 +312,93 @@ QMainWindow {
     <string notr="true"/>
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
     <item>
      <widget class="QFrame" name="sidebarFrame">
       <property name="minimumSize">
        <size>
-        <width>200</width>
+        <width>210</width>
         <height>0</height>
        </size>
       </property>
       <property name="maximumSize">
        <size>
-        <width>200</width>
+        <width>210</width>
         <height>16777215</height>
        </size>
       </property>
       <property name="frameShape">
-       <enum>QFrame::Shape::StyledPanel</enum>
+       <enum>QFrame::Shape::NoFrame</enum>
       </property>
       <property name="frameShadow">
-       <enum>QFrame::Shadow::Raised</enum>
+       <enum>QFrame::Shadow::Plain</enum>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_3">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
        <item>
         <widget class="QWidget" name="userProfileWidget" native="true">
          <layout class="QVBoxLayout" name="verticalLayout">
+          <property name="spacing">
+           <number>4</number>
+          </property>
+          <property name="leftMargin">
+           <number>16</number>
+          </property>
+          <property name="topMargin">
+           <number>16</number>
+          </property>
+          <property name="rightMargin">
+           <number>16</number>
+          </property>
+          <property name="bottomMargin">
+           <number>8</number>
+          </property>
           <item>
            <widget class="QLabel" name="userNameLbl">
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;我是默认姓名（不会加载&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;用户名&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QLabel" name="detailLbl">
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;我是默认&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;年级 | 性别&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QLabel" name="majorLbl">
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;default&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;专业&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
@@ -123,6 +407,15 @@ QMainWindow {
        </item>
        <item>
         <layout class="QVBoxLayout" name="verticalLayout_2">
+         <property name="spacing">
+          <number>4</number>
+         </property>
+         <property name="topMargin">
+          <number>16</number>
+         </property>
+         <property name="bottomMargin">
+          <number>16</number>
+         </property>
          <item>
           <spacer name="verticalSpacer_2">
            <property name="orientation">
@@ -131,7 +424,7 @@ QMainWindow {
            <property name="sizeHint" stdset="0">
             <size>
              <width>20</width>
-             <height>40</height>
+             <height>16</height>
             </size>
            </property>
           </spacer>
@@ -144,12 +437,18 @@ QMainWindow {
            <property name="text">
             <string>首页总览</string>
            </property>
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
           </widget>
          </item>
          <item>
           <widget class="QPushButton" name="navCourseBtn">
            <property name="text">
             <string>课程与成绩</string>
+           </property>
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
            </property>
           </widget>
          </item>
@@ -158,6 +457,9 @@ QMainWindow {
            <property name="text">
             <string>课外活动</string>
            </property>
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
           </widget>
          </item>
          <item>
@@ -165,12 +467,18 @@ QMainWindow {
            <property name="text">
             <string>个人荣誉</string>
            </property>
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
           </widget>
          </item>
          <item>
           <widget class="QPushButton" name="navExportBtn">
            <property name="text">
             <string>简历导出</string>
+           </property>
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
            </property>
           </widget>
          </item>
@@ -198,528 +506,744 @@ QMainWindow {
        <bool>true</bool>
       </property>
       <property name="frameShape">
-       <enum>QFrame::Shape::StyledPanel</enum>
+       <enum>QFrame::Shape::NoFrame</enum>
       </property>
       <property name="frameShadow">
-       <enum>QFrame::Shadow::Raised</enum>
+       <enum>QFrame::Shadow::Plain</enum>
       </property>
-      <widget class="QLabel" name="currentPageLbl">
-       <property name="geometry">
-        <rect>
-         <x>13</x>
-         <y>13</y>
-         <width>584</width>
-         <height>44</height>
-        </rect>
+      <layout class="QVBoxLayout" name="verticalLayout_6">
+       <property name="spacing">
+        <number>12</number>
        </property>
-       <property name="styleSheet">
-        <string notr="true">/* 例如在样式表中设置 */
-color: #333;
-font-size: 18px;
-font-weight: bold;
-qproperty-alignment: 'AlignCenter';</string>
+       <property name="leftMargin">
+        <number>24</number>
        </property>
-       <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       <property name="topMargin">
+        <number>20</number>
        </property>
-      </widget>
-      <widget class="QStackedWidget" name="stackedWidget">
-       <property name="enabled">
-        <bool>true</bool>
+       <property name="rightMargin">
+        <number>24</number>
        </property>
-       <property name="geometry">
-        <rect>
-         <x>13</x>
-         <y>65</y>
-         <width>584</width>
-         <height>341</height>
-        </rect>
+       <property name="bottomMargin">
+        <number>20</number>
        </property>
-       <property name="currentIndex">
-        <number>4</number>
-       </property>
-       <widget class="QWidget" name="homePage"/>
-       <widget class="QWidget" name="coursePage">
-        <widget class="QPushButton" name="addCourseBtn">
-         <property name="geometry">
-          <rect>
-           <x>290</x>
-           <y>90</y>
-           <width>81</width>
-           <height>32</height>
-          </rect>
+       <item>
+        <widget class="QLabel" name="currentPageLbl">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>36</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>36</height>
+          </size>
          </property>
          <property name="text">
-          <string>添加课程</string>
+          <string>首页总览</string>
          </property>
         </widget>
-        <widget class="QTableView" name="courseTableView">
-         <property name="geometry">
-          <rect>
-           <x>80</x>
-           <y>120</y>
-           <width>411</width>
-           <height>192</height>
-          </rect>
+       </item>
+       <item>
+        <widget class="QStackedWidget" name="stackedWidget">
+         <property name="currentIndex">
+          <number>0</number>
          </property>
-         <property name="styleSheet">
-          <string notr="true"/>
-         </property>
-        </widget>
-        <widget class="QPushButton" name="deleteCourseBtn">
-         <property name="geometry">
-          <rect>
-           <x>380</x>
-           <y>90</y>
-           <width>121</width>
-           <height>32</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>删除选定课程</string>
-         </property>
-        </widget>
-        <widget class="QLabel" name="labelStats">
-         <property name="geometry">
-          <rect>
-           <x>0</x>
-           <y>320</y>
-           <width>584</width>
-           <height>16</height>
-          </rect>
-         </property>
-         <property name="styleSheet">
-          <string notr="true">/* 例如在样式表中设置 */
-color: #333;
-font-size: 14px;
-font-weight: bold;
-qproperty-alignment: 'AlignCenter';</string>
-         </property>
-         <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-        </widget>
-       </widget>
-       <widget class="QWidget" name="expPage">
-        <widget class="QTableView" name="expTableView">
-         <property name="geometry">
-          <rect>
-           <x>10</x>
-           <y>0</y>
-           <width>561</width>
-           <height>151</height>
-          </rect>
-         </property>
-        </widget>
-        <widget class="QFrame" name="addExpFrame">
-         <property name="geometry">
-          <rect>
-           <x>10</x>
-           <y>159</y>
-           <width>561</width>
-           <height>191</height>
-          </rect>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Shape::StyledPanel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Shadow::Raised</enum>
-         </property>
-         <widget class="QLabel" name="label">
-          <property name="geometry">
-           <rect>
-            <x>20</x>
-            <y>20</y>
-            <width>58</width>
-            <height>16</height>
-           </rect>
-          </property>
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-         <widget class="QLineEdit" name="lineEdit">
-          <property name="geometry">
-           <rect>
-            <x>136</x>
-            <y>54</y>
-            <width>100</width>
-            <height>0</height>
-           </rect>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>100</width>
-            <height>0</height>
-           </size>
-          </property>
-         </widget>
-         <widget class="QWidget" name="layoutWidget">
-          <property name="geometry">
-           <rect>
-            <x>40</x>
-            <y>151</y>
-            <width>451</width>
-            <height>41</height>
-           </rect>
-          </property>
-          <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <widget class="QWidget" name="homePage"/>
+         <widget class="QWidget" name="coursePage">
+          <layout class="QVBoxLayout" name="verticalLayout_7">
+           <property name="spacing">
+            <number>16</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
            <item>
-            <widget class="QPushButton" name="addExpBtn">
-             <property name="text">
-              <string>添加</string>
+            <widget class="QFrame" name="addCourseFrame">
+             <property name="frameShape">
+              <enum>QFrame::Shape::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Shadow::Plain</enum>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_courseForm">
+              <property name="spacing">
+               <number>10</number>
+              </property>
+              <property name="leftMargin">
+               <number>20</number>
+              </property>
+              <property name="topMargin">
+               <number>16</number>
+              </property>
+              <property name="rightMargin">
+               <number>20</number>
+              </property>
+              <property name="bottomMargin">
+               <number>12</number>
+              </property>
+              <item>
+               <widget class="QLabel" name="addCourseTitleLbl">
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:700; color:#5a4a3a;&quot;&gt;新增课程&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_courseRow1">
+                <item>
+                 <widget class="QLabel" name="addCourseNameLbl">
+                  <property name="minimumSize">
+                   <size>
+                    <width>56</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>课程名</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="addCourseNameLine">
+                  <property name="placeholderText">
+                   <string>示例：高等数学</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="addCourseCreditLbl">
+                  <property name="minimumSize">
+                   <size>
+                    <width>40</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>学分</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="addCourseCreditSpin">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="decimals">
+                   <number>1</number>
+                  </property>
+                  <property name="maximum">
+                   <double>20.000000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>3.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_courseRow2">
+                <item>
+                 <widget class="QLabel" name="addCourseScoreLbl">
+                  <property name="minimumSize">
+                   <size>
+                    <width>56</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>成绩</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="addCourseScoreSpin">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="decimals">
+                   <number>1</number>
+                  </property>
+                  <property name="maximum">
+                   <double>100.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="addCourseSemesterLbl">
+                  <property name="minimumSize">
+                   <size>
+                    <width>40</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>学期</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="addCourseSemesterLine">
+                  <property name="placeholderText">
+                   <string>示例：2024秋季</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_courseBtns">
+                <item>
+                 <widget class="QPushButton" name="addCourseBtn">
+                  <property name="minimumSize">
+                   <size>
+                    <width>100</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>＋ 添加</string>
+                  </property>
+                  <property name="cursor">
+                   <cursorShape>PointingHandCursor</cursorShape>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="deleteCourseBtn">
+                  <property name="minimumSize">
+                   <size>
+                    <width>120</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>✕ 删除选定</string>
+                  </property>
+                  <property name="cursor">
+                   <cursorShape>PointingHandCursor</cursorShape>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QTableView" name="courseTableView">
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::SingleSelection</enum>
              </property>
             </widget>
            </item>
            <item>
-            <spacer name="horizontalSpacer_2">
-             <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
+            <widget class="QLabel" name="labelStats">
+             <property name="minimumSize">
               <size>
-               <width>40</width>
-               <height>20</height>
+               <width>0</width>
+               <height>32</height>
               </size>
              </property>
-            </spacer>
-           </item>
-           <item>
-            <widget class="QPushButton" name="DelExpBtn">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>40</height>
+              </size>
+             </property>
              <property name="text">
-              <string>删除选定列</string>
+              <string>暂无数据</string>
              </property>
             </widget>
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="layoutWidget">
-          <property name="geometry">
-           <rect>
-            <x>10</x>
-            <y>10</y>
-            <width>201</width>
-            <height>142</height>
-           </rect>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_4">
+         <widget class="QWidget" name="expPage">
+          <layout class="QVBoxLayout" name="verticalLayout_8">
+           <property name="spacing">
+            <number>12</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_3">
-             <item>
-              <widget class="QLabel" name="addExpTypeLbl">
-               <property name="minimumSize">
-                <size>
-                 <width>24</width>
-                 <height>2</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>24</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;类型&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="addExpTypeCBox">
-               <property name="minimumSize">
-                <size>
-                 <width>100</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>400</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_4">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
+            <widget class="QTableView" name="expTableView">
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::SingleSelection</enum>
+             </property>
+            </widget>
            </item>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_4">
-             <item>
-              <widget class="QLabel" name="addExpTitleLbl">
-               <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;标题&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="addExpTitleLine"/>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_7">
-             <item>
-              <widget class="QLabel" name="addExpDateLbl">
-               <property name="minimumSize">
-                <size>
-                 <width>24</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>24</width>
-                 <height>24</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;日期&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QDateEdit" name="addExpDateLine">
-               <property name="styleSheet">
-                <string notr="true">/* 针对 QDateEdit 的美化 */
-QDateEdit {
-    border: 1px solid #DCDFE6;
-    border-radius: 8px;
-    padding: 5px 10px;
-    background: white;
-    selection-background-color: #5B56F1; /* 选中时的颜色 */
-}
-
-
-
-/* 甚至可以给弹出的日历窗口也换个皮肤 */
-QCalendarWidget QWidget {
-    background-color: white;
-}
-QCalendarWidget QAbstractItemView:enabled {
-    selection-background-color: #5B56F1;
-}</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_3">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_6">
-             <item>
-              <widget class="QLabel" name="addExpDescLbl">
-               <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;描述&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="addExpDescLine"/>
-             </item>
-            </layout>
+            <widget class="QFrame" name="addExpFrame">
+             <property name="frameShape">
+              <enum>QFrame::Shape::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Shadow::Plain</enum>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_9">
+              <property name="spacing">
+               <number>10</number>
+              </property>
+              <property name="leftMargin">
+               <number>20</number>
+              </property>
+              <property name="topMargin">
+               <number>16</number>
+              </property>
+              <property name="rightMargin">
+               <number>20</number>
+              </property>
+              <property name="bottomMargin">
+               <number>12</number>
+              </property>
+              <item>
+               <widget class="QLabel" name="addExpTitleLbl_2">
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:700; color:#2d3748;&quot;&gt;新增经历&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_3">
+                <item>
+                 <widget class="QLabel" name="addExpTypeLbl">
+                  <property name="minimumSize">
+                   <size>
+                    <width>40</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="addExpTypeCBox">
+                  <property name="minimumSize">
+                   <size>
+                    <width>120</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_4">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_4">
+                <item>
+                 <widget class="QLabel" name="addExpTitleLbl">
+                  <property name="minimumSize">
+                   <size>
+                    <width>40</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>标题</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="addExpTitleLine">
+                  <property name="placeholderText">
+                   <string>示例：家里蹲算法工程师</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_7">
+                <item>
+                 <widget class="QLabel" name="addExpDateLbl">
+                  <property name="minimumSize">
+                   <size>
+                    <width>40</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>日期</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDateEdit" name="addExpDateLine">
+                  <property name="calendarPopup">
+                   <bool>true</bool>
+                  </property>
+                  <property name="displayFormat">
+                   <string>yyyy-MM-dd</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_3">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_6">
+                <item>
+                 <widget class="QLabel" name="addExpDescLbl">
+                  <property name="minimumSize">
+                   <size>
+                    <width>40</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>描述</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="addExpDescLine">
+                  <property name="placeholderText">
+                   <string>示例：天天蹲家里打代码 😃</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_2">
+                <item>
+                 <widget class="QPushButton" name="addExpBtn">
+                  <property name="minimumSize">
+                   <size>
+                    <width>100</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>＋ 添加</string>
+                  </property>
+                  <property name="cursor">
+                   <cursorShape>PointingHandCursor</cursorShape>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_2">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="DelExpBtn">
+                  <property name="minimumSize">
+                   <size>
+                    <width>120</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>✕ 删除选定</string>
+                  </property>
+                  <property name="cursor">
+                   <cursorShape>PointingHandCursor</cursorShape>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
            </item>
           </layout>
          </widget>
-        </widget>
-        <widget class="QLabel" name="addExpTitle">
-         <property name="geometry">
-          <rect>
-           <x>0</x>
-           <y>150</y>
-           <width>81</width>
-           <height>20</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:14pt; font-weight:700;&quot;&gt;新增经历&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-        </widget>
-       </widget>
-       <widget class="QWidget" name="awardPage">
-        <widget class="QTableView" name="awardTableView">
-         <property name="geometry">
-          <rect>
-           <x>20</x>
-           <y>0</y>
-           <width>541</width>
-           <height>141</height>
-          </rect>
-         </property>
-        </widget>
-        <widget class="QFrame" name="addAwardFrame">
-         <property name="geometry">
-          <rect>
-           <x>20</x>
-           <y>160</y>
-           <width>541</width>
-           <height>181</height>
-          </rect>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Shape::StyledPanel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Shadow::Raised</enum>
-         </property>
-         <widget class="QPushButton" name="addAwardBtn">
-          <property name="geometry">
-           <rect>
-            <x>50</x>
-            <y>140</y>
-            <width>100</width>
-            <height>32</height>
-           </rect>
-          </property>
-          <property name="text">
-           <string>添加荣誉</string>
-          </property>
-         </widget>
-         <widget class="QPushButton" name="delAwardBtn">
-          <property name="geometry">
-           <rect>
-            <x>330</x>
-            <y>141</y>
-            <width>100</width>
-            <height>31</height>
-           </rect>
-          </property>
-          <property name="text">
-           <string>删除选定行</string>
-          </property>
-         </widget>
-         <widget class="QWidget" name="layoutWidget">
-          <property name="geometry">
-           <rect>
-            <x>10</x>
-            <y>20</y>
-            <width>190</width>
-            <height>109</height>
-           </rect>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_5">
+         <widget class="QWidget" name="awardPage">
+          <layout class="QVBoxLayout" name="verticalLayout_10">
+           <property name="spacing">
+            <number>12</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_8">
-             <item>
-              <widget class="QLabel" name="addAwardTitleLbl">
-               <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;奖项标题&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="addAwardLine"/>
-             </item>
-            </layout>
+            <widget class="QTableView" name="awardTableView">
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::SingleSelection</enum>
+             </property>
+            </widget>
            </item>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_10">
-             <item>
-              <widget class="QLabel" name="addAwardDateLbl">
-               <property name="minimumSize">
-                <size>
-                 <width>24</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>24</width>
-                 <height>24</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;日期&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QDateEdit" name="addAwardDateLine">
-               <property name="styleSheet">
-                <string notr="true">/* 针对 QDateEdit 的美化 */
-QDateEdit {
-    border: 1px solid #DCDFE6;
-    border-radius: 8px;
-    padding: 5px 10px;
-    background: white;
-    selection-background-color: #5B56F1; /* 选中时的颜色 */
-}
-
-
-
-/* 甚至可以给弹出的日历窗口也换个皮肤 */
-QCalendarWidget QWidget {
-    background-color: white;
-}
-QCalendarWidget QAbstractItemView:enabled {
-    selection-background-color: #5B56F1;
-}</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_5">
-             <item>
-              <widget class="QLabel" name="addAwardLevelLbl">
-               <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;奖项等级&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="addAwardLevelCBox">
-               <item>
+            <widget class="QFrame" name="addAwardFrame">
+             <property name="frameShape">
+              <enum>QFrame::Shape::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Shadow::Plain</enum>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_11">
+              <property name="spacing">
+               <number>10</number>
+              </property>
+              <property name="leftMargin">
+               <number>20</number>
+              </property>
+              <property name="topMargin">
+               <number>16</number>
+              </property>
+              <property name="rightMargin">
+               <number>20</number>
+              </property>
+              <property name="bottomMargin">
+               <number>12</number>
+              </property>
+              <item>
+               <widget class="QLabel" name="label_2">
                 <property name="text">
-                 <string>国奖</string>
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:700; color:#2d3748;&quot;&gt;新增荣誉&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>省奖</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>校奖</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-            </layout>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_8">
+                <item>
+                 <widget class="QLabel" name="addAwardTitleLbl">
+                  <property name="minimumSize">
+                   <size>
+                    <width>56</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>奖项标题</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="addAwardLine">
+                  <property name="placeholderText">
+                   <string>示例：全国大学生数学建模一等奖</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_10">
+                <item>
+                 <widget class="QLabel" name="addAwardDateLbl">
+                  <property name="minimumSize">
+                   <size>
+                    <width>56</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>日期</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDateEdit" name="addAwardDateLine">
+                  <property name="calendarPopup">
+                   <bool>true</bool>
+                  </property>
+                  <property name="displayFormat">
+                   <string>yyyy-MM-dd</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_5">
+                <item>
+                 <widget class="QLabel" name="addAwardLevelLbl">
+                  <property name="minimumSize">
+                   <size>
+                    <width>56</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>奖项等级</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="addAwardLevelCBox">
+                  <item>
+                   <property name="text">
+                    <string>国奖</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>省奖</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>校奖</string>
+                   </property>
+                  </item>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_11">
+                <item>
+                 <widget class="QPushButton" name="addAwardBtn">
+                  <property name="minimumSize">
+                   <size>
+                    <width>100</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>＋ 添加荣誉</string>
+                  </property>
+                  <property name="cursor">
+                   <cursorShape>PointingHandCursor</cursorShape>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_5">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="delAwardBtn">
+                  <property name="minimumSize">
+                   <size>
+                    <width>120</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>✕ 删除选定</string>
+                  </property>
+                  <property name="cursor">
+                   <cursorShape>PointingHandCursor</cursorShape>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
            </item>
           </layout>
          </widget>
+         <widget class="QWidget" name="profilePage"/>
         </widget>
-       </widget>
-       <widget class="QWidget" name="profilePage"/>
-      </widget>
+       </item>
+      </layout>
      </widget>
     </item>
    </layout>
@@ -729,7 +1253,7 @@ QCalendarWidget QAbstractItemView:enabled {
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>850</width>
+     <width>980</width>
      <height>33</height>
     </rect>
    </property>
