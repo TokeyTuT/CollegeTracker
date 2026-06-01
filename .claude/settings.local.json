@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(cmake .. -DCMAKE_BUILD_TYPE=Debug)",
-      "Bash(cmake -S /Users/tuttokey/QtStudy/CollegeTracker -B /Users/tuttokey/QtStudy/CollegeTracker/build -DCMAKE_BUILD_TYPE=Debug)"
-    ]
-  }
-}
