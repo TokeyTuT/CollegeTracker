@@ -2,7 +2,7 @@
 
 DatabaseManager::DatabaseManager() {
     m_db = QSqlDatabase::addDatabase("QSQLITE");
-    QString dbPath = "college_tracker.db";
+    QString dbPath = QCoreApplication::applicationDirPath() + "/college_tracker.db";
     m_db.setDatabaseName(dbPath);
     qDebug() << "数据库创建成功";
 }
