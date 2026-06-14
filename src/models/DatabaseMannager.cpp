@@ -46,7 +46,8 @@ bool DatabaseManager::createTables() {
                          "credit REAL, "
                          "score REAL, "
                          "semester TEXT, "
-                         "gpa REAL DEFAULT 0"
+                         "gpa REAL DEFAULT 0, "
+                         "semester_order INTEGER DEFAULT 0"
                          ");";
     if (!query.exec(sqlCourses)) success = false;
 
@@ -101,6 +102,19 @@ void DatabaseManager::migrateTables() {
                "ELSE 0 END WHERE score IS NOT NULL");
     query.exec("ALTER TABLE experiences ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1");
     query.exec("ALTER TABLE awards ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1");
+
+    // 为 courses 表添加 semester_order 列，用于按学期时间排序
+    query.exec("ALTER TABLE courses ADD COLUMN semester_order INTEGER DEFAULT 0");
+    query.exec("UPDATE courses SET semester_order = CASE "
+               "WHEN semester = '大一上' THEN 0 "
+               "WHEN semester = '大一下' THEN 1 "
+               "WHEN semester = '大二上' THEN 2 "
+               "WHEN semester = '大二下' THEN 3 "
+               "WHEN semester = '大三上' THEN 4 "
+               "WHEN semester = '大三下' THEN 5 "
+               "WHEN semester = '大四上' THEN 6 "
+               "WHEN semester = '大四下' THEN 7 "
+               "ELSE 0 END");
 
     qDebug() << "数据库迁移完成";
 }

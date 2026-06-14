@@ -19,6 +19,7 @@ public:
     double getCredit() const { return creditSpin->value(); }
     double getScore() const { return scoreSpin->value(); }
     QString getSemester() const{return semesterCombo->currentText();}
+    int getSemesterOrder() const { return semesterCombo->currentIndex(); }
 private:
     double scoreToGpa(double score) const;
     void updateGpaPreview();

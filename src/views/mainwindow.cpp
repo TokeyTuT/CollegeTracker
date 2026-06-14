@@ -887,9 +887,13 @@ void MainWindow::InitCoursePage() {
     courseModel->setHeaderData(5, Qt::Horizontal, "学期");
     courseModel->setHeaderData(6, Qt::Horizontal, "绩点");
 
+    // 按学期时间排序（semester_order 列：大一上=0 ... 大四下=7）
+    courseModel->setSort(7, Qt::AscendingOrder);
+
     ui->courseTableView->setModel(courseModel);
     ui->courseTableView->setColumnHidden(0, true);
     ui->courseTableView->setColumnHidden(1, true);
+    ui->courseTableView->setColumnHidden(7, true);  // 隐藏 semester_order 排序列
 
     courseModel->select();
     updateTotalStats();
@@ -904,6 +908,7 @@ void MainWindow::on_addCourseBtn_clicked() {
         double credit = dialog.getCredit();
         double score = dialog.getScore();
         QString semester = dialog.getSemester();
+        int semesterOrder = dialog.getSemesterOrder();
 
         if (name.isEmpty()) return;
 
@@ -915,6 +920,7 @@ void MainWindow::on_addCourseBtn_clicked() {
             courseModel->setData(courseModel->index(row, 4), score);
             courseModel->setData(courseModel->index(row, 5), semester);
             courseModel->setData(courseModel->index(row, 6), scoreToGpa(score));
+            courseModel->setData(courseModel->index(row, 7), semesterOrder);
 
             if (courseModel->submitAll()) {
                 ui->courseTableView->selectRow(row);
@@ -1000,6 +1006,9 @@ void MainWindow::InitExpPage() {
     expModel->setHeaderData(3, Qt::Horizontal, "类型");
     expModel->setHeaderData(4, Qt::Horizontal, "时间");
     expModel->setHeaderData(5, Qt::Horizontal, "描述");
+
+    // 按经历时间排序（date 列为 yyyy-MM-dd 格式，字典序 = 时间序）
+    expModel->setSort(4, Qt::AscendingOrder);
 
     ui->expTableView->setModel(expModel);
     ui->expTableView->setColumnHidden(0, true);
