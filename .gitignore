@@ -82,3 +82,6 @@ Thumbs.db
 
 # Claude AI
 .claude/
+
+# Database
+*.db
