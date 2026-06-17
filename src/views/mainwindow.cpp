@@ -87,8 +87,8 @@ void MainWindow::applyModernStyle() {
     ui->addExpFrame->setGeometry(28, 292, 754, 220);
     ui->addExpTitle->setGeometry(38, 258, 180, 28);
 
-    ui->awardTableView->setGeometry(28, 18, 754, 230);
-    ui->addAwardFrame->setGeometry(28, 292, 754, 205);
+    ui->awardTableView->setGeometry(28, 18, 754, 210);
+    ui->addAwardFrame->setGeometry(28, 252, 754, 280);
 
     ui->addExpTypeLbl->setGeometry(36, 30, 72, 36);
     ui->addExpTypeCBox->setGeometry(118, 30, 190, 36);
@@ -107,8 +107,8 @@ void MainWindow::applyModernStyle() {
     ui->addAwardDateLine->setGeometry(490, 34, 180, 36);
     ui->addAwardLevelLbl->setGeometry(36, 96, 88, 36);
     ui->addAwardLevelCBox->setGeometry(134, 96, 180, 36);
-    ui->addAwardBtn->setGeometry(436, 146, 116, 38);
-    ui->delAwardBtn->setGeometry(570, 146, 126, 38);
+    ui->addAwardBtn->setGeometry(436, 220, 116, 38);
+    ui->delAwardBtn->setGeometry(570, 220, 126, 38);
 
     // 只兼容浅色模式：不用系统深色调色板，所有控件颜色都明确写死。
     const QString qss = R"(
@@ -501,7 +501,7 @@ void MainWindow::buildHomePage() {
     bottomLayout->addWidget(makeStatCard("竞赛经历", "课外活动统计", &homeCompetitionCountLbl, "homeStatCard"), 0, 2);
     bottomLayout->addWidget(makeStatCard("实习经历", "实践经历统计", &homeInternshipCountLbl, "homeStatCard"), 0, 3);
     bottomLayout->addWidget(makeStatCard("项目经历", "项目/科研统计", &homeProjectCountLbl, "homeStatCard"), 1, 0);
-    bottomLayout->addWidget(makeStatCard("个人荣誉", "奖项证书统计", &homeAwardCountLbl, "homeStatCard"), 1, 1);
+    bottomLayout->addWidget(makeStatCard("个人荣誉", "奖学金与荣誉统计", &homeAwardCountLbl, "homeStatCard"), 1, 1);
     bottomLayout->addItem(new QSpacerItem(10, 10, QSizePolicy::Expanding, QSizePolicy::Minimum), 1, 2, 1, 2);
 
     mainLayout->addWidget(chartCard);
@@ -1090,7 +1090,26 @@ void MainWindow::InitAwardPage() {
     ui->addAwardDateLine->setDate(QDate::currentDate());
     ui->addAwardDateLine->setDisplayFormat("yyyy-MM-dd");
 
-    ui->addAwardLine->setPlaceholderText("示例: 全国大学生数学建模一等奖");
+    ui->addAwardLine->setPlaceholderText("示例: 国家奖学金");
+
+    // 创建奖金金额输入控件
+    if (addAwardAmountLbl == nullptr) {
+        addAwardAmountLbl = new QLabel("奖金金额", ui->addAwardFrame);
+        addAwardAmountLbl->setObjectName("addAwardAmountLbl");
+        addAwardAmountLbl->setGeometry(36, 158, 88, 36);
+        addAwardAmountLbl->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    }
+    if (addAwardAmountSpin == nullptr) {
+        addAwardAmountSpin = new QDoubleSpinBox(ui->addAwardFrame);
+        addAwardAmountSpin->setObjectName("addAwardAmountSpin");
+        addAwardAmountSpin->setGeometry(134, 158, 180, 36);
+        addAwardAmountSpin->setPrefix("¥ ");
+        addAwardAmountSpin->setRange(0.0, 999999.0);
+        addAwardAmountSpin->setDecimals(0);
+        addAwardAmountSpin->setSingleStep(500.0);
+        addAwardAmountSpin->setValue(0.0);
+        addAwardAmountSpin->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    }
 
     ui->awardTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->awardTableView->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -1102,8 +1121,12 @@ void MainWindow::InitAwardPage() {
     awardModel->setFilter(QString("user_id = %1").arg(userId));
 
     awardModel->setHeaderData(2, Qt::Horizontal, "奖项名称");
-    awardModel->setHeaderData(3, Qt::Horizontal, "奖项等级");
+    awardModel->setHeaderData(3, Qt::Horizontal, "荣誉级别");
     awardModel->setHeaderData(4, Qt::Horizontal, "获奖时间");
+    awardModel->setHeaderData(5, Qt::Horizontal, "奖金金额");
+
+    // 按获奖时间排序（date 列为 yyyy-MM-dd 格式，字典序 = 时间序）
+    awardModel->setSort(4, Qt::AscendingOrder);
 
     ui->awardTableView->setModel(awardModel);
     ui->awardTableView->setColumnHidden(0, true);
@@ -1117,6 +1140,7 @@ void MainWindow::on_addAwardBtn_clicked() {
     QString name = ui->addAwardLine->text();
     QString level = ui->addAwardLevelCBox->currentText();
     QDate temp_date = ui->addAwardDateLine->date();
+    double amount = addAwardAmountSpin ? addAwardAmountSpin->value() : 0.0;
 
     if (temp_date > QDate::currentDate()) {
         QMessageBox::warning(this, "提示", "不能选择比今天还大的日期！");
@@ -1136,6 +1160,7 @@ void MainWindow::on_addAwardBtn_clicked() {
         awardModel->setData(awardModel->index(row, 2), name);
         awardModel->setData(awardModel->index(row, 3), level);
         awardModel->setData(awardModel->index(row, 4), date);
+        awardModel->setData(awardModel->index(row, 5), amount);
 
         if (awardModel->submitAll()) {
             ui->awardTableView->selectRow(row);
@@ -1148,6 +1173,7 @@ void MainWindow::on_addAwardBtn_clicked() {
 
     ui->addAwardLine->clear();
     ui->addAwardDateLine->setDate(QDate::currentDate());
+    if (addAwardAmountSpin) addAwardAmountSpin->setValue(0.0);
 }
 
 void MainWindow::on_delAwardBtn_clicked() {

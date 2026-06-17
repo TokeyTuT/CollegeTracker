@@ -66,7 +66,8 @@ bool DatabaseManager::createTables() {
                         "user_id INTEGER NOT NULL, "
                         "name TEXT NOT NULL, "
                         "level TEXT, "
-                        "date TEXT"
+                        "date TEXT, "
+                        "amount REAL DEFAULT 0"
                         ");";
     if (!query.exec(sqlAwards)) success = false;
 
@@ -102,6 +103,7 @@ void DatabaseManager::migrateTables() {
                "ELSE 0 END WHERE score IS NOT NULL");
     query.exec("ALTER TABLE experiences ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1");
     query.exec("ALTER TABLE awards ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1");
+    query.exec("ALTER TABLE awards ADD COLUMN amount REAL DEFAULT 0");
 
     // 为 courses 表添加 semester_order 列，用于按学期时间排序
     query.exec("ALTER TABLE courses ADD COLUMN semester_order INTEGER DEFAULT 0");

@@ -628,7 +628,7 @@ QCalendarWidget QAbstractItemView:enabled {
              <item>
               <widget class="QLabel" name="addAwardTitleLbl">
                <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;奖项标题&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;奖项名称&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
               </widget>
              </item>
@@ -689,7 +689,7 @@ QCalendarWidget QAbstractItemView:enabled {
              <item>
               <widget class="QLabel" name="addAwardLevelLbl">
                <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;奖项等级&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;荣誉级别&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
               </widget>
              </item>
@@ -697,17 +697,22 @@ QCalendarWidget QAbstractItemView:enabled {
               <widget class="QComboBox" name="addAwardLevelCBox">
                <item>
                 <property name="text">
-                 <string>国奖</string>
+                 <string>国家级</string>
                 </property>
                </item>
                <item>
                 <property name="text">
-                 <string>省奖</string>
+                 <string>省级</string>
                 </property>
                </item>
                <item>
                 <property name="text">
-                 <string>校奖</string>
+                 <string>校级</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>院级</string>
                 </property>
                </item>
               </widget>

@@ -8,6 +8,7 @@
 #include <QTableView>
 #include <QLabel>
 #include <QPushButton>
+#include <QDoubleSpinBox>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -50,6 +51,8 @@ private:
     QLabel *homeProjectCountLbl = nullptr;
     QLabel *homeAwardCountLbl = nullptr;
     QPushButton *editProfileBtn = nullptr;
+    QDoubleSpinBox *addAwardAmountSpin = nullptr;
+    QLabel *addAwardAmountLbl = nullptr;
 
     void InitFrame();
     void InitCoursePage();
