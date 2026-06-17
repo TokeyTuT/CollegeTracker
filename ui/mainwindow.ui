@@ -156,14 +156,7 @@ QMainWindow {
          <item>
           <widget class="QPushButton" name="navExpBtn">
            <property name="text">
-            <string>课外活动</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="navAwardBtn">
-           <property name="text">
-            <string>个人荣誉</string>
+            <string>经历与荣誉</string>
            </property>
           </widget>
          </item>
@@ -394,13 +387,13 @@ qproperty-alignment: 'AlignCenter';</string>
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="layoutWidget">
+         <widget class="QWidget" name="expFormLayoutWidget">
           <property name="geometry">
            <rect>
             <x>28</x>
             <y>18</y>
             <width>610</width>
-            <height>118</height>
+            <height>142</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -560,25 +553,23 @@ QCalendarWidget QAbstractItemView:enabled {
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:14pt; font-weight:700;&quot;&gt;新增经历&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
         </widget>
-       </widget>
-       <widget class="QWidget" name="awardPage">
         <widget class="QTableView" name="awardTableView">
          <property name="geometry">
           <rect>
-           <x>20</x>
-           <y>0</y>
-           <width>541</width>
-           <height>141</height>
+           <x>28</x>
+           <y>18</y>
+           <width>754</width>
+           <height>210</height>
           </rect>
          </property>
         </widget>
         <widget class="QFrame" name="addAwardFrame">
          <property name="geometry">
           <rect>
-           <x>20</x>
-           <y>160</y>
-           <width>541</width>
-           <height>181</height>
+           <x>28</x>
+           <y>252</y>
+           <width>754</width>
+           <height>280</height>
           </rect>
          </property>
          <property name="frameShape">
@@ -590,10 +581,10 @@ QCalendarWidget QAbstractItemView:enabled {
          <widget class="QPushButton" name="addAwardBtn">
           <property name="geometry">
            <rect>
-            <x>50</x>
-            <y>140</y>
-            <width>100</width>
-            <height>32</height>
+            <x>436</x>
+            <y>220</y>
+            <width>116</width>
+            <height>38</height>
            </rect>
           </property>
           <property name="text">
@@ -603,23 +594,23 @@ QCalendarWidget QAbstractItemView:enabled {
          <widget class="QPushButton" name="delAwardBtn">
           <property name="geometry">
            <rect>
-            <x>330</x>
-            <y>141</y>
-            <width>100</width>
-            <height>31</height>
+            <x>570</x>
+            <y>220</y>
+            <width>126</width>
+            <height>38</height>
            </rect>
           </property>
           <property name="text">
            <string>删除选定行</string>
           </property>
          </widget>
-         <widget class="QWidget" name="layoutWidget">
+         <widget class="QWidget" name="awardLayoutWidget">
           <property name="geometry">
            <rect>
-            <x>28</x>
-            <y>24</y>
+            <x>36</x>
+            <y>34</y>
             <width>610</width>
-            <height>94</height>
+            <height>109</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -745,7 +736,6 @@ QCalendarWidget QAbstractItemView:enabled {
   <tabstop>navHomeBtn</tabstop>
   <tabstop>navCourseBtn</tabstop>
   <tabstop>navExpBtn</tabstop>
-  <tabstop>navAwardBtn</tabstop>
   <tabstop>navExportBtn</tabstop>
  </tabstops>
  <resources/>
