@@ -297,7 +297,7 @@ void MainWindow::applyModernStyle() {
         }
         QPushButton:pressed { background: #05070A; }
         QPushButton:disabled { background: #CBD0D7; border-color: #CBD0D7; color: #FFFFFF; }
-        QPushButton#csvHelpCourseBtn, QPushButton#csvHelpExpBtn {
+        QPushButton#csvHelpCourseBtn, QPushButton#csvHelpExpBtn, QPushButton#homeCsvHelpBtn {
             min-height: 38px; max-height: 40px;
             min-width: 38px; max-width: 40px;
             border-radius: 20px;
@@ -308,10 +308,35 @@ void MainWindow::applyModernStyle() {
             font-weight: 900;
             padding: 0px;
         }
-        QPushButton#csvHelpCourseBtn:hover, QPushButton#csvHelpExpBtn:hover {
+        QPushButton#csvHelpCourseBtn:hover, QPushButton#csvHelpExpBtn:hover, QPushButton#homeCsvHelpBtn:hover {
             background: #EFF6FF;
             color: #2563EB;
             border-color: #2563EB;
+        }
+        QPushButton#homeImportAllBtn, QPushButton#homeExportAllBtn {
+            min-height: 42px; max-height: 42px;
+            min-width: 172px;
+            font-size: 15px;
+            font-weight: 900;
+            border-radius: 6px;
+        }
+        QPushButton#homeImportAllBtn {
+            background: #FFFFFF;
+            color: #171A1F;
+            border: 1px solid #171A1F;
+        }
+        QPushButton#homeImportAllBtn:hover {
+            background: #171A1F;
+            color: #FFFFFF;
+        }
+        QPushButton#homeExportAllBtn {
+            background: #171A1F;
+            color: #FFFFFF;
+            border: 1px solid #171A1F;
+        }
+        QPushButton#homeExportAllBtn:hover {
+            background: #252B34;
+            border-color: #00B7C7;
         }
         QPushButton#deleteCourseBtn, QPushButton#DelExpBtn, QPushButton#delAwardBtn {
             background: #FFFFFF;
@@ -574,6 +599,38 @@ void MainWindow::buildHomePage() {
 
     mainLayout->addWidget(chartCard);
     mainLayout->addLayout(bottomLayout);
+
+    // 一键导入导出按钮栏
+    auto *csvAllLayout = new QHBoxLayout;
+    csvAllLayout->setContentsMargins(0, 4, 0, 0);
+    csvAllLayout->setSpacing(14);
+
+    homeImportAllBtn = new QPushButton("一键导入全部数据");
+    homeImportAllBtn->setObjectName("homeImportAllBtn");
+    homeImportAllBtn->setMinimumHeight(42);
+    homeImportAllBtn->setCursor(Qt::PointingHandCursor);
+
+    homeExportAllBtn = new QPushButton("一键导出全部数据");
+    homeExportAllBtn->setObjectName("homeExportAllBtn");
+    homeExportAllBtn->setMinimumHeight(42);
+    homeExportAllBtn->setCursor(Qt::PointingHandCursor);
+
+    homeCsvHelpBtn = new QPushButton("?");
+    homeCsvHelpBtn->setObjectName("homeCsvHelpBtn");
+    homeCsvHelpBtn->setMinimumHeight(42);
+    homeCsvHelpBtn->setMaximumHeight(42);
+    homeCsvHelpBtn->setMinimumWidth(42);
+    homeCsvHelpBtn->setMaximumWidth(42);
+    homeCsvHelpBtn->setCursor(Qt::PointingHandCursor);
+    homeCsvHelpBtn->setToolTip("查看一键导入导出 CSV 格式说明");
+
+    csvAllLayout->addStretch();
+    csvAllLayout->addWidget(homeImportAllBtn);
+    csvAllLayout->addWidget(homeExportAllBtn);
+    csvAllLayout->addWidget(homeCsvHelpBtn);
+    csvAllLayout->addStretch();
+
+    mainLayout->addLayout(csvAllLayout);
     mainLayout->addStretch();
 }
 
@@ -956,6 +1013,65 @@ void MainWindow::InitFrame() {
                         "国家奖学金,国家级,2024-09-01,8000\n"
                         "优秀学生干部,校级,2024-06-15,500</pre>"));
         }
+    });
+
+    // 首页一键导入导出全部数据
+    connect(homeImportAllBtn, &QPushButton::clicked, this, [this]() {
+        QString filePath = QFileDialog::getOpenFileName(
+            this, "一键导入全部数据", QString(),
+            "CSV 文件 (*.csv);;所有文件 (*)");
+        if (!filePath.isEmpty())
+            importAllFromCsv(filePath);
+    });
+    connect(homeExportAllBtn, &QPushButton::clicked, this, [this]() {
+        QString filePath = QFileDialog::getSaveFileName(
+            this, "一键导出全部数据",
+            QString("college_data_%1.csv").arg(QDate::currentDate().toString("yyyyMMdd")),
+            "CSV 文件 (*.csv);;所有文件 (*)");
+        if (!filePath.isEmpty())
+            exportAllToCsv(filePath);
+    });
+    connect(homeCsvHelpBtn, &QPushButton::clicked, this, [this]() {
+        QMessageBox::information(this, "CSV 格式说明 — 一键导入导出",
+            QString("<h3>文件格式</h3>"
+                    "<p>使用 <b>#SECTION: 名称</b> 标记不同数据区域，"
+                    "每个区域包含自己的表头和数据行。</p>"
+                    "<h3>完整示例</h3>"
+                    "<pre style='line-height:1.6'>"
+                    "#SECTION: 课程\n"
+                    "课程名称,学分,成绩,学期\n"
+                    "高等数学,4,92,大一上\n"
+                    "线性代数,3,85,大一下\n"
+                    "\n"
+                    "#SECTION: 经历\n"
+                    "标题,类型,时间,描述\n"
+                    "数学建模竞赛,竞赛,2024-03-15,获得省级一等奖\n"
+                    "暑期实习,实习,2024-07-01,在XX公司实习\n"
+                    "\n"
+                    "#SECTION: 荣誉\n"
+                    "奖项名称,荣誉级别,获奖时间,奖金金额\n"
+                    "国家奖学金,国家级,2024-09-01,8000\n"
+                    "优秀学生干部,校级,2024-06-15,500\n"
+                    "</pre>"
+                    "<h3>字段说明</h3>"
+                    "<table>"
+                    "<tr><td colspan='2'><b>【课程】</b></td></tr>"
+                    "<tr><td>课程名称</td><td>课程名字（必填）</td></tr>"
+                    "<tr><td>学分</td><td>数值 &gt; 0（必填）</td></tr>"
+                    "<tr><td>成绩</td><td>数值 0–100（必填）</td></tr>"
+                    "<tr><td>学期</td><td>大一上/大一下/大二上/大二下/大三上/大三下/大四上/大四下（必填）</td></tr>"
+                    "<tr><td colspan='2'><br><b>【经历】</b></td></tr>"
+                    "<tr><td>标题</td><td>经历标题（必填）</td></tr>"
+                    "<tr><td>类型</td><td>实习/竞赛/项目/其他（必填）</td></tr>"
+                    "<tr><td>时间</td><td>日期，建议 yyyy-MM-dd</td></tr>"
+                    "<tr><td>描述</td><td>详细描述内容</td></tr>"
+                    "<tr><td colspan='2'><br><b>【荣誉】</b></td></tr>"
+                    "<tr><td>奖项名称</td><td>荣誉名称（必填）</td></tr>"
+                    "<tr><td>荣誉级别</td><td>国家级/省级/校级/院级（必填）</td></tr>"
+                    "<tr><td>获奖时间</td><td>日期，建议 yyyy-MM-dd</td></tr>"
+                    "<tr><td>奖金金额</td><td>整数数值，无则为 0</td></tr>"
+                    "</table>"
+                    "<p style='color:#64748B'>提示：空白行会被自动跳过，#SECTION: 不区分先后顺序。</p>"));
     });
 }
 
@@ -1605,6 +1721,10 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
     const QStringList validSemesters = {"大一上","大一下","大二上","大二下",
                                         "大三上","大三下","大四上","大四下"};
 
+    QSqlQuery query;
+    query.prepare("INSERT INTO courses (user_id, name, credit, score, semester, gpa, semester_order) "
+                  "VALUES (:uid, :name, :credit, :score, :semester, :gpa, :order)");
+
     while (!stream.atEnd()) {
         ++lineNum;
         QString line = stream.readLine().trimmed();
@@ -1631,15 +1751,15 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
         int semOrder = validSemesters.indexOf(semester);
         if (semOrder < 0) { ++failCount; continue; }
 
-        int row = courseModel->rowCount();
-        if (courseModel->insertRow(row)) {
-            courseModel->setData(courseModel->index(row, 1), userId);
-            courseModel->setData(courseModel->index(row, 2), name);
-            courseModel->setData(courseModel->index(row, 3), credit);
-            courseModel->setData(courseModel->index(row, 4), score);
-            courseModel->setData(courseModel->index(row, 5), semester);
-            courseModel->setData(courseModel->index(row, 6), scoreToGpa(score));
-            courseModel->setData(courseModel->index(row, 7), semOrder);
+        query.bindValue(":uid", userId);
+        query.bindValue(":name", name);
+        query.bindValue(":credit", credit);
+        query.bindValue(":score", score);
+        query.bindValue(":semester", semester);
+        query.bindValue(":gpa", scoreToGpa(score));
+        query.bindValue(":order", semOrder);
+
+        if (query.exec()) {
             ++successCount;
         } else {
             ++failCount;
@@ -1647,17 +1767,11 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
     }
 
     file.close();
-
-    if (courseModel->submitAll()) {
-        updateTotalStats();
-        updateHomePageStats();
-        QMessageBox::information(this, "导入完成",
-            QString("成功导入 %1 条，失败 %2 条").arg(successCount).arg(failCount));
-    } else {
-        courseModel->revertAll();
-        QMessageBox::critical(this, "导入失败",
-            "数据库写入失败，所有更改已回滚。");
-    }
+    courseModel->select();
+    updateTotalStats();
+    updateHomePageStats();
+    QMessageBox::information(this, "导入完成",
+        QString("成功导入 %1 条，失败 %2 条").arg(successCount).arg(failCount));
 }
 
 void MainWindow::exportCoursesToCsv(const QString &filePath) {
@@ -1728,6 +1842,10 @@ void MainWindow::importExperiencesFromCsv(const QString &filePath) {
     int failCount = 0;
     int lineNum = 1;
 
+    QSqlQuery query;
+    query.prepare("INSERT INTO experiences (user_id, title, type, date, content) "
+                  "VALUES (:uid, :title, :type, :date, :content)");
+
     while (!stream.atEnd()) {
         ++lineNum;
         QString line = stream.readLine().trimmed();
@@ -1747,13 +1865,13 @@ void MainWindow::importExperiencesFromCsv(const QString &filePath) {
             continue;
         }
 
-        int row = expModel->rowCount();
-        if (expModel->insertRow(row)) {
-            expModel->setData(expModel->index(row, 1), userId);
-            expModel->setData(expModel->index(row, 2), title);
-            expModel->setData(expModel->index(row, 3), type);
-            expModel->setData(expModel->index(row, 4), date);
-            expModel->setData(expModel->index(row, 5), content);
+        query.bindValue(":uid", userId);
+        query.bindValue(":title", title);
+        query.bindValue(":type", type);
+        query.bindValue(":date", date);
+        query.bindValue(":content", content);
+
+        if (query.exec()) {
             ++successCount;
         } else {
             ++failCount;
@@ -1761,16 +1879,10 @@ void MainWindow::importExperiencesFromCsv(const QString &filePath) {
     }
 
     file.close();
-
-    if (expModel->submitAll()) {
-        updateHomePageStats();
-        QMessageBox::information(this, "导入完成",
-            QString("成功导入 %1 条，失败 %2 条").arg(successCount).arg(failCount));
-    } else {
-        expModel->revertAll();
-        QMessageBox::critical(this, "导入失败",
-            "数据库写入失败，所有更改已回滚。");
-    }
+    expModel->select();
+    updateHomePageStats();
+    QMessageBox::information(this, "导入完成",
+        QString("成功导入 %1 条，失败 %2 条").arg(successCount).arg(failCount));
 }
 
 void MainWindow::exportExperiencesToCsv(const QString &filePath) {
@@ -1841,6 +1953,10 @@ void MainWindow::importAwardsFromCsv(const QString &filePath) {
     int failCount = 0;
     int lineNum = 1;
 
+    QSqlQuery query;
+    query.prepare("INSERT INTO awards (user_id, name, level, date, amount) "
+                  "VALUES (:uid, :name, :level, :date, :amount)");
+
     while (!stream.atEnd()) {
         ++lineNum;
         QString line = stream.readLine().trimmed();
@@ -1862,13 +1978,13 @@ void MainWindow::importAwardsFromCsv(const QString &filePath) {
             continue;
         }
 
-        int row = awardModel->rowCount();
-        if (awardModel->insertRow(row)) {
-            awardModel->setData(awardModel->index(row, 1), userId);
-            awardModel->setData(awardModel->index(row, 2), name);
-            awardModel->setData(awardModel->index(row, 3), level);
-            awardModel->setData(awardModel->index(row, 4), date);
-            awardModel->setData(awardModel->index(row, 5), amount);
+        query.bindValue(":uid", userId);
+        query.bindValue(":name", name);
+        query.bindValue(":level", level);
+        query.bindValue(":date", date);
+        query.bindValue(":amount", amount);
+
+        if (query.exec()) {
             ++successCount;
         } else {
             ++failCount;
@@ -1876,16 +1992,10 @@ void MainWindow::importAwardsFromCsv(const QString &filePath) {
     }
 
     file.close();
-
-    if (awardModel->submitAll()) {
-        updateHomePageStats();
-        QMessageBox::information(this, "导入完成",
-            QString("成功导入 %1 条，失败 %2 条").arg(successCount).arg(failCount));
-    } else {
-        awardModel->revertAll();
-        QMessageBox::critical(this, "导入失败",
-            "数据库写入失败，所有更改已回滚。");
-    }
+    awardModel->select();
+    updateHomePageStats();
+    QMessageBox::information(this, "导入完成",
+        QString("成功导入 %1 条，失败 %2 条").arg(successCount).arg(failCount));
 }
 
 void MainWindow::exportAwardsToCsv(const QString &filePath) {
@@ -1913,6 +2023,267 @@ void MainWindow::exportAwardsToCsv(const QString &filePath) {
     file.close();
     QMessageBox::information(this, "导出成功",
         QString("已导出 %1 条荣誉数据").arg(rowCount));
+}
+
+// ==================== 一键导入导出全部数据 ====================
+
+void MainWindow::exportAllToCsv(const QString &filePath) {
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::critical(this, "导出失败",
+                              "无法写入文件：" + file.errorString());
+        return;
+    }
+
+    QTextStream stream(&file);
+    stream.setCodec("UTF-8");
+    stream << QChar(0xFEFF);
+
+    int courseCount = courseModel->rowCount();
+    int expCount = expModel->rowCount();
+    int awardCount = awardModel->rowCount();
+
+    // Section 1: 课程
+    writeCsvRow(stream, {"#SECTION: 课程"});
+    writeCsvRow(stream, {"课程名称", "学分", "成绩", "学期"});
+    for (int row = 0; row < courseCount; ++row) {
+        QString name     = courseModel->data(courseModel->index(row, 2)).toString();
+        QString credit   = courseModel->data(courseModel->index(row, 3)).toString();
+        QString score    = courseModel->data(courseModel->index(row, 4)).toString();
+        QString semester = courseModel->data(courseModel->index(row, 5)).toString();
+        writeCsvRow(stream, {name, credit, score, semester});
+    }
+    stream << "\n";
+
+    // Section 2: 经历
+    writeCsvRow(stream, {"#SECTION: 经历"});
+    writeCsvRow(stream, {"标题", "类型", "时间", "描述"});
+    for (int row = 0; row < expCount; ++row) {
+        QString title   = expModel->data(expModel->index(row, 2)).toString();
+        QString type    = expModel->data(expModel->index(row, 3)).toString();
+        QString date    = expModel->data(expModel->index(row, 4)).toString();
+        QString content = expModel->data(expModel->index(row, 5)).toString();
+        writeCsvRow(stream, {title, type, date, content});
+    }
+    stream << "\n";
+
+    // Section 3: 荣誉
+    writeCsvRow(stream, {"#SECTION: 荣誉"});
+    writeCsvRow(stream, {"奖项名称", "荣誉级别", "获奖时间", "奖金金额"});
+    for (int row = 0; row < awardCount; ++row) {
+        QString name   = awardModel->data(awardModel->index(row, 2)).toString();
+        QString level  = awardModel->data(awardModel->index(row, 3)).toString();
+        QString date   = awardModel->data(awardModel->index(row, 4)).toString();
+        QString amount = awardModel->data(awardModel->index(row, 5)).toString();
+        writeCsvRow(stream, {name, level, date, amount});
+    }
+
+    file.close();
+    QMessageBox::information(this, "导出成功",
+        QString("已导出全部数据：\n课程 %1 条 | 经历 %2 条 | 荣誉 %3 条")
+            .arg(courseCount).arg(expCount).arg(awardCount));
+}
+
+void MainWindow::importAllFromCsv(const QString &filePath) {
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::critical(this, "导入失败",
+                              "无法打开文件：" + file.errorString());
+        return;
+    }
+
+    QTextStream stream(&file);
+    stream.setCodec("UTF-8");
+
+    if (stream.atEnd()) {
+        QMessageBox::warning(this, "导入失败", "CSV 文件为空");
+        return;
+    }
+
+    enum Section { NONE, COURSES, EXPERIENCES, AWARDS };
+    Section currentSection = NONE;
+    bool headerValidated = false;
+    bool headerBad = false;
+
+    int courseOk = 0, courseFail = 0;
+    int expOk = 0, expFail = 0;
+    int awardOk = 0, awardFail = 0;
+
+    int userId = User::getInstance().getId();
+
+    const QStringList validSemesters = {"大一上","大一下","大二上","大二下",
+                                        "大三上","大三下","大四上","大四下"};
+    const QStringList validTypes = {"实习", "竞赛", "项目", "其他"};
+    const QStringList validLevels = {"国家级", "省级", "校级", "院级"};
+
+    const QStringList expectedCourseHdr = {"课程名称", "学分", "成绩", "学期"};
+    const QStringList expectedExpHdr = {"标题", "类型", "时间", "描述"};
+    const QStringList expectedAwardHdr = {"奖项名称", "荣誉级别", "获奖时间", "奖金金额"};
+
+    // 预编译三条 INSERT 语句
+    QSqlQuery courseQuery;
+    courseQuery.prepare("INSERT INTO courses (user_id, name, credit, score, semester, gpa, semester_order) "
+                        "VALUES (:uid, :name, :credit, :score, :semester, :gpa, :order)");
+
+    QSqlQuery expQuery;
+    expQuery.prepare("INSERT INTO experiences (user_id, title, type, date, content) "
+                     "VALUES (:uid, :title, :type, :date, :content)");
+
+    QSqlQuery awardQuery;
+    awardQuery.prepare("INSERT INTO awards (user_id, name, level, date, amount) "
+                       "VALUES (:uid, :name, :level, :date, :amount)");
+
+    bool firstRead = true;
+    while (!stream.atEnd()) {
+        QString line = stream.readLine();
+        if (firstRead) {
+            if (line.startsWith(QChar(0xFEFF)))
+                line = line.mid(1);
+            firstRead = false;
+        }
+        line = line.trimmed();
+        if (line.isEmpty())
+            continue;
+
+        // 检测分段标记
+        if (line.startsWith("#SECTION:")) {
+            QString sec = line.mid(9).trimmed();
+            if (sec == "课程")
+                currentSection = COURSES;
+            else if (sec == "经历")
+                currentSection = EXPERIENCES;
+            else if (sec == "荣誉")
+                currentSection = AWARDS;
+            else
+                currentSection = NONE;
+            headerValidated = false;
+            headerBad = false;
+            continue;
+        }
+
+        // 表头验证
+        if (!headerValidated) {
+            QStringList hdr = parseCsvLine(line);
+            switch (currentSection) {
+            case COURSES:
+                headerBad = !(hdr.size() >= 4 &&
+                              hdr[0] == expectedCourseHdr[0] &&
+                              hdr[1] == expectedCourseHdr[1] &&
+                              hdr[2] == expectedCourseHdr[2] &&
+                              hdr[3] == expectedCourseHdr[3]);
+                break;
+            case EXPERIENCES:
+                headerBad = !(hdr.size() >= 4 &&
+                              hdr[0] == expectedExpHdr[0] &&
+                              hdr[1] == expectedExpHdr[1] &&
+                              hdr[2] == expectedExpHdr[2] &&
+                              hdr[3] == expectedExpHdr[3]);
+                break;
+            case AWARDS:
+                headerBad = !(hdr.size() >= 4 &&
+                              hdr[0] == expectedAwardHdr[0] &&
+                              hdr[1] == expectedAwardHdr[1] &&
+                              hdr[2] == expectedAwardHdr[2] &&
+                              hdr[3] == expectedAwardHdr[3]);
+                break;
+            default:
+                headerBad = true;
+                break;
+            }
+            headerValidated = true;
+            continue;
+        }
+
+        // 表头不正确则跳过该段所有数据行
+        if (headerBad)
+            continue;
+
+        // 数据行处理
+        QStringList fields = parseCsvLine(line);
+
+        switch (currentSection) {
+        case COURSES: {
+            if (fields.size() < 4) { ++courseFail; continue; }
+            QString name = fields[0];
+            if (name.isEmpty()) { ++courseFail; continue; }
+            bool ok;
+            double credit = fields[1].toDouble(&ok);
+            if (!ok || credit <= 0) { ++courseFail; continue; }
+            double score = fields[2].toDouble(&ok);
+            if (!ok || score < 0 || score > 100) { ++courseFail; continue; }
+            QString semester = fields[3];
+            int semOrder = validSemesters.indexOf(semester);
+            if (semOrder < 0) { ++courseFail; continue; }
+
+            courseQuery.bindValue(":uid", userId);
+            courseQuery.bindValue(":name", name);
+            courseQuery.bindValue(":credit", credit);
+            courseQuery.bindValue(":score", score);
+            courseQuery.bindValue(":semester", semester);
+            courseQuery.bindValue(":gpa", DatabaseManager::scoreToGpa(score));
+            courseQuery.bindValue(":order", semOrder);
+
+            if (courseQuery.exec()) ++courseOk; else ++courseFail;
+            break;
+        }
+        case EXPERIENCES: {
+            if (fields.size() < 4) { ++expFail; continue; }
+            QString title = fields[0];
+            QString type = fields[1];
+            if (title.isEmpty() || !validTypes.contains(type)) {
+                ++expFail; continue;
+            }
+            expQuery.bindValue(":uid", userId);
+            expQuery.bindValue(":title", title);
+            expQuery.bindValue(":type", type);
+            expQuery.bindValue(":date", fields[2]);
+            expQuery.bindValue(":content", fields[3]);
+
+            if (expQuery.exec()) ++expOk; else ++expFail;
+            break;
+        }
+        case AWARDS: {
+            if (fields.size() < 4) { ++awardFail; continue; }
+            QString name = fields[0];
+            QString level = fields[1];
+            if (name.isEmpty() || !validLevels.contains(level)) {
+                ++awardFail; continue;
+            }
+            bool ok;
+            double amount = fields[3].toDouble(&ok);
+            if (!ok) amount = 0.0;
+
+            awardQuery.bindValue(":uid", userId);
+            awardQuery.bindValue(":name", name);
+            awardQuery.bindValue(":level", level);
+            awardQuery.bindValue(":date", fields[2]);
+            awardQuery.bindValue(":amount", amount);
+
+            if (awardQuery.exec()) ++awardOk; else ++awardFail;
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
+    file.close();
+
+    // 刷新所有模型
+    courseModel->select();
+    expModel->select();
+    awardModel->select();
+    updateTotalStats();
+    updateHomePageStats();
+
+    QMessageBox::information(this, "导入完成",
+        QString("导入结果：\n"
+                "课程：成功 %1 条，失败 %2 条\n"
+                "经历：成功 %3 条，失败 %4 条\n"
+                "荣誉：成功 %5 条，失败 %6 条")
+            .arg(courseOk).arg(courseFail)
+            .arg(expOk).arg(expFail)
+            .arg(awardOk).arg(awardFail));
 }
 
 // ==================== 导航栏按钮 ====================

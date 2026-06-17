@@ -58,6 +58,9 @@ private:
     QPushButton *exportExpCsvBtn = nullptr;
     QPushButton *csvHelpCourseBtn = nullptr;
     QPushButton *csvHelpExpBtn = nullptr;
+    QPushButton *homeImportAllBtn = nullptr;
+    QPushButton *homeExportAllBtn = nullptr;
+    QPushButton *homeCsvHelpBtn = nullptr;
     QDoubleSpinBox *addAwardAmountSpin = nullptr;
     QLabel *addAwardAmountLbl = nullptr;
 
@@ -84,6 +87,8 @@ private:
     void exportExperiencesToCsv(const QString &filePath);
     void importAwardsFromCsv(const QString &filePath);
     void exportAwardsToCsv(const QString &filePath);
+    void importAllFromCsv(const QString &filePath);
+    void exportAllToCsv(const QString &filePath);
 };
 
 #endif // MAINWINDOW_H
