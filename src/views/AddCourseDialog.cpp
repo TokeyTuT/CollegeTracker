@@ -28,7 +28,7 @@ AddCourseDialog::AddCourseDialog(QWidget *parent):QDialog(parent){
 
     // 自动换算单门课程绩点
     gpaPreviewLbl = new QLabel("绩点：0.0", this);
-    gpaPreviewLbl->setStyleSheet("color:#2563EB; font-weight:600;");
+    gpaPreviewLbl->setStyleSheet("color:#C8943E; font-weight:700;");
     layout->addRow("自动绩点:", gpaPreviewLbl);
 
     // 课程时间
