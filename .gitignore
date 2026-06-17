@@ -85,3 +85,6 @@ Thumbs.db
 
 # Database
 *.db
+
+# CSV files
+*.csv
