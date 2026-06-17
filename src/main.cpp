@@ -19,7 +19,8 @@ int main(int argc, char *argv[])
     lightPalette.setColor(QPalette::Window, QColor(244, 247, 251));
     lightPalette.setColor(QPalette::WindowText, QColor(15, 23, 42));
     lightPalette.setColor(QPalette::Base, QColor(255, 255, 255));
-    lightPalette.setColor(QPalette::AlternateBase, QColor(248, 250, 252));
+    lightPalette.setColor(QPalette::AlternateBase, Q
+                                                       Color(248, 250, 252));
     lightPalette.setColor(QPalette::ToolTipBase, QColor(255, 255, 255));
     lightPalette.setColor(QPalette::ToolTipText, QColor(15, 23, 42));
     lightPalette.setColor(QPalette::Text, QColor(15, 23, 42));

@@ -14,59 +14,7 @@
    <string>College Tracker</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">/* 全局背景与字体 */
-QMainWindow {
-    background-color: #F4F7FA; /* 极淡的现代灰蓝色 */
-    font-family: &quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;;
-}
-
-/* 左侧侧边栏 (精准定位到 sidebarFrame) */
-#sidebarFrame {
-    background-color: #FFFFFF;
-    border-right: 1px solid #E2E8F0;
-    margin: 0px;
-}
-
-/* 左侧导航按钮的统一样式 */
-#sidebarFrame QPushButton {
-    background-color: transparent;
-    border: none;
-    padding: 12px 20px;
-    text-align: left;
-    font-size: 14px;
-    color: #4A5568;
-    border-radius: 8px;
-    margin: 4px 10px;
-}
-
-/* 鼠标悬停时的按钮反馈 */
-#sidebarFrame QPushButton:hover {
-    background-color: #EDF2F7;
-    color: #3182CE;
-    font-weight: bold;
-}
-
-/* 用户信息区块容器 */
-#userProfileWidget {
-    background-color: transparent;
-    padding: 20px 15px; /* 增加上下边距 */
-    border-bottom: 1px solid #EDF2F7; /* 下方加一条极淡的分隔线 */
-    margin-bottom: 10px;
-}
-
-/* 姓名样式：粗体、大号、深色 */
-#userNameLbl {
-    font-size: 18px;
-    font-weight: bold;
-    color: #2D3748;
-}
-
-/* 专业样式：小号、灰色、换行处理 */
-#userMajorLbl {
-    font-size: 11px;
-    color: #718096;
-    margin-top: 4px;
-}</string>
+   <string notr="true">/* 所有样式由 MainWindow::applyModernStyle() 统一管理，基于 Theme.h Token */</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="styleSheet">
