@@ -1,5 +1,31 @@
 #include "DatabaseMannager.h"
 
+#include <QSqlRecord>
+
+namespace {
+
+QVariantMap queryRowToMap(const QSqlQuery &query) {
+    QVariantMap row;
+    const QSqlRecord record = query.record();
+    for (int i = 0; i < record.count(); ++i)
+        row.insert(record.fieldName(i), query.value(i));
+    return row;
+}
+
+QVariantList queryToList(QSqlQuery &query) {
+    QVariantList rows;
+    while (query.next())
+        rows.append(queryRowToMap(query));
+    return rows;
+}
+
+QVariant valueOrDefault(const QVariantMap &data, const QString &key,
+                        const QVariant &defaultValue = QVariant()) {
+    return data.contains(key) ? data.value(key) : defaultValue;
+}
+
+} // namespace
+
 DatabaseManager::DatabaseManager() {
     m_db = QSqlDatabase::addDatabase("QSQLITE");
     QString dbPath = QCoreApplication::applicationDirPath() + "/college_tracker.db";
@@ -19,6 +45,9 @@ bool DatabaseManager::initDatabase() {
         return false;
     }
     qDebug() << "数据库连接成功";
+    QSqlQuery pragmaQuery(m_db);
+    if (!pragmaQuery.exec("PRAGMA foreign_keys = ON"))
+        qWarning() << "启用 SQLite 外键失败：" << pragmaQuery.lastError().text();
     if (!createTables()) return false;
     migrateTables();
     return true;
@@ -47,7 +76,11 @@ bool DatabaseManager::createTables() {
                          "score REAL, "
                          "semester TEXT, "
                          "gpa REAL DEFAULT 0, "
-                         "semester_order INTEGER DEFAULT 0"
+                         "semester_order INTEGER DEFAULT 0, "
+                         "is_core INTEGER NOT NULL DEFAULT 0 "
+                         "CHECK (is_core IN (0, 1)), "
+                         "FOREIGN KEY (user_id) REFERENCES users(id) "
+                         "ON DELETE CASCADE"
                          ");";
     if (!query.exec(sqlCourses)) success = false;
 
@@ -57,7 +90,14 @@ bool DatabaseManager::createTables() {
                      "title TEXT NOT NULL, "
                      "type TEXT NOT NULL, "
                      "date TEXT, "
-                     "content TEXT"
+                     "content TEXT, "
+                     "organization TEXT DEFAULT '', "
+                     "role TEXT DEFAULT '', "
+                     "sort_order INTEGER NOT NULL DEFAULT 0, "
+                     "is_visible INTEGER NOT NULL DEFAULT 1 "
+                     "CHECK (is_visible IN (0, 1)), "
+                     "FOREIGN KEY (user_id) REFERENCES users(id) "
+                     "ON DELETE CASCADE"
                      ");";
     if (!query.exec(sqlExp)) success = false;
 
@@ -67,9 +107,54 @@ bool DatabaseManager::createTables() {
                         "name TEXT NOT NULL, "
                         "level TEXT, "
                         "date TEXT, "
-                        "amount REAL DEFAULT 0"
+                        "amount REAL DEFAULT 0, "
+                        "description TEXT DEFAULT '', "
+                        "sort_order INTEGER NOT NULL DEFAULT 0, "
+                        "is_visible INTEGER NOT NULL DEFAULT 1 "
+                        "CHECK (is_visible IN (0, 1)), "
+                        "FOREIGN KEY (user_id) REFERENCES users(id) "
+                        "ON DELETE CASCADE"
                         ");";
     if (!query.exec(sqlAwards)) success = false;
+
+    QString sqlResumeProfiles =
+        "CREATE TABLE IF NOT EXISTS resume_profiles ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "user_id INTEGER NOT NULL UNIQUE, "
+        "full_name TEXT DEFAULT '', "
+        "phone TEXT DEFAULT '', "
+        "email TEXT DEFAULT '', "
+        "job_target TEXT DEFAULT '', "
+        "github_url TEXT DEFAULT '', "
+        "website_url TEXT DEFAULT '', "
+        "summary TEXT DEFAULT '', "
+        "skills TEXT DEFAULT '', "
+        "photo_path TEXT DEFAULT '', "
+        "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+        "updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+        "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+        ");";
+    if (!query.exec(sqlResumeProfiles)) success = false;
+
+    QString sqlEducation =
+        "CREATE TABLE IF NOT EXISTS education_records ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "user_id INTEGER NOT NULL, "
+        "school TEXT NOT NULL, "
+        "major TEXT DEFAULT '', "
+        "degree TEXT DEFAULT '', "
+        "start_date TEXT DEFAULT '', "
+        "end_date TEXT DEFAULT '', "
+        "description TEXT DEFAULT '', "
+        "sort_order INTEGER NOT NULL DEFAULT 0, "
+        "is_visible INTEGER NOT NULL DEFAULT 1 CHECK (is_visible IN (0, 1)), "
+        "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+        ");";
+    if (!query.exec(sqlEducation)) success = false;
+
+    if (!query.exec("CREATE INDEX IF NOT EXISTS idx_education_user_sort "
+                    "ON education_records(user_id, sort_order, id)"))
+        success = false;
 
     if (!success) {
         qDebug() << "部分表创建失败：" << query.lastError().text();
@@ -78,18 +163,57 @@ bool DatabaseManager::createTables() {
     return success;
 }
 
+bool DatabaseManager::ensureColumn(const QString &tableName,
+                                   const QString &columnName,
+                                   const QString &columnDefinition) {
+    QSqlQuery tableInfo(m_db);
+    if (!tableInfo.exec(QString("PRAGMA table_info(%1)").arg(tableName))) {
+        qWarning() << "读取表结构失败：" << tableName
+                   << tableInfo.lastError().text();
+        return false;
+    }
+
+    while (tableInfo.next()) {
+        if (tableInfo.value(1).toString() == columnName)
+            return true;
+    }
+
+    QSqlQuery alterQuery(m_db);
+    const QString sql = QString("ALTER TABLE %1 ADD COLUMN %2 %3")
+                            .arg(tableName, columnName, columnDefinition);
+    if (!alterQuery.exec(sql)) {
+        qWarning() << "添加字段失败：" << tableName << columnName
+                   << alterQuery.lastError().text();
+        return false;
+    }
+    return true;
+}
+
 void DatabaseManager::migrateTables() {
-    QSqlQuery query;
+    ensureColumn("users", "grade", "TEXT DEFAULT ''");
+    ensureColumn("users", "gender", "TEXT DEFAULT ''");
+    ensureColumn("users", "major", "TEXT DEFAULT ''");
+    ensureColumn("users", "school", "TEXT DEFAULT ''");
 
-    // 为已有的 users 表添加新列（如果不存在则忽略错误）
-    query.exec("ALTER TABLE users ADD COLUMN grade TEXT DEFAULT ''");
-    query.exec("ALTER TABLE users ADD COLUMN gender TEXT DEFAULT ''");
-    query.exec("ALTER TABLE users ADD COLUMN major TEXT DEFAULT ''");
-    query.exec("ALTER TABLE users ADD COLUMN school TEXT DEFAULT ''");
+    ensureColumn("courses", "user_id", "INTEGER NOT NULL DEFAULT 1");
+    ensureColumn("courses", "gpa", "REAL DEFAULT 0");
+    ensureColumn("courses", "semester_order", "INTEGER DEFAULT 0");
+    ensureColumn("courses", "is_core", "INTEGER NOT NULL DEFAULT 0");
 
-    // 为已有的数据表添加 user_id 列
-    query.exec("ALTER TABLE courses ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1");
-    query.exec("ALTER TABLE courses ADD COLUMN gpa REAL DEFAULT 0");
+    ensureColumn("experiences", "user_id", "INTEGER NOT NULL DEFAULT 1");
+    ensureColumn("experiences", "organization", "TEXT DEFAULT ''");
+    ensureColumn("experiences", "role", "TEXT DEFAULT ''");
+    ensureColumn("experiences", "sort_order", "INTEGER NOT NULL DEFAULT 0");
+    ensureColumn("experiences", "is_visible",
+                 "INTEGER NOT NULL DEFAULT 1");
+
+    ensureColumn("awards", "user_id", "INTEGER NOT NULL DEFAULT 1");
+    ensureColumn("awards", "amount", "REAL DEFAULT 0");
+    ensureColumn("awards", "description", "TEXT DEFAULT ''");
+    ensureColumn("awards", "sort_order", "INTEGER NOT NULL DEFAULT 0");
+    ensureColumn("awards", "is_visible", "INTEGER NOT NULL DEFAULT 1");
+
+    QSqlQuery query(m_db);
     query.exec("UPDATE courses SET gpa = CASE "
                "WHEN score >= 90 THEN 4.0 "
                "WHEN score >= 85 THEN 3.7 "
@@ -101,12 +225,7 @@ void DatabaseManager::migrateTables() {
                "WHEN score >= 64 THEN 1.5 "
                "WHEN score >= 60 THEN 1.0 "
                "ELSE 0 END WHERE score IS NOT NULL");
-    query.exec("ALTER TABLE experiences ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1");
-    query.exec("ALTER TABLE awards ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1");
-    query.exec("ALTER TABLE awards ADD COLUMN amount REAL DEFAULT 0");
 
-    // 为 courses 表添加 semester_order 列，用于按学期时间排序
-    query.exec("ALTER TABLE courses ADD COLUMN semester_order INTEGER DEFAULT 0");
     query.exec("UPDATE courses SET semester_order = CASE "
                "WHEN semester = '大一上' THEN 0 "
                "WHEN semester = '大一下' THEN 1 "
@@ -117,6 +236,28 @@ void DatabaseManager::migrateTables() {
                "WHEN semester = '大四上' THEN 6 "
                "WHEN semester = '大四下' THEN 7 "
                "ELSE 0 END");
+
+    query.exec("CREATE INDEX IF NOT EXISTS idx_experiences_user_resume "
+               "ON experiences(user_id, is_visible, sort_order, id)");
+    query.exec("CREATE INDEX IF NOT EXISTS idx_awards_user_resume "
+               "ON awards(user_id, is_visible, sort_order, id)");
+    query.exec("CREATE INDEX IF NOT EXISTS idx_courses_user_core "
+               "ON courses(user_id, is_core, semester_order, id)");
+
+    // 为旧用户建立默认简历资料；用户名只作为真实姓名的初始值。
+    query.exec(
+        "INSERT OR IGNORE INTO resume_profiles (user_id, full_name) "
+        "SELECT id, username FROM users");
+
+    // 旧版 users 中已有学校信息时，初始化一条教育经历且避免重复。
+    query.exec(
+        "INSERT INTO education_records (user_id, school, major, degree, "
+        "start_date, end_date, description, sort_order, is_visible) "
+        "SELECT u.id, u.school, u.major, '', '', '', '', 0, 1 "
+        "FROM users u "
+        "WHERE TRIM(COALESCE(u.school, '')) <> '' "
+        "AND NOT EXISTS (SELECT 1 FROM education_records e "
+        "                WHERE e.user_id = u.id)");
 
     qDebug() << "数据库迁移完成";
 }
@@ -182,7 +323,10 @@ QVariantMap DatabaseManager::getTotalStats(int userId) {
 
 bool DatabaseManager::registerUser(const QString &username, const QString &password,
                                     const QString &grade, const QString &gender, const QString &major, const QString &school) {
-    QSqlQuery query;
+    if (!m_db.transaction())
+        return false;
+
+    QSqlQuery query(m_db);
     query.prepare("INSERT INTO users (username, password, grade, gender, major, school) "
                   "VALUES (:username, :password, :grade, :gender, :major, :school)");
     query.bindValue(":username", username);
@@ -191,7 +335,36 @@ bool DatabaseManager::registerUser(const QString &username, const QString &passw
     query.bindValue(":gender", gender);
     query.bindValue(":major", major);
     query.bindValue(":school", school);
-    return query.exec();
+    if (!query.exec()) {
+        m_db.rollback();
+        return false;
+    }
+
+    const int userId = query.lastInsertId().toInt();
+    query.prepare("INSERT INTO resume_profiles (user_id, full_name) "
+                  "VALUES (:uid, :full_name)");
+    query.bindValue(":uid", userId);
+    query.bindValue(":full_name", username);
+    if (!query.exec()) {
+        m_db.rollback();
+        return false;
+    }
+
+    if (!school.trimmed().isEmpty()) {
+        query.prepare(
+            "INSERT INTO education_records "
+            "(user_id, school, major, sort_order, is_visible) "
+            "VALUES (:uid, :school, :major, 0, 1)");
+        query.bindValue(":uid", userId);
+        query.bindValue(":school", school.trimmed());
+        query.bindValue(":major", major.trimmed());
+        if (!query.exec()) {
+            m_db.rollback();
+            return false;
+        }
+    }
+
+    return m_db.commit();
 }
 
 int DatabaseManager::loginUser(const QString &username, const QString &password) {
@@ -221,4 +394,250 @@ QVariantMap DatabaseManager::getUserInfo(int userId) {
         info["school"] = query.value(5).toString();
     }
     return info;
+}
+
+QVariantMap DatabaseManager::getResumeProfile(int userId) {
+    QSqlQuery query(m_db);
+    query.prepare(
+        "SELECT id, user_id, full_name, phone, email, job_target, github_url, "
+        "website_url, summary, skills, photo_path, created_at, updated_at "
+        "FROM resume_profiles WHERE user_id = :uid");
+    query.bindValue(":uid", userId);
+    if (query.exec() && query.next())
+        return queryRowToMap(query);
+    return {};
+}
+
+bool DatabaseManager::updateResumeProfile(int userId,
+                                          const QVariantMap &profile) {
+    QSqlQuery query(m_db);
+    query.prepare(
+        "UPDATE resume_profiles SET full_name = :full_name, phone = :phone, "
+        "email = :email, job_target = :job_target, "
+        "github_url = :github_url, website_url = :website_url, "
+        "summary = :summary, skills = :skills, photo_path = :photo_path, "
+        "updated_at = CURRENT_TIMESTAMP WHERE user_id = :uid");
+    query.bindValue(":full_name", valueOrDefault(profile, "full_name", ""));
+    query.bindValue(":phone", valueOrDefault(profile, "phone", ""));
+    query.bindValue(":email", valueOrDefault(profile, "email", ""));
+    query.bindValue(":job_target", valueOrDefault(profile, "job_target", ""));
+    query.bindValue(":github_url", valueOrDefault(profile, "github_url", ""));
+    query.bindValue(":website_url", valueOrDefault(profile, "website_url", ""));
+    query.bindValue(":summary", valueOrDefault(profile, "summary", ""));
+    query.bindValue(":skills", valueOrDefault(profile, "skills", ""));
+    query.bindValue(":photo_path", valueOrDefault(profile, "photo_path", ""));
+    query.bindValue(":uid", userId);
+    if (!query.exec())
+        return false;
+    if (query.numRowsAffected() > 0)
+        return true;
+
+    query.prepare(
+        "INSERT INTO resume_profiles "
+        "(user_id, full_name, phone, email, job_target, github_url, "
+        "website_url, summary, skills, photo_path) "
+        "VALUES (:uid, :full_name, :phone, :email, :job_target, :github_url, "
+        ":website_url, :summary, :skills, :photo_path)");
+    query.bindValue(":uid", userId);
+    query.bindValue(":full_name", valueOrDefault(profile, "full_name", ""));
+    query.bindValue(":phone", valueOrDefault(profile, "phone", ""));
+    query.bindValue(":email", valueOrDefault(profile, "email", ""));
+    query.bindValue(":job_target", valueOrDefault(profile, "job_target", ""));
+    query.bindValue(":github_url", valueOrDefault(profile, "github_url", ""));
+    query.bindValue(":website_url", valueOrDefault(profile, "website_url", ""));
+    query.bindValue(":summary", valueOrDefault(profile, "summary", ""));
+    query.bindValue(":skills", valueOrDefault(profile, "skills", ""));
+    query.bindValue(":photo_path", valueOrDefault(profile, "photo_path", ""));
+    return query.exec();
+}
+
+QVariantList DatabaseManager::getEducationRecords(int userId,
+                                                   bool visibleOnly) {
+    QSqlQuery query(m_db);
+    QString sql =
+        "SELECT id, user_id, school, major, degree, start_date, end_date, "
+        "description, sort_order, is_visible "
+        "FROM education_records WHERE user_id = :uid";
+    if (visibleOnly)
+        sql += " AND is_visible = 1";
+    sql += " ORDER BY sort_order ASC, id DESC";
+    query.prepare(sql);
+    query.bindValue(":uid", userId);
+    if (!query.exec())
+        return {};
+    return queryToList(query);
+}
+
+int DatabaseManager::addEducationRecord(int userId,
+                                        const QVariantMap &education) {
+    const QString school = education.value("school").toString().trimmed();
+    if (school.isEmpty())
+        return -1;
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        "INSERT INTO education_records "
+        "(user_id, school, major, degree, start_date, end_date, description, "
+        "sort_order, is_visible) "
+        "VALUES (:uid, :school, :major, :degree, :start_date, :end_date, "
+        ":description, :sort_order, :is_visible)");
+    query.bindValue(":uid", userId);
+    query.bindValue(":school", school);
+    query.bindValue(":major", valueOrDefault(education, "major", ""));
+    query.bindValue(":degree", valueOrDefault(education, "degree", ""));
+    query.bindValue(":start_date",
+                    valueOrDefault(education, "start_date", ""));
+    query.bindValue(":end_date", valueOrDefault(education, "end_date", ""));
+    query.bindValue(":description",
+                    valueOrDefault(education, "description", ""));
+    query.bindValue(":sort_order",
+                    valueOrDefault(education, "sort_order", 0));
+    query.bindValue(":is_visible",
+                    valueOrDefault(education, "is_visible", true).toBool()
+                        ? 1
+                        : 0);
+    if (!query.exec())
+        return -1;
+    return query.lastInsertId().toInt();
+}
+
+bool DatabaseManager::updateEducationRecord(
+    int userId, int educationId, const QVariantMap &education) {
+    const QString school = education.value("school").toString().trimmed();
+    if (school.isEmpty())
+        return false;
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        "UPDATE education_records SET school = :school, major = :major, "
+        "degree = :degree, start_date = :start_date, end_date = :end_date, "
+        "description = :description, sort_order = :sort_order, "
+        "is_visible = :is_visible "
+        "WHERE id = :id AND user_id = :uid");
+    query.bindValue(":school", school);
+    query.bindValue(":major", valueOrDefault(education, "major", ""));
+    query.bindValue(":degree", valueOrDefault(education, "degree", ""));
+    query.bindValue(":start_date",
+                    valueOrDefault(education, "start_date", ""));
+    query.bindValue(":end_date", valueOrDefault(education, "end_date", ""));
+    query.bindValue(":description",
+                    valueOrDefault(education, "description", ""));
+    query.bindValue(":sort_order",
+                    valueOrDefault(education, "sort_order", 0));
+    query.bindValue(":is_visible",
+                    valueOrDefault(education, "is_visible", true).toBool()
+                        ? 1
+                        : 0);
+    query.bindValue(":id", educationId);
+    query.bindValue(":uid", userId);
+    return query.exec() && query.numRowsAffected() > 0;
+}
+
+bool DatabaseManager::deleteEducationRecord(int userId, int educationId) {
+    QSqlQuery query(m_db);
+    query.prepare(
+        "DELETE FROM education_records WHERE id = :id AND user_id = :uid");
+    query.bindValue(":id", educationId);
+    query.bindValue(":uid", userId);
+    return query.exec() && query.numRowsAffected() > 0;
+}
+
+QVariantList DatabaseManager::getResumeExperiences(int userId,
+                                                   bool visibleOnly) {
+    QSqlQuery query(m_db);
+    QString sql =
+        "SELECT id, user_id, title, type, date, content, organization, role, "
+        "sort_order, is_visible FROM experiences WHERE user_id = :uid";
+    if (visibleOnly)
+        sql += " AND is_visible = 1";
+    sql += " ORDER BY sort_order ASC, id DESC";
+    query.prepare(sql);
+    query.bindValue(":uid", userId);
+    if (!query.exec())
+        return {};
+    return queryToList(query);
+}
+
+QVariantList DatabaseManager::getResumeAwards(int userId, bool visibleOnly) {
+    QSqlQuery query(m_db);
+    QString sql =
+        "SELECT id, user_id, name, level, date, amount, description, "
+        "sort_order, is_visible FROM awards WHERE user_id = :uid";
+    if (visibleOnly)
+        sql += " AND is_visible = 1";
+    sql += " ORDER BY sort_order ASC, id DESC";
+    query.prepare(sql);
+    query.bindValue(":uid", userId);
+    if (!query.exec())
+        return {};
+    return queryToList(query);
+}
+
+QVariantList DatabaseManager::getResumeCoreCourses(int userId) {
+    QSqlQuery query(m_db);
+    query.prepare(
+        "SELECT id, user_id, name, credit, score, semester, gpa, "
+        "semester_order, is_core FROM courses "
+        "WHERE user_id = :uid AND is_core = 1 "
+        "ORDER BY semester_order ASC, score DESC, id ASC");
+    query.bindValue(":uid", userId);
+    if (!query.exec())
+        return {};
+    return queryToList(query);
+}
+
+bool DatabaseManager::updateExperienceResumeFields(
+    int userId, int experienceId, const QString &organization,
+    const QString &role, int sortOrder, bool isVisible) {
+    QSqlQuery query(m_db);
+    query.prepare(
+        "UPDATE experiences SET organization = :organization, role = :role, "
+        "sort_order = :sort_order, is_visible = :is_visible "
+        "WHERE id = :id AND user_id = :uid");
+    query.bindValue(":organization", organization.trimmed());
+    query.bindValue(":role", role.trimmed());
+    query.bindValue(":sort_order", sortOrder);
+    query.bindValue(":is_visible", isVisible ? 1 : 0);
+    query.bindValue(":id", experienceId);
+    query.bindValue(":uid", userId);
+    return query.exec() && query.numRowsAffected() > 0;
+}
+
+bool DatabaseManager::updateAwardResumeFields(
+    int userId, int awardId, const QString &description, int sortOrder,
+    bool isVisible) {
+    QSqlQuery query(m_db);
+    query.prepare(
+        "UPDATE awards SET description = :description, "
+        "sort_order = :sort_order, is_visible = :is_visible "
+        "WHERE id = :id AND user_id = :uid");
+    query.bindValue(":description", description.trimmed());
+    query.bindValue(":sort_order", sortOrder);
+    query.bindValue(":is_visible", isVisible ? 1 : 0);
+    query.bindValue(":id", awardId);
+    query.bindValue(":uid", userId);
+    return query.exec() && query.numRowsAffected() > 0;
+}
+
+bool DatabaseManager::setCourseCore(int userId, int courseId, bool isCore) {
+    QSqlQuery query(m_db);
+    query.prepare(
+        "UPDATE courses SET is_core = :is_core "
+        "WHERE id = :id AND user_id = :uid");
+    query.bindValue(":is_core", isCore ? 1 : 0);
+    query.bindValue(":id", courseId);
+    query.bindValue(":uid", userId);
+    return query.exec() && query.numRowsAffected() > 0;
+}
+
+QVariantMap DatabaseManager::getResumeData(int userId) {
+    QVariantMap data;
+    data["user"] = getUserInfo(userId);
+    data["profile"] = getResumeProfile(userId);
+    data["education"] = getEducationRecords(userId, true);
+    data["experiences"] = getResumeExperiences(userId, true);
+    data["awards"] = getResumeAwards(userId, true);
+    data["core_courses"] = getResumeCoreCourses(userId);
+    data["course_stats"] = getTotalStats(userId);
+    return data;
 }
