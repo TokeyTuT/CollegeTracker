@@ -9,10 +9,12 @@
 #include <QComboBox>
 #include <QCursor>
 #include <QDate>
+#include <QDir>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFile>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QFont>
 #include <QFormLayout>
 #include <QFrame>
@@ -24,6 +26,7 @@
 #include <QLineEdit>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSizePolicy>
 #include <QSpacerItem>
@@ -870,10 +873,402 @@ void MainWindow::buildExportPage() {
     if (ui->profilePage->layout() != nullptr)
         return;
 
-    // 简历导出页面正文先保持空白，后续按需求再添加导出内容。
-    auto *layout = new QVBoxLayout(ui->profilePage);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(0);
+    using namespace Theme;
+
+    auto *mainLayout = new QVBoxLayout(ui->profilePage);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(Spacing::md);
+
+    // ---- 辅助：创建带标题的 Card（风格参考 经历与荣誉 页面）----
+    auto makeSectionCard = [](const QString &title) {
+        auto *card = new QFrame;
+        card->setFrameShape(QFrame::NoFrame);
+        card->setStyleSheet(QStringLiteral(
+            "QFrame { background: %1; border: 1px solid %2;"
+            " border-radius: %3px; }"
+        ).arg(Color::surface).arg(Color::outline).arg(Radius::sm));
+
+        auto *layout = new QVBoxLayout(card);
+        layout->setContentsMargins(Spacing::lg, Spacing::md, Spacing::lg, Spacing::md);
+        layout->setSpacing(Spacing::sm);
+
+        auto *titleLbl = new QLabel(title);
+        titleLbl->setStyleSheet(QStringLiteral(
+            "font-size: %1px; font-weight: %2; color: %3; background: transparent;"
+        ).arg(TypeScale::h2).arg(FontWeight::bold).arg(Color::onSurface));
+        layout->addWidget(titleLbl);
+        return card;
+    };
+
+    // ===== 照片区域（标题栏内嵌导入按钮）=====
+    QFrame *photoCard = new QFrame;
+    photoCard->setFrameShape(QFrame::NoFrame);
+    photoCard->setStyleSheet(QStringLiteral(
+        "QFrame { background: %1; border: 1px solid %2;"
+        " border-radius: %3px; }"
+    ).arg(Color::surface).arg(Color::outline).arg(Radius::sm));
+    auto *photoCardLayout = new QVBoxLayout(photoCard);
+    photoCardLayout->setContentsMargins(Spacing::lg, Spacing::md, Spacing::lg, Spacing::md);
+    photoCardLayout->setSpacing(Spacing::sm);
+
+    // 标题行："个人照片" 标题 + 导入按钮
+    auto *photoHeaderRow = new QHBoxLayout;
+    photoHeaderRow->setSpacing(Spacing::sm);
+
+    auto *photoTitleLbl = new QLabel("个人照片");
+    photoTitleLbl->setStyleSheet(QStringLiteral(
+        "font-size: %1px; font-weight: %2; color: %3; background: transparent;"
+    ).arg(TypeScale::h2).arg(FontWeight::bold).arg(Color::onSurface));
+    photoHeaderRow->addWidget(photoTitleLbl);
+    photoHeaderRow->addStretch();
+
+    selectPhotoBtn = new QPushButton("导入照片");
+    selectPhotoBtn->setObjectName("selectPhotoBtn");
+    selectPhotoBtn->setCursor(Qt::PointingHandCursor);
+    selectPhotoBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background: %1; color: #FFFFFF; border: none;"
+        " border-radius: %2px; min-height: 32px; font-size: %3px;"
+        " font-weight: %4; padding: 0 16px; }"
+        "QPushButton:hover { background: %5; }"
+    ).arg(Color::primary).arg(Radius::sm)
+     .arg(TypeScale::caption).arg(FontWeight::bold).arg(Color::accent));
+
+    photoHeaderRow->addWidget(selectPhotoBtn);
+    photoCardLayout->addLayout(photoHeaderRow);
+
+    // 照片预览
+    auto *photoRow = new QHBoxLayout;
+    photoRow->setSpacing(Spacing::md);
+
+    photoPreviewLbl = new QLabel;
+    photoPreviewLbl->setObjectName("photoPreviewLbl");
+    photoPreviewLbl->setFixedSize(96, 96);
+    photoPreviewLbl->setAlignment(Qt::AlignCenter);
+    photoPreviewLbl->setStyleSheet(QStringLiteral(
+        "QLabel { background: %1; border: 1px dashed %2; border-radius: 48px;"
+        " color: %3; font-size: %4px; }"
+    ).arg(Color::background).arg(Color::outline)
+     .arg(Color::onSurfaceMuted).arg(TypeScale::caption));
+    photoPreviewLbl->setText("暂无照片");
+    photoRow->addWidget(photoPreviewLbl);
+    photoRow->addStretch();
+    photoCardLayout->addLayout(photoRow);
+    mainLayout->addWidget(photoCard);
+
+    // ===== 技术能力区域 =====
+    QFrame *skillsCard = makeSectionCard("技术能力");
+
+    auto *skillsHeader = new QHBoxLayout;
+    skillsHeader->setSpacing(Spacing::sm);
+
+    skillsLbl = new QLabel;
+    skillsLbl->setObjectName("skillsLbl");
+    skillsLbl->setWordWrap(true);
+    skillsLbl->setMinimumHeight(48);
+    skillsLbl->setStyleSheet(QStringLiteral(
+        "QLabel { background: %1; border: 1px solid %2; border-radius: %3px;"
+        " color: %4; font-size: %5px; padding: 10px 14px; }"
+    ).arg(Color::background).arg(Color::outline)
+     .arg(Radius::sm).arg(Color::onSurfaceMuted).arg(TypeScale::body));
+    skillsLbl->setText("暂无内容，点击编辑按钮添加");
+
+    editSkillsBtn = new QPushButton("编辑");
+    editSkillsBtn->setObjectName("editSkillsBtn");
+    editSkillsBtn->setCursor(Qt::PointingHandCursor);
+    editSkillsBtn->setFixedSize(64, 32);
+    editSkillsBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background: transparent; color: %1;"
+        " border: 1px solid %1; border-radius: %2px;"
+        " font-size: %3px; font-weight: %4; }"
+        "QPushButton:hover { background: %1; color: #FFFFFF; }"
+    ).arg(Color::primary).arg(Radius::sm)
+     .arg(TypeScale::caption).arg(FontWeight::bold));
+
+    skillsHeader->addStretch();
+    skillsHeader->addWidget(editSkillsBtn);
+    static_cast<QVBoxLayout*>(skillsCard->layout())->addWidget(skillsLbl);
+    static_cast<QVBoxLayout*>(skillsCard->layout())->addLayout(skillsHeader);
+    mainLayout->addWidget(skillsCard);
+
+    // ===== 个人总结区域 =====
+    QFrame *summaryCard = makeSectionCard("个人总结");
+
+    auto *summaryHeader = new QHBoxLayout;
+    summaryHeader->setSpacing(Spacing::sm);
+
+    summaryLbl = new QLabel;
+    summaryLbl->setObjectName("summaryLbl");
+    summaryLbl->setWordWrap(true);
+    summaryLbl->setMinimumHeight(48);
+    summaryLbl->setStyleSheet(QStringLiteral(
+        "QLabel { background: %1; border: 1px solid %2; border-radius: %3px;"
+        " color: %4; font-size: %5px; padding: 10px 14px; }"
+    ).arg(Color::background).arg(Color::outline)
+     .arg(Radius::sm).arg(Color::onSurfaceMuted).arg(TypeScale::body));
+    summaryLbl->setText("暂无内容，点击编辑按钮添加");
+
+    editSummaryBtn = new QPushButton("编辑");
+    editSummaryBtn->setObjectName("editSummaryBtn");
+    editSummaryBtn->setCursor(Qt::PointingHandCursor);
+    editSummaryBtn->setFixedSize(64, 32);
+    editSummaryBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background: transparent; color: %1;"
+        " border: 1px solid %1; border-radius: %2px;"
+        " font-size: %3px; font-weight: %4; }"
+        "QPushButton:hover { background: %1; color: #FFFFFF; }"
+    ).arg(Color::primary).arg(Radius::sm)
+     .arg(TypeScale::caption).arg(FontWeight::bold));
+
+    summaryHeader->addStretch();
+    summaryHeader->addWidget(editSummaryBtn);
+    static_cast<QVBoxLayout*>(summaryCard->layout())->addWidget(summaryLbl);
+    static_cast<QVBoxLayout*>(summaryCard->layout())->addLayout(summaryHeader);
+    mainLayout->addWidget(summaryCard);
+
+    // ===== 保存按钮 =====
+    saveResumeBtn = new QPushButton("保存到数据库");
+    saveResumeBtn->setObjectName("saveResumeBtn");
+    saveResumeBtn->setCursor(Qt::PointingHandCursor);
+    saveResumeBtn->setFixedHeight(44);
+    saveResumeBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background: %1; color: #FFFFFF; border: none;"
+        " border-radius: %2px; font-size: %3px; font-weight: %4; }"
+        "QPushButton:hover { background: %5; }"
+        "QPushButton:pressed { background: #0B5E57; }"
+    ).arg(Color::primary).arg(Radius::sm)
+     .arg(TypeScale::body).arg(FontWeight::bold).arg(Color::primaryHover));
+
+    mainLayout->addWidget(saveResumeBtn);
+    mainLayout->addStretch();
+
+    // ---- 信号连接 ----
+    connect(selectPhotoBtn, &QPushButton::clicked, this, [this]() {
+        QString filePath = QFileDialog::getOpenFileName(
+            this, "导入个人照片", QString(),
+            "JPEG 图片 (*.jpg *.jpeg);;所有文件 (*)");
+        if (filePath.isEmpty())
+            return;
+
+        // 创建 photos 目录
+        QString photosDir = QCoreApplication::applicationDirPath() + "/photos";
+        QDir().mkpath(photosDir);
+
+        // 复制照片到应用数据目录（如已存在则先删除，QFile::copy 不会自动覆盖）
+        QFileInfo fi(filePath);
+        int userId = User::getInstance().getId();
+        QString newName = QString("user_%1_photo.%2")
+                              .arg(userId)
+                              .arg(fi.suffix().toLower());
+        QString destPath = photosDir + "/" + newName;
+
+        if (QFile::exists(destPath))
+            QFile::remove(destPath);
+
+        if (QFile::copy(filePath, destPath)) {
+            m_photoPath = "photos/" + newName;
+            QPixmap source(destPath);
+            if (!source.isNull()) {
+                // 裁切成圆形（KeepAspectRatio 确保图片完整可见）
+                int size = photoPreviewLbl->width();
+                QPixmap scaled = source.scaled(size, size,
+                    Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                // 居中放置
+                int x = (size - scaled.width()) / 2;
+                int y = (size - scaled.height()) / 2;
+
+                QPixmap circular(size, size);
+                circular.fill(Qt::transparent);
+                QPainter painter(&circular);
+                painter.setRenderHint(QPainter::Antialiasing, true);
+                QPainterPath path;
+                path.addEllipse(0, 0, size, size);
+                painter.setClipPath(path);
+                painter.drawPixmap(x, y, scaled);
+                painter.end();
+
+                photoPreviewLbl->setPixmap(circular);
+                photoPreviewLbl->setText(QString());
+            }
+        } else {
+            QMessageBox::warning(this, "提示", "照片复制失败，请重试");
+        }
+    });
+
+    connect(editSkillsBtn, &QPushButton::clicked, this,
+            &MainWindow::editSkills);
+    connect(editSummaryBtn, &QPushButton::clicked, this,
+            &MainWindow::editSummary);
+
+    connect(saveResumeBtn, &QPushButton::clicked, this, [this]() {
+        int userId = User::getInstance().getId();
+        if (userId <= 0) {
+            QMessageBox::warning(this, "提示", "请先登录");
+            return;
+        }
+
+        QVariantMap profile;
+        profile["skills"] = m_skillsText;
+        profile["summary"] = m_summaryText;
+        profile["photo_path"] = m_photoPath;
+
+        if (DatabaseManager::getInstance().updateResumeProfile(userId, profile)) {
+            QMessageBox::information(this, "保存成功", "简历资料已保存到数据库");
+        } else {
+            QMessageBox::critical(this, "保存失败", "数据库写入失败，请稍后再试");
+        }
+    });
+}
+
+void MainWindow::editSkills() {
+    QDialog dialog(this);
+    dialog.setWindowTitle("编辑技术能力");
+    dialog.setMinimumWidth(480);
+    dialog.setMinimumHeight(360);
+
+    auto *layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(24, 22, 24, 18);
+    layout->setSpacing(14);
+
+    auto *title = new QLabel("编辑技术能力");
+    title->setStyleSheet("font-size:20px; font-weight:800; color:#0F172A;");
+    layout->addWidget(title);
+
+    auto *hint = new QLabel("每行填写一个技能，例如：C++ / Qt / SQLite / Git");
+    hint->setWordWrap(true);
+    hint->setStyleSheet("color:#64748B; font-size:13px; font-weight:600;");
+    layout->addWidget(hint);
+
+    auto *edit = new QPlainTextEdit;
+    edit->setPlaceholderText("每行一个技能...");
+    edit->setPlainText(m_skillsText);
+    edit->setStyleSheet(Theme::inputStyle());
+    layout->addWidget(edit, 1);
+
+    auto *buttons = new QDialogButtonBox(
+        QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
+    buttons->button(QDialogButtonBox::Save)->setText("保存");
+    buttons->button(QDialogButtonBox::Cancel)->setText("取消");
+    layout->addWidget(buttons);
+
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        m_skillsText = edit->toPlainText().trimmed();
+        if (skillsLbl) {
+            if (m_skillsText.isEmpty())
+                skillsLbl->setText("暂无内容，点击编辑按钮添加");
+            else
+                skillsLbl->setText(m_skillsText);
+        }
+    }
+}
+
+void MainWindow::editSummary() {
+    QDialog dialog(this);
+    dialog.setWindowTitle("编辑个人总结");
+    dialog.setMinimumWidth(480);
+    dialog.setMinimumHeight(420);
+
+    auto *layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(24, 22, 24, 18);
+    layout->setSpacing(14);
+
+    auto *title = new QLabel("编辑个人总结");
+    title->setStyleSheet("font-size:20px; font-weight:800; color:#0F172A;");
+    layout->addWidget(title);
+
+    auto *hint = new QLabel("简要介绍自己的专业背景、核心优势和求职意向");
+    hint->setWordWrap(true);
+    hint->setStyleSheet("color:#64748B; font-size:13px; font-weight:600;");
+    layout->addWidget(hint);
+
+    auto *edit = new QPlainTextEdit;
+    edit->setPlaceholderText("请输入个人总结...");
+    edit->setPlainText(m_summaryText);
+    edit->setStyleSheet(Theme::inputStyle());
+    layout->addWidget(edit, 1);
+
+    auto *buttons = new QDialogButtonBox(
+        QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
+    buttons->button(QDialogButtonBox::Save)->setText("保存");
+    buttons->button(QDialogButtonBox::Cancel)->setText("取消");
+    layout->addWidget(buttons);
+
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        m_summaryText = edit->toPlainText().trimmed();
+        if (summaryLbl) {
+            if (m_summaryText.isEmpty())
+                summaryLbl->setText("暂无内容，点击编辑按钮添加");
+            else
+                summaryLbl->setText(m_summaryText);
+        }
+    }
+}
+
+void MainWindow::loadResumeProfile() {
+    int userId = User::getInstance().getId();
+    if (userId <= 0)
+        return;
+
+    QVariantMap profile =
+        DatabaseManager::getInstance().getResumeProfile(userId);
+
+    // 技术能力
+    m_skillsText = profile.value("skills").toString();
+    if (skillsLbl) {
+        if (m_skillsText.isEmpty())
+            skillsLbl->setText("暂无内容，点击编辑按钮添加");
+        else
+            skillsLbl->setText(m_skillsText);
+    }
+
+    // 个人总结
+    m_summaryText = profile.value("summary").toString();
+    if (summaryLbl) {
+        if (m_summaryText.isEmpty())
+            summaryLbl->setText("暂无内容，点击编辑按钮添加");
+        else
+            summaryLbl->setText(m_summaryText);
+    }
+
+    // 照片（圆形裁切）
+    m_photoPath = profile.value("photo_path").toString();
+    if (photoPreviewLbl) {
+        if (!m_photoPath.isEmpty()) {
+            QString fullPath =
+                QCoreApplication::applicationDirPath() + "/" + m_photoPath;
+            QPixmap source(fullPath);
+            if (!source.isNull()) {
+                int size = photoPreviewLbl->width();
+                QPixmap scaled = source.scaled(size, size,
+                    Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                int x = (size - scaled.width()) / 2;
+                int y = (size - scaled.height()) / 2;
+
+                QPixmap circular(size, size);
+                circular.fill(Qt::transparent);
+                QPainter painter(&circular);
+                painter.setRenderHint(QPainter::Antialiasing, true);
+                QPainterPath path;
+                path.addEllipse(0, 0, size, size);
+                painter.setClipPath(path);
+                painter.drawPixmap(x, y, scaled);
+                painter.end();
+
+                photoPreviewLbl->setPixmap(circular);
+                photoPreviewLbl->setText(QString());
+            } else {
+                photoPreviewLbl->setText("照片文件丢失");
+            }
+        } else {
+            photoPreviewLbl->setPixmap(QPixmap());
+            photoPreviewLbl->setText("暂无照片");
+        }
+    }
 }
 
 void MainWindow::InitFrame() {
@@ -968,6 +1363,7 @@ void MainWindow::InitFrame() {
         ui->stackedWidget->setCurrentIndex(3);
         ui->currentPageLbl->setText("简历导出");
         setActiveNav(ui->navExportBtn);
+        loadResumeProfile();
     });
 
     // CSV 导入导出按钮信号
@@ -1748,7 +2144,7 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
     }
 
     QTextStream stream(&file);
-    stream.setCodec("UTF-8");
+    // Qt6: QTextStream defaults to UTF-8, setCodec() removed
 
     if (stream.atEnd()) {
         QMessageBox::warning(this, "导入失败", "CSV 文件为空");
@@ -1841,7 +2237,7 @@ void MainWindow::exportCoursesToCsv(const QString &filePath) {
     }
 
     QTextStream stream(&file);
-    stream.setCodec("UTF-8");
+    // Qt6: QTextStream defaults to UTF-8, setCodec() removed
     stream << QChar(0xFEFF);
     writeCsvRow(stream, {"课程名称", "学分", "成绩", "学期"});
 
@@ -1870,7 +2266,7 @@ void MainWindow::importExperiencesFromCsv(const QString &filePath) {
     }
 
     QTextStream stream(&file);
-    stream.setCodec("UTF-8");
+    // Qt6: QTextStream defaults to UTF-8, setCodec() removed
 
     if (stream.atEnd()) {
         QMessageBox::warning(this, "导入失败", "CSV 文件为空");
@@ -1952,7 +2348,7 @@ void MainWindow::exportExperiencesToCsv(const QString &filePath) {
     }
 
     QTextStream stream(&file);
-    stream.setCodec("UTF-8");
+    // Qt6: QTextStream defaults to UTF-8, setCodec() removed
     stream << QChar(0xFEFF);
     writeCsvRow(stream, {"标题", "类型", "时间", "描述"});
 
@@ -1981,7 +2377,7 @@ void MainWindow::importAwardsFromCsv(const QString &filePath) {
     }
 
     QTextStream stream(&file);
-    stream.setCodec("UTF-8");
+    // Qt6: QTextStream defaults to UTF-8, setCodec() removed
 
     if (stream.atEnd()) {
         QMessageBox::warning(this, "导入失败", "CSV 文件为空");
@@ -2065,7 +2461,7 @@ void MainWindow::exportAwardsToCsv(const QString &filePath) {
     }
 
     QTextStream stream(&file);
-    stream.setCodec("UTF-8");
+    // Qt6: QTextStream defaults to UTF-8, setCodec() removed
     stream << QChar(0xFEFF);
     writeCsvRow(stream, {"奖项名称", "荣誉级别", "获奖时间", "奖金金额"});
 
@@ -2094,7 +2490,7 @@ void MainWindow::exportAllToCsv(const QString &filePath) {
     }
 
     QTextStream stream(&file);
-    stream.setCodec("UTF-8");
+    // Qt6: QTextStream defaults to UTF-8, setCodec() removed
     stream << QChar(0xFEFF);
 
     int courseCount = courseModel->rowCount();
@@ -2151,7 +2547,7 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
     }
 
     QTextStream stream(&file);
-    stream.setCodec("UTF-8");
+    // Qt6: QTextStream defaults to UTF-8, setCodec() removed
 
     if (stream.atEnd()) {
         QMessageBox::warning(this, "导入失败", "CSV 文件为空");

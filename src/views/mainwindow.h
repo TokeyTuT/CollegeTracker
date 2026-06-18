@@ -69,6 +69,18 @@ private:
     QDoubleSpinBox *addAwardAmountSpin = nullptr;
     QLabel *addAwardAmountLbl = nullptr;
 
+    // 简历导出页控件
+    QLabel *photoPreviewLbl = nullptr;
+    QPushButton *selectPhotoBtn = nullptr;
+    QLabel *skillsLbl = nullptr;
+    QPushButton *editSkillsBtn = nullptr;
+    QLabel *summaryLbl = nullptr;
+    QPushButton *editSummaryBtn = nullptr;
+    QPushButton *saveResumeBtn = nullptr;
+    QString m_photoPath;
+    QString m_skillsText;
+    QString m_summaryText;
+
     bool m_expTabActive = true;  // true = 课外活动, false = 个人荣誉
 
     void InitFrame();
@@ -82,6 +94,9 @@ private:
     void setupTableView(QTableView *tableView);
     void buildHomePage();
     void buildExportPage();
+    void loadResumeProfile();
+    void editSkills();
+    void editSummary();
     void updateHomePageStats();
     double scoreToGpa(double score) const;
 

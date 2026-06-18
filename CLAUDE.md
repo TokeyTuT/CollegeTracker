@@ -2,15 +2,31 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Environment
+
+- **Qt**: 6.11.0 (official installer) at `/Users/andydelaptop/Qt/6.11.0/macos`
+- **CMake**: 4.3.3 (Homebrew) at `/opt/homebrew/bin/cmake`
+- **Compiler**: Apple Clang (Xcode)
+- **Platform**: macOS 26 (Darwin 25.5.0) ARM64
+- Qt bin directory is in PATH via `~/.zshrc`
+- **VSCode**: `.vscode/` contains tasks/launch/IntelliSense config; install recommended extensions
+
 ## Build
 
+### Command line
+
 ```
-mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Debug
-make -j$(sysctl -n hw.ncpu)
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --parallel $(sysctl -n hw.ncpu)
 ```
 
-The system has Qt5 (via Anaconda). The CMakeLists supports both Qt5 and Qt6 — new source files must be added to `EXTRA_SOURCES` (used by both branches).
+### VSCode
+
+- **Build**: `⇧⌘B` (or Terminal → Run Build Task) runs the default "CMake: Build" task
+- **Debug**: `F5` — launches the app under LLDB, builds first if needed
+- **Compile commands**: `build/compile_commands.json` is symlinked to project root for IntelliSense
+
+CMake configure is wired as task "CMake: Configure" — use `⇧⌘P` → Tasks: Run Task → CMake: Configure after changing CMakeLists.txt.
 
 ## Architecture
 

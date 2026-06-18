@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug CollegeTracker",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/CollegeTracker.app/Contents/MacOS/CollegeTracker",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "CMake: Build",
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "QT_QPA_PLATFORM_PLUGIN_PATH": "/Users/andydelaptop/Qt/6.11.0/macos/plugins"
+      }
+    },
+    {
+      "name": "Run CollegeTracker (no debug)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/CollegeTracker.app/Contents/MacOS/CollegeTracker",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "CMake: Build",
+      "initCommands": ["process launch --stop-at-entry=false"],
+      "env": {
+        "QT_QPA_PLATFORM_PLUGIN_PATH": "/Users/andydelaptop/Qt/6.11.0/macos/plugins"
+      }
+    }
+  ]
+}
