@@ -27,6 +27,10 @@ public:
     QString getGender() const;
     QString getMajor() const;
     QString getSchool() const;
+    QString getPhone() const;
+    QString getEmail() const;
+    QString getJobTarget() const;
+    QString getWebsite() const;
 
 private:
     int m_id = -1;
@@ -35,6 +39,10 @@ private:
     QString m_gender;
     QString m_major;
     QString m_school;
+    QString m_phone;
+    QString m_email;
+    QString m_jobTarget;
+    QString m_website;
 
     User();
     ~User();

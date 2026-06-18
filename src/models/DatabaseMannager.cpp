@@ -64,7 +64,11 @@ bool DatabaseManager::createTables() {
                        "grade TEXT DEFAULT '', "
                        "gender TEXT DEFAULT '', "
                        "major TEXT DEFAULT '', "
-                       "school TEXT DEFAULT ''"
+                       "school TEXT DEFAULT '', "
+                       "phone TEXT DEFAULT '', "
+                       "email TEXT DEFAULT '', "
+                       "job_target TEXT DEFAULT '', "
+                       "website TEXT DEFAULT ''"
                        ");";
     if (!query.exec(sqlUsers)) success = false;
 
@@ -194,6 +198,10 @@ void DatabaseManager::migrateTables() {
     ensureColumn("users", "gender", "TEXT DEFAULT ''");
     ensureColumn("users", "major", "TEXT DEFAULT ''");
     ensureColumn("users", "school", "TEXT DEFAULT ''");
+    ensureColumn("users", "phone", "TEXT DEFAULT ''");
+    ensureColumn("users", "email", "TEXT DEFAULT ''");
+    ensureColumn("users", "job_target", "TEXT DEFAULT ''");
+    ensureColumn("users", "website", "TEXT DEFAULT ''");
 
     ensureColumn("courses", "user_id", "INTEGER NOT NULL DEFAULT 1");
     ensureColumn("courses", "gpa", "REAL DEFAULT 0");
@@ -263,13 +271,22 @@ void DatabaseManager::migrateTables() {
 }
 
 
-bool DatabaseManager::updateUserInfo(int userId, const QString &grade, const QString &gender, const QString &major, const QString &school) {
+bool DatabaseManager::updateUserInfo(int userId, const QString &grade, const QString &gender,
+                                     const QString &major, const QString &school,
+                                     const QString &phone, const QString &email,
+                                     const QString &jobTarget, const QString &website) {
     QSqlQuery query;
-    query.prepare("UPDATE users SET grade = :grade, gender = :gender, major = :major, school = :school WHERE id = :id");
+    query.prepare("UPDATE users SET grade = :grade, gender = :gender, major = :major, "
+                  "school = :school, phone = :phone, email = :email, "
+                  "job_target = :job_target, website = :website WHERE id = :id");
     query.bindValue(":grade", grade);
     query.bindValue(":gender", gender);
     query.bindValue(":major", major);
     query.bindValue(":school", school);
+    query.bindValue(":phone", phone);
+    query.bindValue(":email", email);
+    query.bindValue(":job_target", jobTarget);
+    query.bindValue(":website", website);
     query.bindValue(":id", userId);
     return query.exec();
 }
@@ -382,7 +399,8 @@ int DatabaseManager::loginUser(const QString &username, const QString &password)
 QVariantMap DatabaseManager::getUserInfo(int userId) {
     QVariantMap info;
     QSqlQuery query;
-    query.prepare("SELECT id, username, grade, gender, major, school FROM users WHERE id = :id");
+    query.prepare("SELECT id, username, grade, gender, major, school, "
+                  "phone, email, job_target, website FROM users WHERE id = :id");
     query.bindValue(":id", userId);
 
     if (query.exec() && query.next()) {
@@ -392,6 +410,10 @@ QVariantMap DatabaseManager::getUserInfo(int userId) {
         info["gender"] = query.value(3).toString();
         info["major"] = query.value(4).toString();
         info["school"] = query.value(5).toString();
+        info["phone"] = query.value(6).toString();
+        info["email"] = query.value(7).toString();
+        info["job_target"] = query.value(8).toString();
+        info["website"] = query.value(9).toString();
     }
     return info;
 }

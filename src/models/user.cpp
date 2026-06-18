@@ -14,6 +14,10 @@ void User::login(int userId) {
     m_gender = info["gender"].toString();
     m_major = info["major"].toString();
     m_school = info["school"].toString();
+    m_phone = info["phone"].toString();
+    m_email = info["email"].toString();
+    m_jobTarget = info["job_target"].toString();
+    m_website = info["website"].toString();
 }
 
 
@@ -27,6 +31,10 @@ void User::refresh() {
     m_gender = info["gender"].toString();
     m_major = info["major"].toString();
     m_school = info["school"].toString();
+    m_phone = info["phone"].toString();
+    m_email = info["email"].toString();
+    m_jobTarget = info["job_target"].toString();
+    m_website = info["website"].toString();
 }
 
 void User::logout() {
@@ -36,6 +44,10 @@ void User::logout() {
     m_gender.clear();
     m_major.clear();
     m_school.clear();
+    m_phone.clear();
+    m_email.clear();
+    m_jobTarget.clear();
+    m_website.clear();
 }
 
 bool User::isLoggedIn() const {
@@ -48,3 +60,7 @@ QString User::getGrade() const { return m_grade; }
 QString User::getGender() const { return m_gender; }
 QString User::getMajor() const { return m_major; }
 QString User::getSchool() const { return m_school; }
+QString User::getPhone() const { return m_phone; }
+QString User::getEmail() const { return m_email; }
+QString User::getJobTarget() const { return m_jobTarget; }
+QString User::getWebsite() const { return m_website; }
