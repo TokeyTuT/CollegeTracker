@@ -30,7 +30,10 @@ public:
                       const QString &grade, const QString &gender, const QString &major, const QString &school);
     int loginUser(const QString &username, const QString &password); // 返回 user id，-1 表示失败
     QVariantMap getUserInfo(int userId);
-    bool updateUserInfo(int userId, const QString &grade, const QString &gender, const QString &major, const QString &school);
+    bool updateUserInfo(int userId, const QString &grade, const QString &gender,
+                        const QString &major, const QString &school,
+                        const QString &phone, const QString &email,
+                        const QString &jobTarget, const QString &website);
 
     // 简历基本资料（每个用户一份，updateResumeProfile 使用 upsert）
     QVariantMap getResumeProfile(int userId);

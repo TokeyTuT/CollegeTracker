@@ -1559,7 +1559,7 @@ void MainWindow::openEditProfileDialog() {
 
     QDialog dialog(this);
     dialog.setWindowTitle("修改个人信息");
-    dialog.setMinimumWidth(420);
+    dialog.setMinimumWidth(480);
 
     auto *layout = new QVBoxLayout(&dialog);
     layout->setContentsMargins(26, 24, 26, 22);
@@ -1569,8 +1569,7 @@ void MainWindow::openEditProfileDialog() {
     title->setStyleSheet("font-size:22px; font-weight:900; color:#0F172A;");
     layout->addWidget(title);
 
-    auto *hint = new QLabel("用户名暂不修改，学校、年级、性别和专业可以随时更新"
-                            "。保存后左上角信息会立即刷新。");
+    auto *hint = new QLabel("用户名暂不修改。保存后左上角信息会立即刷新。");
     hint->setWordWrap(true);
     hint->setStyleSheet("color:#64748B; font-size:13px; font-weight:700;");
     layout->addWidget(hint);
@@ -1603,6 +1602,23 @@ void MainWindow::openEditProfileDialog() {
     form->addRow("年级：", gradeBox);
     form->addRow("性别：", genderBox);
     form->addRow("专业：", majorEdit);
+
+    auto *phoneEdit = new QLineEdit(user.getPhone(), &dialog);
+    phoneEdit->setPlaceholderText("例如：13800138000");
+
+    auto *emailEdit = new QLineEdit(user.getEmail(), &dialog);
+    emailEdit->setPlaceholderText("例如：zhangsan@example.com");
+
+    auto *jobTargetEdit = new QLineEdit(user.getJobTarget(), &dialog);
+    jobTargetEdit->setPlaceholderText("例如：后端开发工程师");
+
+    auto *websiteEdit = new QLineEdit(user.getWebsite(), &dialog);
+    websiteEdit->setPlaceholderText("例如：https://github.com/zhangsan");
+
+    form->addRow("电话：", phoneEdit);
+    form->addRow("邮箱：", emailEdit);
+    form->addRow("求职方向：", jobTargetEdit);
+    form->addRow("个人网站：", websiteEdit);
     layout->addLayout(form);
 
     auto *buttons = new QDialogButtonBox(
@@ -1623,6 +1639,10 @@ void MainWindow::openEditProfileDialog() {
         gender.clear();
     QString major = majorEdit->text().trimmed();
     QString school = schoolEdit->text().trimmed();
+    QString phone = phoneEdit->text().trimmed();
+    QString email = emailEdit->text().trimmed();
+    QString jobTarget = jobTargetEdit->text().trimmed();
+    QString website = websiteEdit->text().trimmed();
 
     if (school.isEmpty() || major.isEmpty()) {
         QMessageBox::warning(this, "提示", "学校和专业不能为空");
@@ -1630,7 +1650,9 @@ void MainWindow::openEditProfileDialog() {
     }
 
     if (DatabaseManager::getInstance().updateUserInfo(user.getId(), grade,
-                                                      gender, major, school)) {
+                                                      gender, major, school,
+                                                      phone, email,
+                                                      jobTarget, website)) {
         user.refresh();
         updateSidebarUserInfo();
         QMessageBox::information(this, "修改成功", "个人信息已经更新");
