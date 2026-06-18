@@ -3,6 +3,7 @@
 
 #include "AddCourseDialog.h"
 #include "DatabaseMannager.h"
+#include "Theme.h"
 #include "User.h"
 
 #include <QComboBox>
@@ -29,6 +30,7 @@
 #include <QSqlQuery>
 #include <QStyle>
 #include <QTextStream>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QVector>
 #include <QtMath>
@@ -52,6 +54,17 @@ MainWindow::~MainWindow() {
     delete expModel;
     delete awardModel;
     delete ui;
+}
+
+void MainWindow::showEvent(QShowEvent *event) {
+    QMainWindow::showEvent(event);
+
+    // 等窗口完成首次布局后再绘制首页图表。构造阶段控件尺寸尚未稳定，
+    // 会导致登录后首次显示的折线图仍使用初始化时的临时尺寸。
+    QTimer::singleShot(0, this, [this]() {
+        if (ui->stackedWidget->currentIndex() == 0)
+            updateHomePageStats();
+    });
 }
 
 void MainWindow::applyModernStyle() {
@@ -143,54 +156,60 @@ void MainWindow::applyModernStyle() {
     csvHelpExpBtn->setCursor(Qt::PointingHandCursor);
     csvHelpExpBtn->setToolTip("查看 CSV 格式说明");
 
-    // 只兼容浅色模式：不用系统深色调色板，所有控件颜色都明确写死。
-    const QString qss = R"(
+    // ======================================================================
+    // 统一 QSS 样式表 — 基于 Theme Token 的语义化设计系统
+    // 主色：Teal (#0D9488) → 专业教育感；强调色：Cyan (#06B6D4) → 交互反馈
+    // 排版基准 16px (Major Third 1.25)
+    // ======================================================================
+    using namespace Theme;
+
+    const QString qss = QStringLiteral(R"(
         * {
-            font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial;
-            font-size: 14px;
-            color: #171A1F;
+            font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+            font-size: %1px;
+            color: %2;
         }
-        QMainWindow, QWidget#centralwidget {
-            background: #E7EBF0;
-        }
+        QMainWindow, QWidget#centralwidget { background: %3; }
+
+        /* ===== 侧边栏 ===== */
         QFrame#sidebarFrame {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 #F6FAFD,
-                        stop:0.48 #EEF5FA,
-                        stop:1 #E8F0F7);
-            border-right: 1px solid rgba(148, 163, 184, 0.24);
+                        stop:0 #F8FCFD, stop:0.48 #F1F8FA, stop:1 #EAF4F6);
+            border-right: 1px solid rgba(148,163,184,0.22);
         }
+
+        /* ===== 用户信息卡片 ===== */
         QWidget#userProfileWidget {
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                        stop:0 rgba(255,255,255,0.88),
-                        stop:0.54 rgba(244,249,253,0.80),
-                        stop:1 rgba(232,241,249,0.72));
-            border: 1px solid rgba(190, 211, 228, 0.68);
-            border-radius: 30px;
+                        stop:0 rgba(255,255,255,0.90),
+                        stop:0.54 rgba(243,250,249,0.82),
+                        stop:1 rgba(235,245,243,0.72));
+            border: 1px solid rgba(153,200,188,0.52);
+            border-radius: %4px;
         }
         QLabel#userNameLbl {
-            color: #172033;
-            font-size: 23px;
-            font-weight: 900;
-            letter-spacing: 0.35px;
+            color: #0F172A;
+            font-size: %5px;
+            font-weight: %6;
+            letter-spacing: 0.3px;
             qproperty-alignment: AlignCenter;
             background: transparent;
             border: none;
         }
         QLabel#detailLbl {
-            color: #2563EB;
-            font-size: 14px;
-            font-weight: 850;
+            color: %7;
+            font-size: %8px;
+            font-weight: %9;
             qproperty-alignment: AlignCenter;
-            background: rgba(219, 234, 254, 0.66);
-            border: 1px solid rgba(147, 197, 253, 0.54);
-            border-radius: 14px;
+            background: %10;
+            border: 1px solid rgba(13,148,136,0.22);
+            border-radius: %11px;
             padding: 3px 12px;
         }
         QLabel#majorLbl {
-            color: #64748B;
-            font-size: 12px;
-            font-weight: 780;
+            color: %12;
+            font-size: %13px;
+            font-weight: %14;
             qproperty-alignment: AlignCenter;
             background: transparent;
             border: none;
@@ -198,298 +217,301 @@ void MainWindow::applyModernStyle() {
             line-height: 18px;
         }
         QPushButton#editProfileBtn {
-            min-height: 28px;
-            max-height: 28px;
-            border-radius: 14px;
-            border: 1px solid rgba(14, 165, 233, 0.38);
-            background: rgba(255, 255, 255, 0.62);
-            color: #0F766E;
-            font-size: 12px;
-            font-weight: 850;
+            min-height: 30px; max-height: 30px;
+            border-radius: %11px;
+            border: 1px solid rgba(13,148,136,0.34);
+            background: rgba(255,255,255,0.70);
+            color: %7;
+            font-size: %13px;
+            font-weight: %9;
             text-align: center;
             padding: 0 12px;
         }
         QPushButton#editProfileBtn:hover {
-            background: rgba(224, 242, 254, 0.82);
-            border: 1px solid rgba(14, 165, 233, 0.68);
-            color: #075985;
+            background: %10;
+            border: 1px solid rgba(13,148,136,0.60);
+            color: #0B5E57;
         }
+
+        /* ===== 主内容区 ===== */
         QFrame#mainContentFrame {
-            background: #F8FAFC;
+            background: %15;
             border: none;
-            border-left: 1px solid rgba(148, 163, 184, 0.28);
+            border-left: 1px solid rgba(148,163,184,0.22);
         }
         QLabel#currentPageLbl {
-            color: #111827;
-            font-size: 28px;
-            font-weight: 900;
-            letter-spacing: 0.4px;
+            color: %2;
+            font-size: %5px;
+            font-weight: %6;
+            letter-spacing: 0.35px;
             qproperty-alignment: AlignLeft | AlignVCenter;
             background: transparent;
-            border-left: 6px solid #00B7C7;
+            border-left: 6px solid %7;
             padding-left: 14px;
         }
 
-        /* 左侧导航：胶囊按钮 + 细边框，整体和用户信息卡片自然衔接 */
+        /* ===== 侧边栏导航按钮 ===== */
         #sidebarFrame QPushButton {
-            min-height: 58px;
-            max-height: 58px;
-            border: 1px solid rgba(171, 190, 207, 0.58);
-            border-radius: 29px;
-            padding-left: 24px;
-            padding-right: 18px;
+            min-height: 56px; max-height: 56px;
+            border: 1px solid rgba(148,163,184,0.42);
+            border-radius: %11px;
+            padding-left: 22px; padding-right: 16px;
             text-align: left;
-            color: #334155;
-            background: rgba(255, 255, 255, 0.46);
-            font-size: 15px;
-            font-weight: 850;
-            letter-spacing: 0.25px;
+            color: %12;
+            background: rgba(255,255,255,0.50);
+            font-size: %16px;
+            font-weight: %9;
+            letter-spacing: 0.2px;
         }
         #sidebarFrame QPushButton:hover {
-            background: rgba(255, 255, 255, 0.76);
-            border: 1px solid rgba(56, 189, 248, 0.55);
-            color: #0F172A;
+            background: rgba(255,255,255,0.80);
+            border: 1px solid rgba(6,182,212,0.50);
+            color: %2;
         }
         #sidebarFrame QPushButton:pressed {
             background: rgba(226,232,240,0.78);
-            border: 1px solid rgba(14, 165, 233, 0.46);
+            border: 1px solid rgba(13,148,136,0.42);
         }
         #sidebarFrame QPushButton[active="true"] {
             background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                        stop:0 #2563EB,
-                        stop:0.56 #0EA5E9,
-                        stop:1 #14B8A6);
+                        stop:0 #0D9488, stop:0.56 #0EA5E9, stop:1 #06B6D4);
             color: #FFFFFF;
-            border: 1px solid rgba(255, 255, 255, 0.72);
-            border-radius: 29px;
-        }
-        #userProfileWidget QPushButton#editProfileBtn {
-            min-height: 28px;
-            max-height: 28px;
-            border-radius: 14px;
-            border: 1px solid rgba(14, 165, 233, 0.38);
-            background: rgba(255, 255, 255, 0.66);
-            color: #0F766E;
-            font-size: 12px;
-            font-weight: 850;
-            text-align: center;
-            padding: 0 12px;
-        }
-        #userProfileWidget QPushButton#editProfileBtn:hover {
-            background: rgba(224, 242, 254, 0.86);
-            border: 1px solid rgba(14, 165, 233, 0.68);
-            color: #075985;
+            border: 1px solid rgba(255,255,255,0.70);
+            border-radius: %11px;
         }
 
+        /* ===== 通用按钮 ===== */
         QPushButton {
             min-height: 36px;
-            border: 1px solid #111827;
-            border-radius: 4px;
+            border: 1px solid %17;
+            border-radius: %18px;
             padding: 0 20px;
             color: #FFFFFF;
-            background: #171A1F;
-            font-weight: 900;
+            background: %17;
+            font-weight: %9;
             letter-spacing: 0.2px;
         }
         QPushButton:hover {
             background: #252B34;
-            border-color: #00B7C7;
+            border-color: %19;
         }
         QPushButton:pressed { background: #05070A; }
         QPushButton:disabled { background: #CBD0D7; border-color: #CBD0D7; color: #FFFFFF; }
+
+        /* CSV 帮助按钮 */
         QPushButton#csvHelpCourseBtn, QPushButton#csvHelpExpBtn, QPushButton#homeCsvHelpBtn {
             min-height: 38px; max-height: 40px;
             min-width: 38px; max-width: 40px;
             border-radius: 20px;
-            background: #FFFFFF;
-            color: #64748B;
-            border: 1px solid #D2D8E1;
+            background: %20;
+            color: %12;
+            border: 1px solid %21;
             font-size: 18px;
-            font-weight: 900;
+            font-weight: %9;
             padding: 0px;
         }
         QPushButton#csvHelpCourseBtn:hover, QPushButton#csvHelpExpBtn:hover, QPushButton#homeCsvHelpBtn:hover {
-            background: #EFF6FF;
-            color: #2563EB;
-            border-color: #2563EB;
+            background: %10;
+            color: %7;
+            border-color: %7;
         }
+
+        /* 首页一键导入导出 */
         QPushButton#homeImportAllBtn, QPushButton#homeExportAllBtn {
             min-height: 42px; max-height: 42px;
             min-width: 172px;
-            font-size: 15px;
-            font-weight: 900;
-            border-radius: 6px;
+            font-size: %16px;
+            font-weight: %9;
+            border-radius: %18px;
         }
         QPushButton#homeImportAllBtn {
-            background: #FFFFFF;
-            color: #171A1F;
-            border: 1px solid #171A1F;
+            background: %20; color: %17; border: 1px solid %17;
         }
         QPushButton#homeImportAllBtn:hover {
-            background: #171A1F;
-            color: #FFFFFF;
+            background: %17; color: #FFFFFF;
         }
         QPushButton#homeExportAllBtn {
-            background: #171A1F;
-            color: #FFFFFF;
-            border: 1px solid #171A1F;
+            background: %7; color: #FFFFFF; border: 1px solid %7;
         }
         QPushButton#homeExportAllBtn:hover {
-            background: #252B34;
-            border-color: #00B7C7;
+            background: #0B5E57; border-color: #0B5E57;
         }
+
+        /* 删除按钮 */
         QPushButton#deleteCourseBtn, QPushButton#DelExpBtn, QPushButton#delAwardBtn {
-            background: #FFFFFF;
-            color: #D62828;
-            border: 1px solid #D62828;
+            background: %20; color: %22; border: 1px solid %22;
         }
         QPushButton#deleteCourseBtn:hover, QPushButton#DelExpBtn:hover, QPushButton#delAwardBtn:hover {
-            background: #D62828;
-            color: #FFFFFF;
+            background: %22; color: #FFFFFF;
         }
+
+        /* Stacked 页面透明 */
         QStackedWidget, QWidget#homePage, QWidget#coursePage, QWidget#expPage, QWidget#awardPage, QWidget#profilePage {
             background: transparent;
         }
+
+        /* ===== 表单区域 Card ===== */
         QFrame#addExpFrame, QFrame#addAwardFrame {
-            background: #FFFFFF;
-            border: 1px solid #D2D8E1;
-            border-top: 4px solid #171A1F;
-            border-radius: 6px;
+            background: %20;
+            border: 1px solid %21;
+            border-top: 4px solid %7;
+            border-radius: %18px;
         }
         QLabel#addExpTitle {
-            color: #111827;
-            font-size: 20px;
-            font-weight: 900;
+            color: %2;
+            font-size: %36px;
+            font-weight: %6;
             background: transparent;
             qproperty-alignment: AlignLeft | AlignVCenter;
         }
+
+        /* ===== 标签 ===== */
         QLabel {
-            color: #303846;
+            color: %23;
             background: transparent;
-            font-weight: 700;
+            font-weight: %14;
         }
-        QLineEdit, QComboBox, QDateEdit {
+
+        /* ===== 输入控件 ===== */
+        QLineEdit, QComboBox, QDateEdit, QDoubleSpinBox {
             min-height: 36px;
-            border: 1px solid #B9C1CE;
-            border-radius: 4px;
+            border: 1px solid %21;
+            border-radius: %18px;
             padding: 0 12px;
-            background: #FFFFFF;
-            color: #111827;
-            selection-background-color: #00B7C7;
+            background: %20;
+            color: %2;
+            selection-background-color: %7;
             selection-color: #FFFFFF;
         }
-        QLineEdit:hover, QComboBox:hover, QDateEdit:hover {
-            border: 1px solid #00B7C7;
+        QLineEdit:hover, QComboBox:hover, QDateEdit:hover, QDoubleSpinBox:hover {
+            border: 1px solid %19;
             background: #FBFCFD;
         }
-        QLineEdit:focus, QComboBox:focus, QDateEdit:focus {
-            border: 2px solid #00B7C7;
-            background: #FFFFFF;
+        QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QDoubleSpinBox:focus {
+            border: 2px solid %7;
+            background: %20;
         }
-        QComboBox::drop-down, QDateEdit::drop-down {
-            border: none;
-            width: 28px;
-        }
+        QComboBox::drop-down, QDateEdit::drop-down { border: none; width: 28px; }
         QComboBox QAbstractItemView {
-            background: #FFFFFF;
-            border: 1px solid #B9C1CE;
-            selection-background-color: #171A1F;
+            background: %20;
+            border: 1px solid %21;
+            selection-background-color: %17;
             selection-color: #FFFFFF;
             outline: none;
         }
+
+        /* ===== 表格 ===== */
         QTableView {
-            background: #FFFFFF;
-            alternate-background-color: #F4F6F8;
-            border: 1px solid #D2D8E1;
-            border-top: 4px solid #171A1F;
-            border-radius: 6px;
+            background: %20;
+            alternate-background-color: %24;
+            border: 1px solid %21;
+            border-top: 4px solid %17;
+            border-radius: %18px;
             gridline-color: transparent;
-            selection-background-color: #DFFBFF;
-            selection-color: #111827;
-            padding: 6px;
+            selection-background-color: %25;
+            selection-color: %2;
+            padding: 4px;
             outline: none;
         }
         QTableView::item {
-            min-height: 36px;
+            min-height: 38px;
             padding: 8px;
             border-bottom: 1px solid #E8ECF1;
         }
         QHeaderView::section {
-            background: #171A1F;
+            background: %17;
             color: #FFFFFF;
             border: none;
             border-right: 1px solid #343B46;
             padding: 12px 10px;
-            font-size: 13px;
-            font-weight: 900;
-            letter-spacing: 0.3px;
+            font-size: %13px;
+            font-weight: %9;
+            letter-spacing: 0.25px;
         }
         QTableCornerButton::section {
-            background: #171A1F;
-            border: none;
+            background: %17; border: none;
         }
+
+        /* ===== 滚动条 ===== */
         QScrollBar:vertical {
-            background: transparent;
-            width: 10px;
+            background: transparent; width: 10px;
             margin: 6px 2px 6px 0px;
         }
         QScrollBar::handle:vertical {
-            background: #9AA4B2;
-            border-radius: 3px;
-            min-height: 30px;
+            background: #9AA4B2; border-radius: 3px; min-height: 30px;
         }
-        QScrollBar::handle:vertical:hover { background: #00B7C7; }
+        QScrollBar::handle:vertical:hover { background: %19; }
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
+
+        /* ===== 首页卡片 ===== */
         QFrame#homeChartCard, QFrame#homeStatCard {
-            background: rgba(255, 255, 255, 0.92);
-            border: 1px solid rgba(203, 213, 225, 0.88);
-            border-radius: 20px;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid rgba(203,213,225,0.88);
+            border-radius: %26px;
         }
-        QFrame#homeChartCard {
-            border-left: 5px solid #0EA5E9;
-        }
+        QFrame#homeChartCard { border-left: 5px solid %19; }
         QLabel#homeCardTitle {
-            color: #0F172A;
-            font-size: 20px;
-            font-weight: 900;
+            color: %2; font-size: %36px; font-weight: %6;
             background: transparent;
         }
-        QLabel#homeChartLabel {
-            background: transparent;
-            border: none;
-        }
+        QLabel#homeChartLabel { background: transparent; border: none; }
         QLabel#homeStatTitle {
-            color: #64748B;
-            font-size: 13px;
-            font-weight: 850;
+            color: %12; font-size: %13px; font-weight: %9;
             background: transparent;
         }
         QLabel#homeStatValue {
-            color: #0F172A;
-            font-size: 30px;
-            font-weight: 900;
+            color: %2; font-size: %27px; font-weight: %6;
             background: transparent;
         }
         QLabel#homeStatSub {
-            color: #94A3B8;
-            font-size: 12px;
-            font-weight: 750;
+            color: %28; font-size: %13px; font-weight: %14;
             background: transparent;
         }
+
+        /* ===== 统计标签 ===== */
         QLabel#labelStats {
-            background: #FFFFFF;
-            border: 1px solid #D2D8E1;
-            border-left: 5px solid #00B7C7;
-            border-radius: 4px;
-            color: #111827;
-            font-size: 15px;
-            font-weight: 900;
+            background: %20;
+            border: 1px solid %21;
+            border-left: 5px solid %7;
+            border-radius: %18px;
+            color: %2;
+            font-size: %16px;
+            font-weight: %9;
             qproperty-alignment: AlignCenter;
         }
-        QMessageBox, QDialog {
-            background: #FFFFFF;
-        }
-    )";
+
+        /* ===== 对话框 ===== */
+        QMessageBox, QDialog { background: %20; }
+    )"
+    ).arg(TypeScale::body)          // %1
+     .arg(Color::onSurface)         // %2
+     .arg(Color::background)        // %3
+     .arg(Radius::xl)               // %4
+     .arg(TypeScale::h1)            // %5
+     .arg(FontWeight::heavy)        // %6
+     .arg(Color::primary)           // %7
+     .arg(TypeScale::caption)       // %8
+     .arg(FontWeight::bold)         // %9
+     .arg(Color::primaryBg)         // %10
+     .arg(Radius::lg)               // %11
+     .arg(Color::onSurfaceVar)      // %12
+     .arg(TypeScale::caption)       // %13
+     .arg(FontWeight::medium)       // %14
+     .arg(Color::surfaceVariant)    // %15
+     .arg(TypeScale::body)          // %16 (repeated)
+     .arg(Color::headerBg)          // %17
+     .arg(Radius::sm)               // %18
+     .arg(Color::accent)            // %19
+     .arg(Color::surface)           // %20
+     .arg(Color::outline)           // %21
+     .arg(Color::error)             // %22
+     .arg(Color::onSurfaceVar)      // %23 (repeated)
+     .arg(Color::background)        // %24 (alternate bg)
+     .arg(Color::accentLight)       // %25
+     .arg(Radius::lg)               // %26 (repeated for cards)
+     .arg(TypeScale::display)       // %27
+     .arg(Color::onSurfaceMuted);   // %28
+
     setStyleSheet(qss);
 
     QList<QPushButton *> buttons = findChildren<QPushButton *>();
@@ -517,21 +539,21 @@ void MainWindow::buildHomePage() {
 
     auto *mainLayout = new QVBoxLayout(ui->homePage);
     mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->setSpacing(16);
+    mainLayout->setSpacing(14);
 
     auto makeCard = [](const QString &title, const QString &objectName) {
         auto *card = new QFrame;
         card->setObjectName(objectName);
         card->setFrameShape(QFrame::NoFrame);
         auto *shadow = new QGraphicsDropShadowEffect(card);
-        shadow->setBlurRadius(28);
-        shadow->setOffset(0, 10);
-        shadow->setColor(QColor(40, 62, 84, 18));
+        shadow->setBlurRadius(24);
+        shadow->setOffset(0, 8);
+        shadow->setColor(QColor(40, 62, 84, 16));
         card->setGraphicsEffect(shadow);
 
         auto *layout = new QVBoxLayout(card);
-        layout->setContentsMargins(22, 18, 22, 18);
-        layout->setSpacing(10);
+        layout->setContentsMargins(22, 16, 22, 18);
+        layout->setSpacing(8);
         auto *titleLbl = new QLabel(title);
         titleLbl->setObjectName("homeCardTitle");
         layout->addWidget(titleLbl);
@@ -539,28 +561,51 @@ void MainWindow::buildHomePage() {
     };
 
     QFrame *chartCard = makeCard("学期平均 GPA 走势", "homeChartCard");
-    chartCard->setMinimumHeight(330);
+    chartCard->setMinimumHeight(292);
+    chartCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     homeChartLabel = new QLabel;
     homeChartLabel->setObjectName("homeChartLabel");
-    homeChartLabel->setMinimumHeight(260);
+    homeChartLabel->setMinimumSize(520, 220);
+    homeChartLabel->setAlignment(Qt::AlignCenter);
     homeChartLabel->setSizePolicy(QSizePolicy::Expanding,
                                   QSizePolicy::Expanding);
     chartCard->layout()->addWidget(homeChartLabel);
 
-    auto *bottomLayout = new QGridLayout;
-    bottomLayout->setContentsMargins(0, 0, 0, 0);
-    bottomLayout->setHorizontalSpacing(14);
-    bottomLayout->setVerticalSpacing(14);
+    auto *metricsPanel = new QFrame;
+    metricsPanel->setObjectName("homeMetricsPanel");
+    metricsPanel->setFixedHeight(126);
+    auto *metricsLayout = new QVBoxLayout(metricsPanel);
+    metricsLayout->setContentsMargins(0, 0, 0, 0);
+    metricsLayout->setSpacing(7);
+
+    auto *metricsTitle = new QLabel("学习档案快照");
+    metricsTitle->setObjectName("homeMetricsTitle");
+    auto *metricsSub = new QLabel("课程、实践与成果概览");
+    metricsSub->setObjectName("homeMetricsSub");
+    auto *metricsHeader = new QHBoxLayout;
+    metricsHeader->setContentsMargins(2, 0, 2, 0);
+    metricsHeader->setSpacing(10);
+    metricsHeader->addWidget(metricsTitle);
+    metricsHeader->addWidget(metricsSub);
+    metricsHeader->addStretch();
+    metricsLayout->addLayout(metricsHeader);
+
+    auto *statsLayout = new QGridLayout;
+    statsLayout->setContentsMargins(0, 0, 0, 0);
+    statsLayout->setHorizontalSpacing(8);
+    statsLayout->setVerticalSpacing(0);
 
     auto makeStatCard = [](const QString &title, const QString &subTitle,
-                           QLabel **valueLabel, const QString &objectName) {
+                           QLabel **valueLabel, const QString &tone) {
         auto *card = new QFrame;
-        card->setObjectName(objectName);
+        card->setObjectName("homeStatCard");
+        card->setProperty("tone", tone);
         card->setFrameShape(QFrame::NoFrame);
-        card->setMinimumHeight(112);
+        card->setMinimumHeight(92);
+        card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         auto *layout = new QVBoxLayout(card);
-        layout->setContentsMargins(18, 14, 18, 14);
-        layout->setSpacing(4);
+        layout->setContentsMargins(12, 8, 10, 7);
+        layout->setSpacing(1);
         auto *titleLbl = new QLabel(title);
         titleLbl->setObjectName("homeStatTitle");
         *valueLabel = new QLabel("0");
@@ -573,65 +618,66 @@ void MainWindow::buildHomePage() {
         return card;
     };
 
-    bottomLayout->addWidget(makeStatCard("课程数量", "已录入课程",
-                                         &homeCourseCountLbl, "homeStatCard"),
-                            0, 0);
-    bottomLayout->addWidget(
-        makeStatCard("平均 GPA", "按学分加权", &homeGpaLbl, "homeStatCard"), 0,
-        1);
-    bottomLayout->addWidget(makeStatCard("竞赛经历", "课外活动统计",
-                                         &homeCompetitionCountLbl,
-                                         "homeStatCard"),
-                            0, 2);
-    bottomLayout->addWidget(makeStatCard("实习经历", "实践经历统计",
-                                         &homeInternshipCountLbl,
-                                         "homeStatCard"),
-                            0, 3);
-    bottomLayout->addWidget(makeStatCard("项目经历", "项目/科研统计",
-                                         &homeProjectCountLbl, "homeStatCard"),
-                            1, 0);
-    bottomLayout->addWidget(makeStatCard("个人荣誉", "奖学金与荣誉统计",
-                                         &homeAwardCountLbl, "homeStatCard"),
-                            1, 1);
-    bottomLayout->addItem(
-        new QSpacerItem(10, 10, QSizePolicy::Expanding, QSizePolicy::Minimum),
-        1, 2, 1, 2);
+    statsLayout->addWidget(makeStatCard("已修课程", "修读课程总数",
+                                        &homeCourseCountLbl, "teal"), 0, 0);
+    statsLayout->addWidget(makeStatCard("GPA", "加权 GPA",
+                                        &homeGpaLbl, "cyan"), 0, 1);
+    statsLayout->addWidget(makeStatCard("竞赛", "课外活动",
+                                        &homeCompetitionCountLbl, "amber"), 0, 2);
+    statsLayout->addWidget(makeStatCard("实习", "实践经历",
+                                        &homeInternshipCountLbl, "blue"), 0, 3);
+    statsLayout->addWidget(makeStatCard("项目", "项目 / 科研",
+                                        &homeProjectCountLbl, "violet"), 0, 4);
+    statsLayout->addWidget(makeStatCard("荣誉", "奖项成果",
+                                        &homeAwardCountLbl, "rose"), 0, 5);
+    for (int column = 0; column < 6; ++column)
+        statsLayout->setColumnStretch(column, 1);
+    metricsLayout->addLayout(statsLayout);
 
-    mainLayout->addWidget(chartCard);
-    mainLayout->addLayout(bottomLayout);
+    mainLayout->addWidget(chartCard, 1);
+    mainLayout->addWidget(metricsPanel);
 
     // 一键导入导出按钮栏
-    auto *csvAllLayout = new QHBoxLayout;
-    csvAllLayout->setContentsMargins(0, 4, 0, 0);
-    csvAllLayout->setSpacing(14);
+    auto *actionBar = new QFrame;
+    actionBar->setObjectName("homeActionBar");
+    actionBar->setFixedHeight(58);
+    auto *csvAllLayout = new QHBoxLayout(actionBar);
+    csvAllLayout->setContentsMargins(16, 8, 10, 8);
+    csvAllLayout->setSpacing(10);
+
+    auto *actionTextLayout = new QVBoxLayout;
+    actionTextLayout->setContentsMargins(0, 0, 0, 0);
+    actionTextLayout->setSpacing(0);
+    auto *actionTitle = new QLabel("数据管理");
+    actionTitle->setObjectName("homeActionTitle");
+    auto *actionSub = new QLabel("快速备份或迁移全部档案");
+    actionSub->setObjectName("homeActionSub");
+    actionTextLayout->addWidget(actionTitle);
+    actionTextLayout->addWidget(actionSub);
 
     homeImportAllBtn = new QPushButton("一键导入全部数据");
     homeImportAllBtn->setObjectName("homeImportAllBtn");
-    homeImportAllBtn->setMinimumHeight(42);
+    homeImportAllBtn->setFixedHeight(40);
     homeImportAllBtn->setCursor(Qt::PointingHandCursor);
 
     homeExportAllBtn = new QPushButton("一键导出全部数据");
     homeExportAllBtn->setObjectName("homeExportAllBtn");
-    homeExportAllBtn->setMinimumHeight(42);
+    homeExportAllBtn->setFixedHeight(40);
     homeExportAllBtn->setCursor(Qt::PointingHandCursor);
 
     homeCsvHelpBtn = new QPushButton("?");
     homeCsvHelpBtn->setObjectName("homeCsvHelpBtn");
-    homeCsvHelpBtn->setMinimumHeight(42);
-    homeCsvHelpBtn->setMaximumHeight(42);
-    homeCsvHelpBtn->setMinimumWidth(42);
-    homeCsvHelpBtn->setMaximumWidth(42);
+    homeCsvHelpBtn->setFixedSize(40, 40);
     homeCsvHelpBtn->setCursor(Qt::PointingHandCursor);
     homeCsvHelpBtn->setToolTip("查看一键导入导出 CSV 格式说明");
 
-    csvAllLayout->addStretch();
+    csvAllLayout->addLayout(actionTextLayout);
+    csvAllLayout->addStretch(1);
     csvAllLayout->addWidget(homeImportAllBtn);
     csvAllLayout->addWidget(homeExportAllBtn);
     csvAllLayout->addWidget(homeCsvHelpBtn);
-    csvAllLayout->addStretch();
 
-    mainLayout->addLayout(csvAllLayout);
-    mainLayout->addStretch();
+    mainLayout->addWidget(actionBar);
 }
 
 double MainWindow::scoreToGpa(double score) const {
@@ -731,17 +777,16 @@ void MainWindow::updateHomePageStats() {
     homeProjectCountLbl->setText(QString::number(projectCount));
     homeAwardCountLbl->setText(QString::number(awardCount));
 
-    const int width =
-        qMax(720, homeChartLabel->width() > 10 ? homeChartLabel->width() : 760);
-    const int height = qMax(
-        250, homeChartLabel->height() > 10 ? homeChartLabel->height() : 260);
+    // 使用标签的真实尺寸绘图，避免大尺寸 pixmap 在较窄的 QLabel 中被裁切。
+    const int width = qMax(360, homeChartLabel->width());
+    const int height = qMax(220, homeChartLabel->height());
     QPixmap pixmap(width, height);
     pixmap.fill(Qt::transparent);
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    QRectF plot(56, 22, width - 92, height - 70);
+    QRectF plot(48, 34, width - 62, height - 94);
     QPen gridPen(QColor(226, 232, 240));
     gridPen.setWidth(1);
     painter.setPen(gridPen);
@@ -780,15 +825,28 @@ void MainWindow::updateHomePageStats() {
         QPainterPath path(points.first());
         for (int i = 1; i < points.size(); ++i)
             path.lineTo(points[i]);
-        QPen linePen(QColor(14, 165, 233), 4, Qt::SolidLine, Qt::RoundCap,
+
+        QPainterPath areaPath = path;
+        areaPath.lineTo(points.last().x(), plot.bottom());
+        areaPath.lineTo(points.first().x(), plot.bottom());
+        areaPath.closeSubpath();
+        QLinearGradient areaGradient(0, plot.top(), 0, plot.bottom());
+        areaGradient.setColorAt(0, QColor(13, 148, 136, 72));
+        areaGradient.setColorAt(1, QColor(13, 148, 136, 4));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(areaGradient);
+        painter.drawPath(areaPath);
+
+        QPen linePen(QColor(13, 148, 136), 4, Qt::SolidLine, Qt::RoundCap,
                      Qt::RoundJoin);
         painter.setPen(linePen);
+        painter.setBrush(Qt::NoBrush);
         painter.drawPath(path);
     }
 
     for (const QPointF &point : points) {
-        painter.setPen(QPen(QColor(255, 255, 255), 5));
-        painter.setBrush(QColor(37, 99, 235));
+        painter.setPen(QPen(QColor(255, 255, 255), 4));
+        painter.setBrush(QColor(13, 148, 136));
         painter.drawEllipse(point, 6, 6);
     }
 
@@ -801,7 +859,7 @@ void MainWindow::updateHomePageStats() {
 
     painter.setPen(QColor(100, 116, 139));
     painter.setFont(QFont("PingFang SC", 10, QFont::DemiBold));
-    painter.drawText(QRectF(plot.left(), 0, plot.width(), 20),
+    painter.drawText(QRectF(plot.left(), 4, plot.width(), 22),
                      Qt::AlignLeft | Qt::AlignVCenter,
                      "横轴：学期    纵轴：平均 GPA");
 
