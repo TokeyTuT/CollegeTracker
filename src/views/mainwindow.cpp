@@ -29,6 +29,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSizePolicy>
+#include <QSlider>
 #include <QSpacerItem>
 #include <QSqlQuery>
 #include <QStyle>
@@ -1053,25 +1054,28 @@ void MainWindow::buildExportPage() {
     }
 
     mainLayout->addWidget(summaryCard);
-
-    // ===== 保存按钮 =====
-    saveResumeBtn = new QPushButton("保存到数据库");
-    saveResumeBtn->setObjectName("saveResumeBtn");
-    saveResumeBtn->setCursor(Qt::PointingHandCursor);
-    saveResumeBtn->setFixedHeight(44);
-    saveResumeBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background: %1; color: #FFFFFF; border: none;"
-        " border-radius: 10px; font-size: 16px; font-weight: %2;"
-        " letter-spacing: 0.5px; }"
-        "QPushButton:hover { background: %3; }"
-        "QPushButton:pressed { background: #0B5E57; }"
-    ).arg(Color::primary).arg(FontWeight::bold).arg(Color::accent));
-
-    mainLayout->addWidget(saveResumeBtn);
     mainLayout->addStretch();
 
+    // ---- 圆形裁切辅助函数 ----
+    auto makeCircularPixmap = [](const QPixmap &source, int size) {
+        QPixmap scaled = source.scaled(size, size,
+            Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        int x = (size - scaled.width()) / 2;
+        int y = (size - scaled.height()) / 2;
+        QPixmap circular(size, size);
+        circular.fill(Qt::transparent);
+        QPainter painter(&circular);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        QPainterPath path;
+        path.addEllipse(0, 0, size, size);
+        painter.setClipPath(path);
+        painter.drawPixmap(x, y, scaled);
+        painter.end();
+        return circular;
+    };
+
     // ---- 信号连接 ----
-    connect(selectPhotoBtn, &QPushButton::clicked, this, [this]() {
+    connect(selectPhotoBtn, &QPushButton::clicked, this, [this, makeCircularPixmap]() {
         QString filePath = QFileDialog::getOpenFileName(
             this, "导入个人照片", QString(),
             "JPEG 图片 (*.jpg *.jpeg);;所有文件 (*)");
@@ -1082,7 +1086,7 @@ void MainWindow::buildExportPage() {
         QString photosDir = QCoreApplication::applicationDirPath() + "/photos";
         QDir().mkpath(photosDir);
 
-        // 复制照片到应用数据目录（如已存在则先删除，QFile::copy 不会自动覆盖）
+        // 复制照片到应用数据目录
         QFileInfo fi(filePath);
         int userId = User::getInstance().getId();
         QString newName = QString("user_%1_photo.%2")
@@ -1093,33 +1097,302 @@ void MainWindow::buildExportPage() {
         if (QFile::exists(destPath))
             QFile::remove(destPath);
 
-        if (QFile::copy(filePath, destPath)) {
-            m_photoPath = "photos/" + newName;
-            QPixmap source(destPath);
-            if (!source.isNull()) {
-                // 裁切成圆形（KeepAspectRatio 确保图片完整可见）
-                int size = photoPreviewLbl->width();
-                QPixmap scaled = source.scaled(size, size,
-                    Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                // 居中放置
-                int x = (size - scaled.width()) / 2;
-                int y = (size - scaled.height()) / 2;
-
-                QPixmap circular(size, size);
-                circular.fill(Qt::transparent);
-                QPainter painter(&circular);
-                painter.setRenderHint(QPainter::Antialiasing, true);
-                QPainterPath path;
-                path.addEllipse(0, 0, size, size);
-                painter.setClipPath(path);
-                painter.drawPixmap(x, y, scaled);
-                painter.end();
-
-                photoPreviewLbl->setPixmap(circular);
-                photoPreviewLbl->setText(QString());
-            }
-        } else {
+        if (!QFile::copy(filePath, destPath)) {
             QMessageBox::warning(this, "提示", "照片复制失败，请重试");
+            return;
+        }
+
+        QPixmap source(destPath);
+        if (source.isNull())
+            return;
+
+        // ===== 手动框选头像对话框 =====
+        QDialog cropDialog(this);
+        cropDialog.setWindowTitle("框选头像 — 拖动圆形选区定位");
+        cropDialog.setMinimumSize(520, 650);
+
+        auto *cdLayout = new QVBoxLayout(&cropDialog);
+        cdLayout->setContentsMargins(24, 20, 24, 16);
+        cdLayout->setSpacing(14);
+
+        auto *cdTitle = new QLabel("拖动圆形选区，框选头像区域");
+        cdTitle->setStyleSheet("font-size:18px; font-weight:800; color:#0F172A;");
+        cdLayout->addWidget(cdTitle);
+
+        // ---- 自定义绘制控件（支持旋转）----
+        class CropCanvas : public QWidget {
+        public:
+            QPixmap sourcePixmap;       // 原始图片
+            QPixmap displayPixmap;      // 旋转后的显示用图片
+            QPointF circleCenter;
+            int circleRadius = 90;
+            int rotationAngle = 0;      // 当前旋转角度（度）
+
+            CropCanvas(QWidget *parent) : QWidget(parent) {
+                setMinimumSize(420, 420);
+                setMouseTracking(true);
+                setCursor(Qt::OpenHandCursor);
+            }
+
+            void resetCircle() {
+                circleCenter = QPointF(width() / 2.0, height() / 2.0);
+                update();
+            }
+
+            void setRotation(int degrees) {
+                rotationAngle = degrees;
+                rebuildDisplayPixmap();
+                // 旋转后重新居中圆形选区
+                circleCenter = QPointF(width() / 2.0, height() / 2.0);
+                update();
+            }
+
+        private:
+            void rebuildDisplayPixmap() {
+                if (sourcePixmap.isNull()) return;
+                if (rotationAngle == 0) {
+                    displayPixmap = sourcePixmap;
+                } else {
+                    QTransform t;
+                    t.rotate(rotationAngle);
+                    displayPixmap = sourcePixmap.transformed(t, Qt::SmoothTransformation);
+                }
+            }
+
+        protected:
+            void paintEvent(QPaintEvent *) override {
+                QPainter p(this);
+                p.setRenderHint(QPainter::Antialiasing, true);
+                p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+
+                if (displayPixmap.isNull() && !sourcePixmap.isNull())
+                    const_cast<CropCanvas*>(this)->rebuildDisplayPixmap();
+
+                // 绘制显示图片（缩放以适配控件，保持比例）
+                if (!displayPixmap.isNull()) {
+                    QSize scaled = displayPixmap.size();
+                    scaled.scale(width(), height(), Qt::KeepAspectRatio);
+                    int sx = (width() - scaled.width()) / 2;
+                    int sy = (height() - scaled.height()) / 2;
+                    p.drawPixmap(sx, sy, scaled.width(), scaled.height(), displayPixmap);
+                }
+
+                // 半透明遮罩
+                QColor dimColor(0, 0, 0, 120);
+                QPainterPath fullPath;
+                fullPath.addRect(rect());
+                QPainterPath circlePath;
+                circlePath.addEllipse(circleCenter, circleRadius, circleRadius);
+                QPainterPath outsideCircle = fullPath.subtracted(circlePath);
+                p.fillPath(outsideCircle, dimColor);
+
+                // 圆形边框（内外双线）
+                p.setPen(QPen(QColor(255, 255, 255, 220), 3));
+                p.setBrush(Qt::NoBrush);
+                p.drawEllipse(circleCenter, circleRadius, circleRadius);
+                p.setPen(QPen(QColor(13, 148, 136), 2));
+                p.drawEllipse(circleCenter, circleRadius + 1, circleRadius + 1);
+            }
+
+            void mousePressEvent(QMouseEvent *e) override {
+                if (e->button() == Qt::LeftButton) {
+                    m_dragging = true;
+                    m_dragOffset = circleCenter - e->pos();
+                    setCursor(Qt::ClosedHandCursor);
+                }
+            }
+
+            void mouseMoveEvent(QMouseEvent *e) override {
+                if (m_dragging) {
+                    QPointF newCenter = e->pos() + m_dragOffset;
+                    int r = circleRadius;
+                    newCenter.setX(qBound((double)r, newCenter.x(), (double)(width() - r)));
+                    newCenter.setY(qBound((double)r, newCenter.y(), (double)(height() - r)));
+                    circleCenter = newCenter;
+                    update();
+                }
+            }
+
+            void mouseReleaseEvent(QMouseEvent *) override {
+                m_dragging = false;
+                setCursor(Qt::OpenHandCursor);
+            }
+
+        private:
+            bool m_dragging = false;
+            QPointF m_dragOffset;
+        };
+
+        auto *canvas = new CropCanvas(&cropDialog);
+        canvas->sourcePixmap = source;
+        canvas->resetCircle();
+        cdLayout->addWidget(canvas, 1);
+
+        // 半径滑块
+        auto *radiusRow = new QHBoxLayout;
+        auto *radiusLbl = new QLabel("选区大小：");
+        radiusLbl->setStyleSheet("font-size:13px; font-weight:600; color:#334155;");
+        radiusRow->addWidget(radiusLbl);
+
+        auto *radiusSlider = new QSlider(Qt::Horizontal, &cropDialog);
+        radiusSlider->setRange(40, 160);
+        radiusSlider->setValue(90);
+        radiusSlider->setStyleSheet(
+            "QSlider::groove:horizontal { height:6px; background:#E2E8F0; border-radius:3px; }"
+            "QSlider::handle:horizontal { width:18px; height:18px; margin:-6px 0;"
+            " background:#0D9488; border-radius:9px; }");
+        radiusRow->addWidget(radiusSlider, 1);
+
+        auto *radiusVal = new QLabel("90px");
+        radiusVal->setStyleSheet("font-size:12px; font-weight:600; color:#64748B; min-width:36px;");
+        radiusRow->addWidget(radiusVal);
+
+        connect(radiusSlider, &QSlider::valueChanged, &cropDialog, [canvas, radiusVal](int v) {
+            canvas->circleRadius = v;
+            radiusVal->setText(QString("%1px").arg(v));
+            // 重新约束圆心位置
+            QPointF c = canvas->circleCenter;
+            c.setX(qBound((double)v, c.x(), (double)(canvas->width() - v)));
+            c.setY(qBound((double)v, c.y(), (double)(canvas->height() - v)));
+            canvas->circleCenter = c;
+            canvas->update();
+        });
+        cdLayout->addLayout(radiusRow);
+
+        // 旋转控制行：快捷按钮 + 滑块
+        auto *rotateRow = new QHBoxLayout;
+        auto *rotateLbl = new QLabel("旋转角度：");
+        rotateLbl->setStyleSheet("font-size:13px; font-weight:600; color:#334155;");
+        rotateRow->addWidget(rotateLbl);
+
+        // 左转 90°
+        auto *rotLeftBtn = new QPushButton("↺ -90°");
+        rotLeftBtn->setFixedWidth(72);
+        rotLeftBtn->setCursor(Qt::PointingHandCursor);
+        rotLeftBtn->setStyleSheet(
+            "QPushButton { background: transparent; color: #0D9488;"
+            " border: 1px solid #0D9488; border-radius: 6px;"
+            " font-size: 11px; font-weight: 700; padding: 4px 0; }"
+            "QPushButton:hover { background: #0D9488; color: #FFFFFF; }");
+        rotateRow->addWidget(rotLeftBtn);
+
+        // 旋转滑块
+        auto *rotateSlider = new QSlider(Qt::Horizontal, &cropDialog);
+        rotateSlider->setRange(-180, 180);
+        rotateSlider->setValue(0);
+        rotateSlider->setStyleSheet(
+            "QSlider::groove:horizontal { height:6px; background:#E2E8F0; border-radius:3px; }"
+            "QSlider::handle:horizontal { width:18px; height:18px; margin:-6px 0;"
+            " background:#0D9488; border-radius:9px; }");
+        rotateRow->addWidget(rotateSlider, 1);
+
+        auto *rotateVal = new QLabel("0°");
+        rotateVal->setStyleSheet("font-size:12px; font-weight:600; color:#64748B; min-width:36px;");
+        rotateRow->addWidget(rotateVal);
+
+        // 右转 90°
+        auto *rotRightBtn = new QPushButton("↻ +90°");
+        rotRightBtn->setFixedWidth(72);
+        rotRightBtn->setCursor(Qt::PointingHandCursor);
+        rotRightBtn->setStyleSheet(
+            "QPushButton { background: transparent; color: #0D9488;"
+            " border: 1px solid #0D9488; border-radius: 6px;"
+            " font-size: 11px; font-weight: 700; padding: 4px 0; }"
+            "QPushButton:hover { background: #0D9488; color: #FFFFFF; }");
+        rotateRow->addWidget(rotRightBtn);
+
+        // 重置按钮
+        auto *rotResetBtn = new QPushButton("⟲ 0°");
+        rotResetBtn->setFixedWidth(60);
+        rotResetBtn->setCursor(Qt::PointingHandCursor);
+        rotResetBtn->setStyleSheet(
+            "QPushButton { background: transparent; color: #94A3B8;"
+            " border: 1px solid #CBD5E1; border-radius: 6px;"
+            " font-size: 11px; font-weight: 700; padding: 4px 0; }"
+            "QPushButton:hover { background: #F1F5F9; color: #64748B; }");
+        rotateRow->addWidget(rotResetBtn);
+        cdLayout->addLayout(rotateRow);
+
+        // 旋转信号连接
+        connect(rotateSlider, &QSlider::valueChanged, &cropDialog, [canvas, rotateVal](int v) {
+            canvas->setRotation(v);
+            rotateVal->setText(QString("%1°").arg(v));
+        });
+        connect(rotLeftBtn, &QPushButton::clicked, &cropDialog, [rotateSlider, canvas]() {
+            int newVal = canvas->rotationAngle - 90;
+            if (newVal < -180) newVal += 360;
+            rotateSlider->setValue(newVal);
+        });
+        connect(rotRightBtn, &QPushButton::clicked, &cropDialog, [rotateSlider, canvas]() {
+            int newVal = canvas->rotationAngle + 90;
+            if (newVal > 180) newVal -= 360;
+            rotateSlider->setValue(newVal);
+        });
+        connect(rotResetBtn, &QPushButton::clicked, &cropDialog, [rotateSlider]() {
+            rotateSlider->setValue(0);
+        });
+
+        auto *cdButtons = new QDialogButtonBox(
+            QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &cropDialog);
+        cdButtons->button(QDialogButtonBox::Ok)->setText("确定");
+        cdButtons->button(QDialogButtonBox::Cancel)->setText("取消");
+        cdLayout->addWidget(cdButtons);
+
+        connect(cdButtons, &QDialogButtonBox::accepted, &cropDialog, &QDialog::accept);
+        connect(cdButtons, &QDialogButtonBox::rejected, &cropDialog, &QDialog::reject);
+
+        if (cropDialog.exec() != QDialog::Accepted)
+            return;
+
+        // 根据用户在控件坐标系中选定的圆形，映射回旋转后图片坐标后裁切
+        {
+            // 计算旋转后的图片
+            QPixmap rotatedSource = source;
+            if (canvas->rotationAngle != 0) {
+                QTransform t;
+                t.rotate(canvas->rotationAngle);
+                rotatedSource = source.transformed(t, Qt::SmoothTransformation);
+            }
+
+            // 计算旋转后图片在 canvas 中的缩放矩形
+            QSize scaledSz = rotatedSource.size();
+            scaledSz.scale(canvas->width(), canvas->height(), Qt::KeepAspectRatio);
+            int imgX = (canvas->width() - scaledSz.width()) / 2;
+            int imgY = (canvas->height() - scaledSz.height()) / 2;
+
+            // 圆心在缩放图片中的比例
+            double fx = (canvas->circleCenter.x() - imgX) / scaledSz.width();
+            double fy = (canvas->circleCenter.y() - imgY) / scaledSz.height();
+            double fr = canvas->circleRadius / (double)qMin(scaledSz.width(), scaledSz.height());
+
+            // 映射到旋转后图片
+            int srcCx = qBound(0, (int)(fx * rotatedSource.width()), rotatedSource.width());
+            int srcCy = qBound(0, (int)(fy * rotatedSource.height()), rotatedSource.height());
+            int srcR = qBound(10, (int)(fr * qMin(rotatedSource.width(), rotatedSource.height())),
+                              qMin(rotatedSource.width(), rotatedSource.height()) / 2);
+
+            // 从旋转后图片中裁切正方形区域
+            int cropX = qMax(0, srcCx - srcR);
+            int cropY = qMax(0, srcCy - srcR);
+            int cropW = qMin(srcR * 2, rotatedSource.width() - cropX);
+            int cropH = qMin(srcR * 2, rotatedSource.height() - cropY);
+            int cropSide = qMin(cropW, cropH);
+
+            QPixmap cropped = rotatedSource.copy(cropX, cropY, cropSide, cropSide);
+            if (!cropped.isNull()) {
+                // 生成圆形预览图并保存
+                QPixmap circular = makeCircularPixmap(cropped, 200);
+                circular.save(destPath, "JPEG", 90);
+                m_photoPath = "photos/" + newName;
+
+                // 更新预览
+                QPixmap preview = makeCircularPixmap(cropped, photoPreviewLbl->width());
+                photoPreviewLbl->setPixmap(preview);
+                photoPreviewLbl->setText(QString());
+
+                // 自动保存
+                saveResumeToDb();
+            }
         }
     });
 
@@ -1127,25 +1400,17 @@ void MainWindow::buildExportPage() {
             &MainWindow::editSkills);
     connect(editSummaryBtn, &QPushButton::clicked, this,
             &MainWindow::editSummary);
+}
 
-    connect(saveResumeBtn, &QPushButton::clicked, this, [this]() {
-        int userId = User::getInstance().getId();
-        if (userId <= 0) {
-            QMessageBox::warning(this, "提示", "请先登录");
-            return;
-        }
-
-        QVariantMap profile;
-        profile["skills"] = m_skillsText;
-        profile["summary"] = m_summaryText;
-        profile["photo_path"] = m_photoPath;
-
-        if (DatabaseManager::getInstance().updateResumeProfile(userId, profile)) {
-            QMessageBox::information(this, "保存成功", "简历资料已保存到数据库");
-        } else {
-            QMessageBox::critical(this, "保存失败", "数据库写入失败，请稍后再试");
-        }
-    });
+void MainWindow::saveResumeToDb() {
+    int userId = User::getInstance().getId();
+    if (userId <= 0)
+        return;
+    QVariantMap profile;
+    profile["skills"] = m_skillsText;
+    profile["summary"] = m_summaryText;
+    profile["photo_path"] = m_photoPath;
+    DatabaseManager::getInstance().updateResumeProfile(userId, profile);
 }
 
 void MainWindow::editSkills() {
@@ -1184,6 +1449,7 @@ void MainWindow::editSkills() {
 
     if (dialog.exec() == QDialog::Accepted) {
         m_skillsText = edit->toPlainText().trimmed();
+        saveResumeToDb();
     }
 }
 
@@ -1223,6 +1489,7 @@ void MainWindow::editSummary() {
 
     if (dialog.exec() == QDialog::Accepted) {
         m_summaryText = edit->toPlainText().trimmed();
+        saveResumeToDb();
     }
 }
 

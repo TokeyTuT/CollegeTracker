@@ -76,7 +76,6 @@ private:
     QPushButton *editSkillsBtn = nullptr;
     QLabel *summaryLbl = nullptr;
     QPushButton *editSummaryBtn = nullptr;
-    QPushButton *saveResumeBtn = nullptr;
     QString m_photoPath;
     QString m_skillsText;
     QString m_summaryText;
@@ -97,6 +96,7 @@ private:
     void loadResumeProfile();
     void editSkills();
     void editSummary();
+    void saveResumeToDb();
     void updateHomePageStats();
     double scoreToGpa(double score) const;
 
