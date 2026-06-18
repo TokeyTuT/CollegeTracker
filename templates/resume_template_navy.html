@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{DOCUMENT_TITLE}}</title>
+<style>
+    :root {
+        --navy: #17324d;
+        --navy-deep: #10263a;
+        --mist: #e9f0f4;
+        --ink: #1b2731;
+        --muted: #62717e;
+        --accent: #b88a52;
+    }
+    @page {
+        size: A4;
+        margin: 0;
+    }
+    * {
+        box-sizing: border-box;
+    }
+    body {
+        margin: 0;
+        padding: 30px;
+        background: #e8edf0;
+        color: var(--ink);
+        font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+        line-height: 1.55;
+    }
+    .resume-container {
+        width: 794px;
+        min-height: 1123px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 238px 1fr;
+        background: #fff;
+        box-shadow: 0 16px 44px rgba(17, 38, 58, 0.14);
+    }
+    .identity-rail {
+        position: relative;
+        padding: 42px 28px;
+        overflow: hidden;
+        color: #fff;
+        background:
+            linear-gradient(160deg, rgba(255,255,255,0.06), transparent 38%),
+            var(--navy);
+    }
+    .identity-rail::after {
+        content: "";
+        position: absolute;
+        right: -62px;
+        bottom: 82px;
+        width: 155px;
+        height: 155px;
+        border: 1px solid rgba(255,255,255,0.13);
+        border-radius: 50%;
+    }
+    .header-right {
+        margin: 0 0 26px;
+    }
+    .profile-photo {
+        display: block;
+        width: 112px;
+        height: 142px;
+        object-fit: cover;
+        padding: 0;
+        border: 0;
+        border-radius: 3px;
+        box-shadow: 10px 10px 0 rgba(184, 138, 82, 0.95);
+        background: #d7e0e6;
+    }
+    h1 {
+        margin: 0;
+        font-family: "Songti SC", "STSong", serif;
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+    }
+    .identity-rule {
+        width: 38px;
+        height: 3px;
+        margin: 18px 0 20px;
+        background: var(--accent);
+    }
+    .contact-info {
+        position: relative;
+        z-index: 1;
+        font-size: 11.5px;
+        line-height: 1.8;
+        overflow-wrap: anywhere;
+        color: rgba(255,255,255,0.86);
+    }
+    .contact-line {
+        margin-bottom: 8px;
+    }
+    .contact-info .separator {
+        display: block;
+        height: 4px;
+        margin: 0;
+        color: transparent;
+        font-size: 0;
+    }
+    .contact-info span,
+    .contact-info a {
+        display: block;
+        color: inherit;
+        text-decoration: none;
+    }
+    .rail-skills {
+        position: relative;
+        z-index: 1;
+        margin-top: 38px;
+    }
+    .rail-skills section {
+        margin: 0;
+    }
+    .rail-skills .section-title {
+        margin-bottom: 15px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.28);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+    }
+    .rail-skills ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        color: rgba(255,255,255,0.82);
+        font-size: 11.5px;
+    }
+    .rail-skills li {
+        position: relative;
+        margin: 0 0 11px;
+        padding-left: 13px;
+    }
+    .rail-skills li::before {
+        content: "";
+        position: absolute;
+        top: 0.62em;
+        left: 0;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--accent);
+    }
+    .rail-skills strong {
+        display: block;
+        margin-bottom: 2px;
+        color: #fff;
+        font-size: 10px;
+        letter-spacing: 0.04em;
+    }
+    .resume-main {
+        padding: 42px 42px 36px 40px;
+    }
+    .eyebrow {
+        margin-bottom: 9px;
+        color: var(--accent);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+    }
+    section {
+        margin: 0 0 23px;
+    }
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        color: var(--navy);
+        font-family: "Songti SC", "STSong", serif;
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+    }
+    .section-title::after {
+        content: "";
+        height: 1px;
+        flex: 1;
+        background: #cbd6dd;
+    }
+    .item {
+        margin-bottom: 13px;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    .item-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 16px;
+        align-items: baseline;
+        margin-bottom: 4px;
+    }
+    .item-title {
+        min-width: 0;
+        font-size: 13px;
+    }
+    .item-title strong {
+        color: var(--navy-deep);
+        font-weight: 700;
+    }
+    .item-date {
+        color: var(--muted);
+        font-family: "Avenir Next", sans-serif;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+    }
+    .item-desc,
+    ul {
+        color: #4a5863;
+        font-family: "Songti SC", "STSong", serif;
+        font-size: 11.5px;
+    }
+    .item-desc {
+        text-align: justify;
+    }
+    ul {
+        margin: 5px 0 0;
+        padding-left: 18px;
+    }
+    li {
+        margin-bottom: 3px;
+        text-align: justify;
+    }
+    .academic-summary {
+        margin-top: 8px;
+        padding: 9px 12px;
+        border-left: 3px solid var(--accent);
+        background: var(--mist);
+        color: var(--navy-deep);
+        font-family: "Avenir Next", "PingFang SC", sans-serif;
+        font-size: 10.5px;
+    }
+    .separator {
+        margin: 0 7px;
+        color: #9aa8b2;
+    }
+    a {
+        color: inherit;
+        text-decoration: none;
+    }
+    .empty-resume {
+        padding: 50px 0;
+        color: var(--muted);
+        text-align: center;
+    }
+    @media print {
+        body {
+            padding: 0;
+            background: #fff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .resume-container {
+            box-shadow: none;
+        }
+        .item, li {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+    }
+</style>
+</head>
+<body>
+<div class="resume-container">
+    <aside class="identity-rail">
+        {{PHOTO_BLOCK}}
+        <h1>{{FULL_NAME}}</h1>
+        <div class="identity-rule"></div>
+        <div class="contact-info">{{CONTACT_INFO}}</div>
+        <div class="rail-skills">{{SKILLS_SECTION}}</div>
+    </aside>
+
+    <main class="resume-main">
+        <div class="eyebrow">PROFILE / EXPERIENCE / ACHIEVEMENT</div>
+        {{SUMMARY_SECTION}}
+        {{EDUCATION_SECTION}}
+        {{INTERNSHIP_SECTION}}
+        {{PROJECT_AWARD_SECTION}}
+        {{OTHER_SECTION}}
+        {{EMPTY_MESSAGE}}
+    </main>
+</div>
+</body>
+</html>

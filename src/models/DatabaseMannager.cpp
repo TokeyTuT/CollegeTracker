@@ -130,6 +130,7 @@ bool DatabaseManager::createTables() {
         "summary TEXT DEFAULT '', "
         "skills TEXT DEFAULT '', "
         "photo_path TEXT DEFAULT '', "
+        "template_id TEXT NOT NULL DEFAULT 'classic', "
         "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, "
         "updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, "
         "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
@@ -269,6 +270,8 @@ void DatabaseManager::migrateTables() {
     ensureColumn("awards", "description", "TEXT DEFAULT ''");
     ensureColumn("awards", "sort_order", "INTEGER NOT NULL DEFAULT 0");
     ensureColumn("awards", "is_visible", "INTEGER NOT NULL DEFAULT 1");
+    ensureColumn("resume_profiles", "template_id",
+                 "TEXT NOT NULL DEFAULT 'classic'");
 
     QSqlQuery query(m_db);
     query.exec("UPDATE courses SET gpa = CASE "
@@ -612,7 +615,8 @@ QVariantMap DatabaseManager::getResumeProfile(int userId) {
     QSqlQuery query(m_db);
     query.prepare(
         "SELECT id, user_id, full_name, phone, email, job_target, github_url, "
-        "website_url, summary, skills, photo_path, created_at, updated_at "
+        "website_url, summary, skills, photo_path, template_id, "
+        "created_at, updated_at "
         "FROM resume_profiles WHERE user_id = :uid");
     query.bindValue(":uid", userId);
     if (query.exec() && query.next())
@@ -628,6 +632,7 @@ bool DatabaseManager::updateResumeProfile(int userId,
         "email = :email, job_target = :job_target, "
         "github_url = :github_url, website_url = :website_url, "
         "summary = :summary, skills = :skills, photo_path = :photo_path, "
+        "template_id = :template_id, "
         "updated_at = CURRENT_TIMESTAMP WHERE user_id = :uid");
     query.bindValue(":full_name", valueOrDefault(profile, "full_name", ""));
     query.bindValue(":phone", valueOrDefault(profile, "phone", ""));
@@ -638,6 +643,8 @@ bool DatabaseManager::updateResumeProfile(int userId,
     query.bindValue(":summary", valueOrDefault(profile, "summary", ""));
     query.bindValue(":skills", valueOrDefault(profile, "skills", ""));
     query.bindValue(":photo_path", valueOrDefault(profile, "photo_path", ""));
+    query.bindValue(":template_id",
+                    valueOrDefault(profile, "template_id", "classic"));
     query.bindValue(":uid", userId);
     if (!query.exec())
         return false;
@@ -647,9 +654,9 @@ bool DatabaseManager::updateResumeProfile(int userId,
     query.prepare(
         "INSERT INTO resume_profiles "
         "(user_id, full_name, phone, email, job_target, github_url, "
-        "website_url, summary, skills, photo_path) "
+        "website_url, summary, skills, photo_path, template_id) "
         "VALUES (:uid, :full_name, :phone, :email, :job_target, :github_url, "
-        ":website_url, :summary, :skills, :photo_path)");
+        ":website_url, :summary, :skills, :photo_path, :template_id)");
     query.bindValue(":uid", userId);
     query.bindValue(":full_name", valueOrDefault(profile, "full_name", ""));
     query.bindValue(":phone", valueOrDefault(profile, "phone", ""));
@@ -660,6 +667,8 @@ bool DatabaseManager::updateResumeProfile(int userId,
     query.bindValue(":summary", valueOrDefault(profile, "summary", ""));
     query.bindValue(":skills", valueOrDefault(profile, "skills", ""));
     query.bindValue(":photo_path", valueOrDefault(profile, "photo_path", ""));
+    query.bindValue(":template_id",
+                    valueOrDefault(profile, "template_id", "classic"));
     return query.exec();
 }
 

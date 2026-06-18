@@ -3,10 +3,12 @@
 #include "DatabaseMannager.h"
 
 #include <QCoreApplication>
+#include <QBuffer>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QImage>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QStandardPaths>
@@ -167,21 +169,44 @@ QString ResumeExporter::imageDataUrl(const QString &photoPath) {
         fullPath = QDir(QCoreApplication::applicationDirPath())
                        .filePath(photoPath);
 
-    QFile file(fullPath);
-    if (!file.open(QIODevice::ReadOnly))
+    QImage image(fullPath);
+    if (image.isNull())
         return {};
 
-    const QString suffix = QFileInfo(fullPath).suffix().toLower();
-    QString mime = "image/jpeg";
-    if (suffix == "png")
-        mime = "image/png";
-    else if (suffix == "webp")
-        mime = "image/webp";
-    else if (suffix == "gif")
-        mime = "image/gif";
+    // 兼容旧版保存的“圆形 JPEG”：透明区域被 JPEG 压成黑角。
+    // 对这种正方形图片取圆内最大的 3:4 中央矩形，仅影响导出数据，
+    // 不直接覆盖用户的原始文件。
+    if (image.width() == image.height() && image.width() >= 100) {
+        const auto isDarkOrTransparent = [&image](int x, int y) {
+            const QColor color = image.pixelColor(x, y);
+            return color.alpha() < 24 ||
+                   (color.red() < 24 && color.green() < 24 &&
+                    color.blue() < 24);
+        };
+        const int inset = qMax(1, image.width() / 40);
+        const bool legacyCircular =
+            isDarkOrTransparent(inset, inset) &&
+            isDarkOrTransparent(image.width() - inset - 1, inset) &&
+            isDarkOrTransparent(inset, image.height() - inset - 1) &&
+            isDarkOrTransparent(image.width() - inset - 1,
+                                image.height() - inset - 1);
+        if (legacyCircular) {
+            const int cropWidth = qRound(image.width() * 0.60);
+            const int cropHeight = qRound(image.height() * 0.80);
+            image = image.copy((image.width() - cropWidth) / 2,
+                               (image.height() - cropHeight) / 2,
+                               cropWidth, cropHeight);
+        }
+    }
 
-    return QString("data:%1;base64,%2")
-        .arg(mime, QString::fromLatin1(file.readAll().toBase64()));
+    QByteArray imageBytes;
+    QBuffer buffer(&imageBytes);
+    if (!buffer.open(QIODevice::WriteOnly) ||
+        !image.save(&buffer, "JPEG", 92))
+        return {};
+
+    return QString("data:image/jpeg;base64,%1")
+        .arg(QString::fromLatin1(imageBytes.toBase64()));
 }
 
 QString ResumeExporter::safeFileComponent(const QString &text) {
@@ -240,17 +265,6 @@ QString ResumeExporter::findChromiumBrowser() {
 
 QString ResumeExporter::generateHtml(int userId,
                                      QString *errorMessage) const {
-    QFile templateFile(":/templates/resume_template.html");
-    if (!templateFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        if (errorMessage)
-            *errorMessage = QStringLiteral("无法读取内置简历模板");
-        return {};
-    }
-
-    QTextStream templateStream(&templateFile);
-    templateStream.setCodec("UTF-8");
-    QString document = templateStream.readAll();
-
     const QVariantMap data =
         DatabaseManager::getInstance().getResumeData(userId);
     const QVariantMap user = data.value("user").toMap();
@@ -266,6 +280,27 @@ QString ResumeExporter::generateHtml(int userId,
             *errorMessage = QStringLiteral("当前用户信息不存在");
         return {};
     }
+
+    QString templateId =
+        profile.value("template_id").toString().trimmed().toLower();
+    QString templateResource = ":/templates/resume_template.html";
+    if (templateId == "navy")
+        templateResource = ":/templates/resume_template_navy.html";
+    else if (templateId == "editorial")
+        templateResource = ":/templates/resume_template_editorial.html";
+    else
+        templateId = "classic";
+
+    QFile templateFile(templateResource);
+    if (!templateFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("无法读取内置简历模板");
+        return {};
+    }
+
+    QTextStream templateStream(&templateFile);
+    templateStream.setCodec("UTF-8");
+    QString document = templateStream.readAll();
 
     QString fullName = profile.value("full_name").toString().trimmed();
     if (fullName.isEmpty())
@@ -476,8 +511,18 @@ QString ResumeExporter::generatePreviewFile(
         DatabaseManager::getInstance().getUserInfo(userId);
     const QString username =
         safeFileComponent(user.value("username").toString());
+    QString templateId =
+        DatabaseManager::getInstance()
+            .getResumeProfile(userId)
+            .value("template_id")
+            .toString()
+            .trimmed()
+            .toLower();
+    if (templateId != "navy" && templateId != "editorial")
+        templateId = "classic";
     const QString filePath =
-        QDir(previewDir).filePath(username + "_Resume_Preview.html");
+        QDir(previewDir)
+            .filePath(username + "_Resume_" + templateId + "_Preview.html");
 
     QFile file(filePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text |

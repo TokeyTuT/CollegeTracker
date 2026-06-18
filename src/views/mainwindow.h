@@ -11,6 +11,7 @@
 #include <QDoubleSpinBox>
 
 class QShowEvent;
+class QComboBox;
 class ResumeExporter;
 
 QT_BEGIN_NAMESPACE
@@ -77,6 +78,8 @@ private:
     QPushButton *editSkillsBtn = nullptr;
     QLabel *summaryLbl = nullptr;
     QPushButton *editSummaryBtn = nullptr;
+    QComboBox *resumeTemplateCombo = nullptr;
+    QLabel *resumeTemplateDescriptionLbl = nullptr;
     QPushButton *previewResumeBtn = nullptr;
     QPushButton *exportResumePdfBtn = nullptr;
     ResumeExporter *resumeExporter = nullptr;

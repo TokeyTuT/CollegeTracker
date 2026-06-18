@@ -31,6 +31,7 @@
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
+#include <QSignalBlocker>
 #include <QSizePolicy>
 #include <QSlider>
 #include <QSpacerItem>
@@ -1060,6 +1061,42 @@ void MainWindow::buildExportPage() {
 
     mainLayout->addWidget(summaryCard);
 
+    // ===== 简历模板选择 =====
+    auto *templateCard = new QFrame;
+    templateCard->setObjectName("resumeTemplateCard");
+    templateCard->setStyleSheet(QStringLiteral(
+        "QFrame#resumeTemplateCard { background: #FFFFFF;"
+        " border: 1px solid rgba(203,213,225,0.65); border-radius: 10px; }"));
+    auto *templateLayout = new QHBoxLayout(templateCard);
+    templateLayout->setContentsMargins(18, 10, 18, 10);
+    templateLayout->setSpacing(14);
+
+    auto *templateTitle = new QLabel("简历模板");
+    templateTitle->setStyleSheet(QStringLiteral(
+        "font-size: 14px; font-weight: 800; color: %1;"
+        " background: transparent;").arg(Color::onSurface));
+    templateLayout->addWidget(templateTitle);
+
+    resumeTemplateCombo = new QComboBox(templateCard);
+    resumeTemplateCombo->setObjectName("resumeTemplateCombo");
+    resumeTemplateCombo->addItem("经典学术", "classic");
+    resumeTemplateCombo->addItem("深海蓝双栏", "navy");
+    resumeTemplateCombo->addItem("暖色编辑风", "editorial");
+    resumeTemplateCombo->setMinimumWidth(156);
+    resumeTemplateCombo->setMinimumHeight(34);
+    resumeTemplateCombo->setCursor(Qt::PointingHandCursor);
+    resumeTemplateCombo->setStyleSheet(Theme::inputStyle());
+    templateLayout->addWidget(resumeTemplateCombo);
+
+    resumeTemplateDescriptionLbl = new QLabel(
+        "传统学术排版，信息清晰，适合通用申请。", templateCard);
+    resumeTemplateDescriptionLbl->setStyleSheet(QStringLiteral(
+        "font-size: 12px; font-weight: 600; color: %1;"
+        " background: transparent;").arg(Color::onSurfaceMuted));
+    resumeTemplateDescriptionLbl->setWordWrap(true);
+    templateLayout->addWidget(resumeTemplateDescriptionLbl, 1);
+    mainLayout->addWidget(templateCard);
+
     // ===== 预览与导出操作区 =====
     auto *exportActions = new QHBoxLayout;
     exportActions->setSpacing(Spacing::sm);
@@ -1096,9 +1133,9 @@ void MainWindow::buildExportPage() {
     // ---- 圆形裁切辅助函数 ----
     auto makeCircularPixmap = [](const QPixmap &source, int size) {
         QPixmap scaled = source.scaled(size, size,
-            Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        int x = (size - scaled.width()) / 2;
-        int y = (size - scaled.height()) / 2;
+            Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+        int x = (scaled.width() - size) / 2;
+        int y = (scaled.height() - size) / 2;
         QPixmap circular(size, size);
         circular.fill(Qt::transparent);
         QPainter painter(&circular);
@@ -1106,7 +1143,7 @@ void MainWindow::buildExportPage() {
         QPainterPath path;
         path.addEllipse(0, 0, size, size);
         painter.setClipPath(path);
-        painter.drawPixmap(x, y, scaled);
+        painter.drawPixmap(-x, -y, scaled);
         painter.end();
         return circular;
     };
@@ -1119,29 +1156,23 @@ void MainWindow::buildExportPage() {
         if (filePath.isEmpty())
             return;
 
-        // 创建 photos 目录
-        QString photosDir = QCoreApplication::applicationDirPath() + "/photos";
-        QDir().mkpath(photosDir);
-
-        // 复制照片到应用数据目录
-        QFileInfo fi(filePath);
-        int userId = User::getInstance().getId();
-        QString newName = QString("user_%1_photo.%2")
-                              .arg(userId)
-                              .arg(fi.suffix().toLower());
-        QString destPath = photosDir + "/" + newName;
-
-        if (QFile::exists(destPath))
-            QFile::remove(destPath);
-
-        if (!QFile::copy(filePath, destPath)) {
-            QMessageBox::warning(this, "提示", "照片复制失败，请重试");
+        QPixmap source(filePath);
+        if (source.isNull()) {
+            QMessageBox::warning(this, "提示", "无法读取所选图片");
             return;
         }
 
-        QPixmap source(destPath);
-        if (source.isNull())
+        // 创建 photos 目录
+        QString photosDir = QCoreApplication::applicationDirPath() + "/photos";
+        if (!QDir().mkpath(photosDir)) {
+            QMessageBox::warning(this, "提示", "无法创建照片目录");
             return;
+        }
+
+        // 统一保存为无透明通道的 JPEG，避免透明圆图写入 JPEG 后产生黑角。
+        int userId = User::getInstance().getId();
+        QString newName = QString("user_%1_photo.jpg").arg(userId);
+        QString destPath = photosDir + "/" + newName;
 
         // ===== 手动框选头像对话框 =====
         QDialog cropDialog(this);
@@ -1417,15 +1448,50 @@ void MainWindow::buildExportPage() {
 
             QPixmap cropped = rotatedSource.copy(cropX, cropY, cropSide, cropSide);
             if (!cropped.isNull()) {
-                // 生成圆形预览图并保存
-                QPixmap circular = makeCircularPixmap(cropped, 200);
-                circular.save(destPath, "JPEG", 90);
+                // 持久化用户实际框选的正方形区域，不在保存阶段再次裁切。
+                // 应用内圆形预览因此在重新进入页面后仍与导入时一致；
+                // 简历的 3:4 证件照比例由 HTML 的 object-fit: cover 负责。
+                QPixmap savedCrop = cropped.scaled(
+                    800, 800, Qt::IgnoreAspectRatio,
+                    Qt::SmoothTransformation);
+
+                const QString tempPath = destPath + ".tmp";
+                QFile::remove(tempPath);
+                if (!savedCrop.save(tempPath, "JPEG", 92)) {
+                    QMessageBox::warning(this, "提示",
+                                         "裁剪后的照片保存失败，请重试");
+                    return;
+                }
+
+                const QString previousPhotoPath = m_photoPath;
+                if (QFile::exists(destPath) && !QFile::remove(destPath)) {
+                    QFile::remove(tempPath);
+                    QMessageBox::warning(this, "提示",
+                                         "旧照片正在被占用，无法替换");
+                    return;
+                }
+                if (!QFile::rename(tempPath, destPath)) {
+                    QFile::remove(tempPath);
+                    QMessageBox::warning(this, "提示",
+                                         "照片替换失败，请重试");
+                    return;
+                }
+
                 m_photoPath = "photos/" + newName;
 
-                // 更新预览
-                QPixmap preview = makeCircularPixmap(cropped, photoPreviewLbl->width());
+                // 直接使用持久化后的同一图像生成预览，避免即时预览和重载预览不一致。
+                QPixmap preview =
+                    makeCircularPixmap(savedCrop, photoPreviewLbl->width());
                 photoPreviewLbl->setPixmap(preview);
                 photoPreviewLbl->setText(QString());
+
+                // 新文件保存成功后，再清理旧扩展名的历史照片。
+                if (!previousPhotoPath.isEmpty() &&
+                    previousPhotoPath != m_photoPath) {
+                    QFile::remove(
+                        QDir(QCoreApplication::applicationDirPath())
+                            .filePath(previousPhotoPath));
+                }
 
                 // 自动保存
                 saveResumeToDb();
@@ -1437,6 +1503,25 @@ void MainWindow::buildExportPage() {
             &MainWindow::editSkills);
     connect(editSummaryBtn, &QPushButton::clicked, this,
             &MainWindow::editSummary);
+
+    connect(
+        resumeTemplateCombo,
+        QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+        [this](int index) {
+            const QString templateId =
+                resumeTemplateCombo->itemData(index).toString();
+            if (templateId == "navy") {
+                resumeTemplateDescriptionLbl->setText(
+                    "左侧信息轨道与右侧履历，适合技术岗和项目型简历。");
+            } else if (templateId == "editorial") {
+                resumeTemplateDescriptionLbl->setText(
+                    "暖灰纸张与编辑式编号，适合商科、研究和综合岗位。");
+            } else {
+                resumeTemplateDescriptionLbl->setText(
+                    "传统学术排版，信息清晰，适合通用申请。");
+            }
+            saveResumeToDb();
+        });
 
     connect(previewResumeBtn, &QPushButton::clicked, this, [this]() {
         saveResumeToDb();
@@ -1500,6 +1585,12 @@ void MainWindow::saveResumeToDb() {
     profile["skills"] = m_skillsText;
     profile["summary"] = m_summaryText;
     profile["photo_path"] = m_photoPath;
+    if (resumeTemplateCombo) {
+        profile["template_id"] =
+            resumeTemplateCombo
+                ->itemData(resumeTemplateCombo->currentIndex())
+                .toString();
+    }
     DatabaseManager::getInstance().updateResumeProfile(userId, profile);
 }
 
@@ -1597,6 +1688,28 @@ void MainWindow::loadResumeProfile() {
     // 个人总结
     m_summaryText = profile.value("summary").toString();
 
+    // 简历模板
+    if (resumeTemplateCombo) {
+        QString templateId =
+            profile.value("template_id", "classic").toString();
+        int templateIndex = resumeTemplateCombo->findData(templateId);
+        if (templateIndex < 0)
+            templateIndex = resumeTemplateCombo->findData("classic");
+        const QSignalBlocker blocker(resumeTemplateCombo);
+        resumeTemplateCombo->setCurrentIndex(templateIndex);
+
+        if (templateId == "navy") {
+            resumeTemplateDescriptionLbl->setText(
+                "左侧信息轨道与右侧履历，适合技术岗和项目型简历。");
+        } else if (templateId == "editorial") {
+            resumeTemplateDescriptionLbl->setText(
+                "暖灰纸张与编辑式编号，适合商科、研究和综合岗位。");
+        } else {
+            resumeTemplateDescriptionLbl->setText(
+                "传统学术排版，信息清晰，适合通用申请。");
+        }
+    }
+
     // 照片（圆形裁切）
     m_photoPath = profile.value("photo_path").toString();
     if (photoPreviewLbl) {
@@ -1607,9 +1720,10 @@ void MainWindow::loadResumeProfile() {
             if (!source.isNull()) {
                 int size = photoPreviewLbl->width();
                 QPixmap scaled = source.scaled(size, size,
-                    Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                int x = (size - scaled.width()) / 2;
-                int y = (size - scaled.height()) / 2;
+                    Qt::KeepAspectRatioByExpanding,
+                    Qt::SmoothTransformation);
+                int x = (scaled.width() - size) / 2;
+                int y = (scaled.height() - size) / 2;
 
                 QPixmap circular(size, size);
                 circular.fill(Qt::transparent);
@@ -1618,7 +1732,7 @@ void MainWindow::loadResumeProfile() {
                 QPainterPath path;
                 path.addEllipse(0, 0, size, size);
                 painter.setClipPath(path);
-                painter.drawPixmap(x, y, scaled);
+                painter.drawPixmap(-x, -y, scaled);
                 painter.end();
 
                 photoPreviewLbl->setPixmap(circular);

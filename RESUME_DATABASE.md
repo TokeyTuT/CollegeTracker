@@ -48,11 +48,15 @@ profile["website_url"] = "";
 profile["summary"] = "个人总结";
 profile["skills"] = "C++\nQt\nSQLite";
 profile["photo_path"] = "photos/user_1_profile.jpg";
+profile["template_id"] = "classic";
 db.updateResumeProfile(userId, profile);
 ```
 
 `updateResumeProfile()` 是 upsert 接口，但采用完整覆盖语义。未提供的字段会被
 保存为空字符串。
+
+`template_id` 可选值为 `classic`、`navy`、`editorial`，分别对应经典学术、
+深海蓝双栏和暖色编辑风模板。未知值会回退到 `classic`。
 
 ## 教育经历
 
