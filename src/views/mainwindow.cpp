@@ -323,21 +323,21 @@ void MainWindow::applyModernStyle() {
         QPushButton#homeImportAllBtn, QPushButton#homeExportAllBtn {
             min-height: 42px; max-height: 42px;
             min-width: 172px;
-            font-size: %16px;
+            font-size: 14px;
             font-weight: %9;
-            border-radius: %18px;
+            border-radius: 10px;
         }
         QPushButton#homeImportAllBtn {
-            background: %20; color: %17; border: 1px solid %17;
+            background: transparent; color: %7; border: 2px solid %7;
         }
         QPushButton#homeImportAllBtn:hover {
-            background: %17; color: #FFFFFF;
+            background: %7; color: #FFFFFF;
         }
         QPushButton#homeExportAllBtn {
-            background: %7; color: #FFFFFF; border: 1px solid %7;
+            background: %7; color: #FFFFFF; border: none;
         }
         QPushButton#homeExportAllBtn:hover {
-            background: #0B5E57; border-color: #0B5E57;
+            background: #0B5E57;
         }
 
         /* 删除按钮 */
@@ -447,10 +447,16 @@ void MainWindow::applyModernStyle() {
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
 
         /* ===== 首页卡片 ===== */
-        QFrame#homeChartCard, QFrame#homeStatCard {
-            background: rgba(255,255,255,0.92);
-            border: 1px solid rgba(203,213,225,0.88);
-            border-radius: %26px;
+        QFrame#homeChartCard {
+            background: #FFFFFF;
+            border: none;
+            border-radius: 16px;
+        }
+        QFrame#homeStatCard {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #F0FDFA, stop:1 #ECFEFF);
+            border: none;
+            border-radius: 12px;
         }
         QFrame#homeChartCard { border-left: 5px solid %19; }
         QLabel#homeCardTitle {
@@ -459,15 +465,15 @@ void MainWindow::applyModernStyle() {
         }
         QLabel#homeChartLabel { background: transparent; border: none; }
         QLabel#homeStatTitle {
-            color: %12; font-size: %13px; font-weight: %9;
+            color: #0F766E; font-size: 12px; font-weight: %14;
             background: transparent;
         }
         QLabel#homeStatValue {
-            color: %2; font-size: %27px; font-weight: %6;
+            color: #0D9488; font-size: 26px; font-weight: %6;
             background: transparent;
         }
         QLabel#homeStatSub {
-            color: %28; font-size: %13px; font-weight: %14;
+            color: #0F766E; font-size: 11px; font-weight: %14;
             background: transparent;
         }
 
@@ -481,6 +487,22 @@ void MainWindow::applyModernStyle() {
             font-size: %16px;
             font-weight: %9;
             qproperty-alignment: AlignCenter;
+        }
+
+        /* ===== 首页底部操作栏卡片 ===== */
+        QFrame#homeActionBar {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #F0FDFA, stop:1 #ECFEFF);
+            border: none;
+            border-radius: 12px;
+        }
+        QLabel#homeActionTitle {
+            color: #0F766E; font-size: 14px; font-weight: 700;
+            background: transparent;
+        }
+        QLabel#homeActionSub {
+            color: #0F766E; font-size: 11px; font-weight: 400;
+            background: transparent;
         }
 
         /* ===== 对话框 ===== */
@@ -549,9 +571,9 @@ void MainWindow::buildHomePage() {
         card->setObjectName(objectName);
         card->setFrameShape(QFrame::NoFrame);
         auto *shadow = new QGraphicsDropShadowEffect(card);
-        shadow->setBlurRadius(24);
-        shadow->setOffset(0, 8);
-        shadow->setColor(QColor(40, 62, 84, 16));
+        shadow->setBlurRadius(20);
+        shadow->setOffset(0, 4);
+        shadow->setColor(QColor(13, 148, 136, 14));
         card->setGraphicsEffect(shadow);
 
         auto *layout = new QVBoxLayout(card);
@@ -576,15 +598,19 @@ void MainWindow::buildHomePage() {
 
     auto *metricsPanel = new QFrame;
     metricsPanel->setObjectName("homeMetricsPanel");
-    metricsPanel->setFixedHeight(126);
+    metricsPanel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     auto *metricsLayout = new QVBoxLayout(metricsPanel);
-    metricsLayout->setContentsMargins(0, 0, 0, 0);
-    metricsLayout->setSpacing(7);
+    metricsLayout->setContentsMargins(4, 6, 4, 0);
+    metricsLayout->setSpacing(10);
 
     auto *metricsTitle = new QLabel("学习档案快照");
     metricsTitle->setObjectName("homeMetricsTitle");
+    metricsTitle->setStyleSheet(QStringLiteral(
+        "font-size: 18px; font-weight: 800; color: #0F172A; background: transparent;"));
     auto *metricsSub = new QLabel("课程、实践与成果概览");
     metricsSub->setObjectName("homeMetricsSub");
+    metricsSub->setStyleSheet(QStringLiteral(
+        "font-size: 13px; font-weight: 600; color: #64748B; background: transparent;"));
     auto *metricsHeader = new QHBoxLayout;
     metricsHeader->setContentsMargins(2, 0, 2, 0);
     metricsHeader->setSpacing(10);
@@ -594,8 +620,8 @@ void MainWindow::buildHomePage() {
     metricsLayout->addLayout(metricsHeader);
 
     auto *statsLayout = new QGridLayout;
-    statsLayout->setContentsMargins(0, 0, 0, 0);
-    statsLayout->setHorizontalSpacing(8);
+    statsLayout->setContentsMargins(0, 0, 0, 4);
+    statsLayout->setHorizontalSpacing(10);
     statsLayout->setVerticalSpacing(0);
 
     auto makeStatCard = [](const QString &title, const QString &subTitle,
@@ -604,11 +630,19 @@ void MainWindow::buildHomePage() {
         card->setObjectName("homeStatCard");
         card->setProperty("tone", tone);
         card->setFrameShape(QFrame::NoFrame);
-        card->setMinimumHeight(92);
-        card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        card->setFixedHeight(104);
+        card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+        auto *shadow = new QGraphicsDropShadowEffect(card);
+        shadow->setBlurRadius(16);
+        shadow->setOffset(0, 4);
+        shadow->setColor(QColor(13, 148, 136, 20));
+        card->setGraphicsEffect(shadow);
+
         auto *layout = new QVBoxLayout(card);
-        layout->setContentsMargins(12, 8, 10, 7);
-        layout->setSpacing(1);
+        layout->setContentsMargins(16, 14, 16, 12);
+        layout->setSpacing(3);
+
         auto *titleLbl = new QLabel(title);
         titleLbl->setObjectName("homeStatTitle");
         *valueLabel = new QLabel("0");
@@ -643,7 +677,15 @@ void MainWindow::buildHomePage() {
     // 一键导入导出按钮栏
     auto *actionBar = new QFrame;
     actionBar->setObjectName("homeActionBar");
+    actionBar->setFrameShape(QFrame::NoFrame);
     actionBar->setFixedHeight(58);
+    {
+        auto *actionShadow = new QGraphicsDropShadowEffect(actionBar);
+        actionShadow->setBlurRadius(16);
+        actionShadow->setOffset(0, 4);
+        actionShadow->setColor(QColor(13, 148, 136, 20));
+        actionBar->setGraphicsEffect(actionShadow);
+    }
     auto *csvAllLayout = new QHBoxLayout(actionBar);
     csvAllLayout->setContentsMargins(16, 8, 10, 8);
     csvAllLayout->setSpacing(10);
@@ -876,20 +918,25 @@ void MainWindow::buildExportPage() {
     using namespace Theme;
 
     auto *mainLayout = new QVBoxLayout(ui->profilePage);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->setSpacing(Spacing::md);
+    mainLayout->setContentsMargins(0, 6, 0, 0);
+    mainLayout->setSpacing(16);
 
-    // ---- 辅助：创建带标题的 Card（风格参考 经历与荣誉 页面）----
+    // ---- 辅助：创建带标题的现代化卡片 ----
     auto makeSectionCard = [](const QString &title) {
         auto *card = new QFrame;
         card->setFrameShape(QFrame::NoFrame);
         card->setStyleSheet(QStringLiteral(
-            "QFrame { background: %1; border: 1px solid %2;"
-            " border-radius: %3px; }"
-        ).arg(Color::surface).arg(Color::outline).arg(Radius::sm));
+            "QFrame { background: #FFFFFF; border: 1px solid rgba(203,213,225,0.55);"
+            " border-radius: 12px; }"));
+
+        auto *shadow = new QGraphicsDropShadowEffect(card);
+        shadow->setBlurRadius(20);
+        shadow->setOffset(0, 4);
+        shadow->setColor(QColor(13, 148, 136, 14));
+        card->setGraphicsEffect(shadow);
 
         auto *layout = new QVBoxLayout(card);
-        layout->setContentsMargins(Spacing::lg, Spacing::md, Spacing::lg, Spacing::md);
+        layout->setContentsMargins(24, 18, 24, 18);
         layout->setSpacing(Spacing::sm);
 
         auto *titleLbl = new QLabel(title);
@@ -904,11 +951,17 @@ void MainWindow::buildExportPage() {
     QFrame *photoCard = new QFrame;
     photoCard->setFrameShape(QFrame::NoFrame);
     photoCard->setStyleSheet(QStringLiteral(
-        "QFrame { background: %1; border: 1px solid %2;"
-        " border-radius: %3px; }"
-    ).arg(Color::surface).arg(Color::outline).arg(Radius::sm));
+        "QFrame { background: #FFFFFF; border: 1px solid rgba(203,213,225,0.55);"
+        " border-radius: 12px; }"));
+    {
+        auto *shadow = new QGraphicsDropShadowEffect(photoCard);
+        shadow->setBlurRadius(20);
+        shadow->setOffset(0, 4);
+        shadow->setColor(QColor(13, 148, 136, 14));
+        photoCard->setGraphicsEffect(shadow);
+    }
     auto *photoCardLayout = new QVBoxLayout(photoCard);
-    photoCardLayout->setContentsMargins(Spacing::lg, Spacing::md, Spacing::lg, Spacing::md);
+    photoCardLayout->setContentsMargins(24, 18, 24, 18);
     photoCardLayout->setSpacing(Spacing::sm);
 
     // 标题行："个人照片" 标题 + 导入按钮
@@ -927,10 +980,10 @@ void MainWindow::buildExportPage() {
     selectPhotoBtn->setCursor(Qt::PointingHandCursor);
     selectPhotoBtn->setStyleSheet(QStringLiteral(
         "QPushButton { background: %1; color: #FFFFFF; border: none;"
-        " border-radius: %2px; min-height: 32px; font-size: %3px;"
-        " font-weight: %4; padding: 0 16px; }"
-        "QPushButton:hover { background: %5; }"
-    ).arg(Color::primary).arg(Radius::sm)
+        " border-radius: 8px; min-height: 32px; font-size: %2px;"
+        " font-weight: %3; padding: 0 18px; }"
+        "QPushButton:hover { background: %4; }"
+    ).arg(Color::primary)
      .arg(TypeScale::caption).arg(FontWeight::bold).arg(Color::accent));
 
     photoHeaderRow->addWidget(selectPhotoBtn);
@@ -958,71 +1011,47 @@ void MainWindow::buildExportPage() {
     // ===== 技术能力区域 =====
     QFrame *skillsCard = makeSectionCard("技术能力");
 
-    auto *skillsHeader = new QHBoxLayout;
-    skillsHeader->setSpacing(Spacing::sm);
+    {
+        auto *header = new QWidget;
+        auto *hdr = new QHBoxLayout(header);
+        hdr->setContentsMargins(0, 0, 0, 0);
+        hdr->addStretch();
+        editSkillsBtn = new QPushButton("编辑");
+        editSkillsBtn->setObjectName("editSkillsBtn");
+        editSkillsBtn->setCursor(Qt::PointingHandCursor);
+        editSkillsBtn->setStyleSheet(QStringLiteral(
+            "QPushButton { background: transparent; color: %1;"
+            " border: 2px solid %1; border-radius: 8px;"
+            " font-size: 13px; font-weight: 700; padding: 6px 20px; }"
+            "QPushButton:hover { background: %1; color: #FFFFFF; }"
+        ).arg(Color::primary));
+        hdr->addWidget(editSkillsBtn);
+        static_cast<QVBoxLayout*>(skillsCard->layout())->addWidget(header);
+    }
 
-    skillsLbl = new QLabel;
-    skillsLbl->setObjectName("skillsLbl");
-    skillsLbl->setWordWrap(true);
-    skillsLbl->setMinimumHeight(48);
-    skillsLbl->setStyleSheet(QStringLiteral(
-        "QLabel { background: %1; border: 1px solid %2; border-radius: %3px;"
-        " color: %4; font-size: %5px; padding: 10px 14px; }"
-    ).arg(Color::background).arg(Color::outline)
-     .arg(Radius::sm).arg(Color::onSurfaceMuted).arg(TypeScale::body));
-    skillsLbl->setText("暂无内容，点击编辑按钮添加");
-
-    editSkillsBtn = new QPushButton("编辑");
-    editSkillsBtn->setObjectName("editSkillsBtn");
-    editSkillsBtn->setCursor(Qt::PointingHandCursor);
-    editSkillsBtn->setFixedSize(64, 32);
-    editSkillsBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background: transparent; color: %1;"
-        " border: 1px solid %1; border-radius: %2px;"
-        " font-size: %3px; font-weight: %4; }"
-        "QPushButton:hover { background: %1; color: #FFFFFF; }"
-    ).arg(Color::primary).arg(Radius::sm)
-     .arg(TypeScale::caption).arg(FontWeight::bold));
-
-    skillsHeader->addStretch();
-    skillsHeader->addWidget(editSkillsBtn);
-    static_cast<QVBoxLayout*>(skillsCard->layout())->addWidget(skillsLbl);
-    static_cast<QVBoxLayout*>(skillsCard->layout())->addLayout(skillsHeader);
     mainLayout->addWidget(skillsCard);
 
     // ===== 个人总结区域 =====
     QFrame *summaryCard = makeSectionCard("个人总结");
 
-    auto *summaryHeader = new QHBoxLayout;
-    summaryHeader->setSpacing(Spacing::sm);
+    {
+        auto *header = new QWidget;
+        auto *hdr = new QHBoxLayout(header);
+        hdr->setContentsMargins(0, 0, 0, 0);
+        hdr->addStretch();
+        editSummaryBtn = new QPushButton("编辑");
+        editSummaryBtn->setObjectName("editSummaryBtn");
+        editSummaryBtn->setCursor(Qt::PointingHandCursor);
+        editSummaryBtn->setStyleSheet(QStringLiteral(
+            "QPushButton { background: transparent; color: %1;"
+            " border: 2px solid %1; border-radius: 8px;"
+            " font-size: 13px; font-weight: 700; padding: 6px 20px; }"
+            "QPushButton:hover { background: %1; color: #FFFFFF; }"
+        ).arg(Color::primary));
+        hdr->addWidget(editSummaryBtn);
+        static_cast<QVBoxLayout*>(summaryCard->layout())->addWidget(header);
+    }
 
-    summaryLbl = new QLabel;
-    summaryLbl->setObjectName("summaryLbl");
-    summaryLbl->setWordWrap(true);
-    summaryLbl->setMinimumHeight(48);
-    summaryLbl->setStyleSheet(QStringLiteral(
-        "QLabel { background: %1; border: 1px solid %2; border-radius: %3px;"
-        " color: %4; font-size: %5px; padding: 10px 14px; }"
-    ).arg(Color::background).arg(Color::outline)
-     .arg(Radius::sm).arg(Color::onSurfaceMuted).arg(TypeScale::body));
-    summaryLbl->setText("暂无内容，点击编辑按钮添加");
-
-    editSummaryBtn = new QPushButton("编辑");
-    editSummaryBtn->setObjectName("editSummaryBtn");
-    editSummaryBtn->setCursor(Qt::PointingHandCursor);
-    editSummaryBtn->setFixedSize(64, 32);
-    editSummaryBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background: transparent; color: %1;"
-        " border: 1px solid %1; border-radius: %2px;"
-        " font-size: %3px; font-weight: %4; }"
-        "QPushButton:hover { background: %1; color: #FFFFFF; }"
-    ).arg(Color::primary).arg(Radius::sm)
-     .arg(TypeScale::caption).arg(FontWeight::bold));
-
-    summaryHeader->addStretch();
-    summaryHeader->addWidget(editSummaryBtn);
-    static_cast<QVBoxLayout*>(summaryCard->layout())->addWidget(summaryLbl);
-    static_cast<QVBoxLayout*>(summaryCard->layout())->addLayout(summaryHeader);
     mainLayout->addWidget(summaryCard);
 
     // ===== 保存按钮 =====
@@ -1032,11 +1061,11 @@ void MainWindow::buildExportPage() {
     saveResumeBtn->setFixedHeight(44);
     saveResumeBtn->setStyleSheet(QStringLiteral(
         "QPushButton { background: %1; color: #FFFFFF; border: none;"
-        " border-radius: %2px; font-size: %3px; font-weight: %4; }"
-        "QPushButton:hover { background: %5; }"
+        " border-radius: 10px; font-size: 16px; font-weight: %2;"
+        " letter-spacing: 0.5px; }"
+        "QPushButton:hover { background: %3; }"
         "QPushButton:pressed { background: #0B5E57; }"
-    ).arg(Color::primary).arg(Radius::sm)
-     .arg(TypeScale::body).arg(FontWeight::bold).arg(Color::primaryHover));
+    ).arg(Color::primary).arg(FontWeight::bold).arg(Color::accent));
 
     mainLayout->addWidget(saveResumeBtn);
     mainLayout->addStretch();
@@ -1155,12 +1184,6 @@ void MainWindow::editSkills() {
 
     if (dialog.exec() == QDialog::Accepted) {
         m_skillsText = edit->toPlainText().trimmed();
-        if (skillsLbl) {
-            if (m_skillsText.isEmpty())
-                skillsLbl->setText("暂无内容，点击编辑按钮添加");
-            else
-                skillsLbl->setText(m_skillsText);
-        }
     }
 }
 
@@ -1200,12 +1223,6 @@ void MainWindow::editSummary() {
 
     if (dialog.exec() == QDialog::Accepted) {
         m_summaryText = edit->toPlainText().trimmed();
-        if (summaryLbl) {
-            if (m_summaryText.isEmpty())
-                summaryLbl->setText("暂无内容，点击编辑按钮添加");
-            else
-                summaryLbl->setText(m_summaryText);
-        }
     }
 }
 
@@ -1219,21 +1236,9 @@ void MainWindow::loadResumeProfile() {
 
     // 技术能力
     m_skillsText = profile.value("skills").toString();
-    if (skillsLbl) {
-        if (m_skillsText.isEmpty())
-            skillsLbl->setText("暂无内容，点击编辑按钮添加");
-        else
-            skillsLbl->setText(m_skillsText);
-    }
 
     // 个人总结
     m_summaryText = profile.value("summary").toString();
-    if (summaryLbl) {
-        if (m_summaryText.isEmpty())
-            summaryLbl->setText("暂无内容，点击编辑按钮添加");
-        else
-            summaryLbl->setText(m_summaryText);
-    }
 
     // 照片（圆形裁切）
     m_photoPath = profile.value("photo_path").toString();
