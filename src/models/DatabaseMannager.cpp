@@ -64,11 +64,7 @@ bool DatabaseManager::createTables() {
                        "grade TEXT DEFAULT '', "
                        "gender TEXT DEFAULT '', "
                        "major TEXT DEFAULT '', "
-                       "school TEXT DEFAULT '', "
-                       "phone TEXT DEFAULT '', "
-                       "email TEXT DEFAULT '', "
-                       "job_target TEXT DEFAULT '', "
-                       "website TEXT DEFAULT ''"
+                       "school TEXT DEFAULT ''"
                        ");";
     if (!query.exec(sqlUsers)) success = false;
 
@@ -193,15 +189,68 @@ bool DatabaseManager::ensureColumn(const QString &tableName,
     return true;
 }
 
+bool DatabaseManager::hasColumn(const QString &tableName,
+                                const QString &columnName) const {
+    QSqlQuery tableInfo(m_db);
+    if (!tableInfo.exec(QString("PRAGMA table_info(%1)").arg(tableName)))
+        return false;
+
+    while (tableInfo.next()) {
+        if (tableInfo.value(1).toString() == columnName)
+            return true;
+    }
+    return false;
+}
+
+bool DatabaseManager::removeLegacyUserResumeColumns() {
+    const QStringList legacyColumns = {
+        "phone", "email", "job_target", "website"
+    };
+
+    bool hasLegacyColumn = false;
+    for (const QString &column : legacyColumns) {
+        if (hasColumn("users", column)) {
+            hasLegacyColumn = true;
+            break;
+        }
+    }
+    if (!hasLegacyColumn)
+        return true;
+
+    if (!m_db.transaction()) {
+        qWarning() << "无法开始 users 遗留字段删除事务："
+                   << m_db.lastError().text();
+        return false;
+    }
+
+    QSqlQuery query(m_db);
+    for (const QString &column : legacyColumns) {
+        if (!hasColumn("users", column))
+            continue;
+
+        if (!query.exec(QString("ALTER TABLE users DROP COLUMN %1")
+                            .arg(column))) {
+            qWarning() << "删除 users." << column << "失败："
+                       << query.lastError().text();
+            m_db.rollback();
+            return false;
+        }
+    }
+
+    if (!m_db.commit()) {
+        qWarning() << "提交 users 遗留字段删除事务失败："
+                   << m_db.lastError().text();
+        m_db.rollback();
+        return false;
+    }
+    return true;
+}
+
 void DatabaseManager::migrateTables() {
     ensureColumn("users", "grade", "TEXT DEFAULT ''");
     ensureColumn("users", "gender", "TEXT DEFAULT ''");
     ensureColumn("users", "major", "TEXT DEFAULT ''");
     ensureColumn("users", "school", "TEXT DEFAULT ''");
-    ensureColumn("users", "phone", "TEXT DEFAULT ''");
-    ensureColumn("users", "email", "TEXT DEFAULT ''");
-    ensureColumn("users", "job_target", "TEXT DEFAULT ''");
-    ensureColumn("users", "website", "TEXT DEFAULT ''");
 
     ensureColumn("courses", "user_id", "INTEGER NOT NULL DEFAULT 1");
     ensureColumn("courses", "gpa", "REAL DEFAULT 0");
@@ -257,6 +306,49 @@ void DatabaseManager::migrateTables() {
         "INSERT OR IGNORE INTO resume_profiles (user_id, full_name) "
         "SELECT id, username FROM users");
 
+    // 兼容曾被误加到 users 表中的简历字段。仅填补 resume_profiles
+    // 中的空值，避免覆盖用户已经在简历页维护的新数据。
+    struct LegacyResumeField {
+        const char *userColumn;
+        const char *resumeColumn;
+    };
+    const LegacyResumeField legacyFields[] = {
+        {"phone", "phone"},
+        {"email", "email"},
+        {"job_target", "job_target"},
+        {"website", "website_url"}
+    };
+    for (const LegacyResumeField &field : legacyFields) {
+        if (!hasColumn("users", field.userColumn))
+            continue;
+
+        const QString migrateSql = QString(
+            "UPDATE resume_profiles "
+            "SET %1 = COALESCE(("
+            "    SELECT u.%2 FROM users u "
+            "    WHERE u.id = resume_profiles.user_id"
+            "), ''), "
+            "updated_at = CURRENT_TIMESTAMP "
+            "WHERE TRIM(COALESCE(%1, '')) = '' "
+            "AND EXISTS ("
+            "    SELECT 1 FROM users u "
+            "    WHERE u.id = resume_profiles.user_id "
+            "    AND TRIM(COALESCE(u.%2, '')) <> ''"
+            ")")
+            .arg(field.resumeColumn, field.userColumn);
+        if (!query.exec(migrateSql)) {
+            qWarning() << "迁移 users." << field.userColumn
+                       << "到 resume_profiles." << field.resumeColumn
+                       << "失败：" << query.lastError().text();
+            continue;
+        }
+
+    }
+
+    // 重复数据已经迁入 resume_profiles，正式移除 users 中的遗留字段。
+    // 四列在同一事务中删除，防止数据库停留在部分迁移状态。
+    removeLegacyUserResumeColumns();
+
     // 旧版 users 中已有学校信息时，初始化一条教育经历且避免重复。
     query.exec(
         "INSERT INTO education_records (user_id, school, major, degree, "
@@ -267,28 +359,123 @@ void DatabaseManager::migrateTables() {
         "AND NOT EXISTS (SELECT 1 FROM education_records e "
         "                WHERE e.user_id = u.id)");
 
+    // 修复旧版本造成的学校/专业不同步。只有一条教育经历时可以明确认定其为
+    // 主教育经历；多条记录留给 updateUserInfo 按旧学校精确匹配，避免误改。
+    query.exec(
+        "UPDATE education_records "
+        "SET school = (SELECT u.school FROM users u "
+        "              WHERE u.id = education_records.user_id), "
+        "    major = (SELECT u.major FROM users u "
+        "             WHERE u.id = education_records.user_id) "
+        "WHERE user_id IN ("
+        "    SELECT user_id FROM education_records "
+        "    GROUP BY user_id HAVING COUNT(*) = 1"
+        ") "
+        "AND EXISTS ("
+        "    SELECT 1 FROM users u "
+        "    WHERE u.id = education_records.user_id "
+        "    AND TRIM(COALESCE(u.school, '')) <> ''"
+        ")");
+
     qDebug() << "数据库迁移完成";
 }
 
 
 bool DatabaseManager::updateUserInfo(int userId, const QString &grade, const QString &gender,
                                      const QString &major, const QString &school,
+                                     const QString &startYear, const QString &endYear,
                                      const QString &phone, const QString &email,
                                      const QString &jobTarget, const QString &website) {
-    QSqlQuery query;
-    query.prepare("UPDATE users SET grade = :grade, gender = :gender, major = :major, "
-                  "school = :school, phone = :phone, email = :email, "
-                  "job_target = :job_target, website = :website WHERE id = :id");
+    if (!m_db.transaction())
+        return false;
+
+    QSqlQuery query(m_db);
+    QString previousSchool;
+    QString previousMajor;
+    query.prepare("SELECT school, major FROM users WHERE id = :id");
+    query.bindValue(":id", userId);
+    if (!query.exec() || !query.next()) {
+        m_db.rollback();
+        return false;
+    }
+    previousSchool = query.value(0).toString();
+    previousMajor = query.value(1).toString();
+
+    query.prepare("UPDATE users SET grade = :grade, gender = :gender, "
+                  "major = :major, school = :school WHERE id = :id");
     query.bindValue(":grade", grade);
     query.bindValue(":gender", gender);
     query.bindValue(":major", major);
     query.bindValue(":school", school);
-    query.bindValue(":phone", phone);
-    query.bindValue(":email", email);
-    query.bindValue(":job_target", jobTarget);
-    query.bindValue(":website", website);
     query.bindValue(":id", userId);
-    return query.exec();
+    if (!query.exec() || query.numRowsAffected() <= 0) {
+        m_db.rollback();
+        return false;
+    }
+
+    // users 中的学校和专业代表侧边栏使用的主教育信息。
+    // 简历则读取 education_records，因此这里同步最匹配的主教育经历。
+    query.prepare(
+        "SELECT id FROM education_records WHERE user_id = :uid "
+        "ORDER BY "
+        "CASE "
+        "  WHEN school = :previous_school AND major = :previous_major THEN 0 "
+        "  WHEN school = :previous_school THEN 1 "
+        "  ELSE 2 "
+        "END, sort_order ASC, id ASC "
+        "LIMIT 1");
+    query.bindValue(":uid", userId);
+    query.bindValue(":previous_school", previousSchool);
+    query.bindValue(":previous_major", previousMajor);
+    if (!query.exec()) {
+        m_db.rollback();
+        return false;
+    }
+
+    if (query.next()) {
+        const int educationId = query.value(0).toInt();
+        query.prepare(
+            "UPDATE education_records SET school = :school, major = :major, "
+            "start_date = :start_date, end_date = :end_date "
+            "WHERE id = :id AND user_id = :uid");
+        query.bindValue(":school", school);
+        query.bindValue(":major", major);
+        query.bindValue(":start_date", startYear);
+        query.bindValue(":end_date", endYear);
+        query.bindValue(":id", educationId);
+        query.bindValue(":uid", userId);
+        if (!query.exec() || query.numRowsAffected() <= 0) {
+            m_db.rollback();
+            return false;
+        }
+    } else {
+        query.prepare(
+            "INSERT INTO education_records "
+            "(user_id, school, major, start_date, end_date, "
+            "sort_order, is_visible) "
+            "VALUES (:uid, :school, :major, :start_date, :end_date, 0, 1)");
+        query.bindValue(":uid", userId);
+        query.bindValue(":school", school);
+        query.bindValue(":major", major);
+        query.bindValue(":start_date", startYear);
+        query.bindValue(":end_date", endYear);
+        if (!query.exec()) {
+            m_db.rollback();
+            return false;
+        }
+    }
+
+    QVariantMap profile = getResumeProfile(userId);
+    profile["phone"] = phone;
+    profile["email"] = email;
+    profile["job_target"] = jobTarget;
+    profile["website_url"] = website;
+    if (!updateResumeProfile(userId, profile)) {
+        m_db.rollback();
+        return false;
+    }
+
+    return m_db.commit();
 }
 
 double DatabaseManager::scoreToGpa(double score) {
@@ -398,9 +585,12 @@ int DatabaseManager::loginUser(const QString &username, const QString &password)
 
 QVariantMap DatabaseManager::getUserInfo(int userId) {
     QVariantMap info;
-    QSqlQuery query;
-    query.prepare("SELECT id, username, grade, gender, major, school, "
-                  "phone, email, job_target, website FROM users WHERE id = :id");
+    QSqlQuery query(m_db);
+    query.prepare("SELECT u.id, u.username, u.grade, u.gender, u.major, "
+                  "u.school, r.phone, r.email, r.job_target, r.website_url "
+                  "FROM users u "
+                  "LEFT JOIN resume_profiles r ON r.user_id = u.id "
+                  "WHERE u.id = :id");
     query.bindValue(":id", userId);
 
     if (query.exec() && query.next()) {

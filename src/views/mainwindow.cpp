@@ -30,6 +30,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QRegularExpression>
+#include <QRegularExpressionValidator>
 #include <QSizePolicy>
 #include <QSlider>
 #include <QSpacerItem>
@@ -1913,6 +1914,26 @@ void MainWindow::openEditProfileDialog() {
     if (!user.isLoggedIn())
         return;
 
+    QVariantMap primaryEducation;
+    const QVariantList educationRecords =
+        DatabaseManager::getInstance().getEducationRecords(user.getId());
+    for (const QVariant &value : educationRecords) {
+        const QVariantMap education = value.toMap();
+        if (education.value("school").toString() == user.getSchool() &&
+            education.value("major").toString() == user.getMajor()) {
+            primaryEducation = education;
+            break;
+        }
+    }
+    if (primaryEducation.isEmpty() && !educationRecords.isEmpty())
+        primaryEducation = educationRecords.first().toMap();
+
+    auto yearFromDate = [](const QString &date) {
+        const QRegularExpressionMatch match =
+            QRegularExpression("(?:19|20)\\d{2}").match(date);
+        return match.hasMatch() ? match.captured(0) : QString();
+    };
+
     QDialog dialog(this);
     dialog.setWindowTitle("修改个人信息");
     dialog.setMinimumWidth(480);
@@ -1954,10 +1975,40 @@ void MainWindow::openEditProfileDialog() {
     auto *majorEdit = new QLineEdit(user.getMajor(), &dialog);
     majorEdit->setPlaceholderText("例如：数据科学与大数据技术");
 
+    auto *educationYearsWidget = new QWidget(&dialog);
+    auto *educationYearsLayout = new QHBoxLayout(educationYearsWidget);
+    educationYearsLayout->setContentsMargins(0, 0, 0, 0);
+    educationYearsLayout->setSpacing(8);
+
+    auto *startYearEdit = new QLineEdit(
+        yearFromDate(primaryEducation.value("start_date").toString()),
+        educationYearsWidget);
+    auto *endYearEdit = new QLineEdit(
+        yearFromDate(primaryEducation.value("end_date").toString()),
+        educationYearsWidget);
+    const QRegularExpression yearPattern("(?:19|20)\\d{2}");
+    startYearEdit->setValidator(
+        new QRegularExpressionValidator(yearPattern, startYearEdit));
+    endYearEdit->setValidator(
+        new QRegularExpressionValidator(yearPattern, endYearEdit));
+    startYearEdit->setPlaceholderText("20xx");
+    endYearEdit->setPlaceholderText("20xx");
+    startYearEdit->setMaxLength(4);
+    endYearEdit->setMaxLength(4);
+    startYearEdit->setMaximumWidth(90);
+    endYearEdit->setMaximumWidth(90);
+
+    educationYearsLayout->addWidget(startYearEdit);
+    educationYearsLayout->addWidget(new QLabel("年 ～", educationYearsWidget));
+    educationYearsLayout->addWidget(endYearEdit);
+    educationYearsLayout->addWidget(new QLabel("年", educationYearsWidget));
+    educationYearsLayout->addStretch();
+
     form->addRow("学校：", schoolEdit);
     form->addRow("年级：", gradeBox);
     form->addRow("性别：", genderBox);
     form->addRow("专业：", majorEdit);
+    form->addRow("就读时间：", educationYearsWidget);
 
     auto *phoneEdit = new QLineEdit(user.getPhone(), &dialog);
     phoneEdit->setPlaceholderText("例如：13800138000");
@@ -1995,6 +2046,8 @@ void MainWindow::openEditProfileDialog() {
         gender.clear();
     QString major = majorEdit->text().trimmed();
     QString school = schoolEdit->text().trimmed();
+    QString startYear = startYearEdit->text().trimmed();
+    QString endYear = endYearEdit->text().trimmed();
     QString phone = phoneEdit->text().trimmed();
     QString email = emailEdit->text().trimmed();
     QString jobTarget = jobTargetEdit->text().trimmed();
@@ -2004,9 +2057,20 @@ void MainWindow::openEditProfileDialog() {
         QMessageBox::warning(this, "提示", "学校和专业不能为空");
         return;
     }
+    if (startYear.isEmpty() != endYear.isEmpty()) {
+        QMessageBox::warning(this, "提示",
+                             "请同时填写入学年份和毕业年份");
+        return;
+    }
+    if (!startYear.isEmpty() && startYear.toInt() > endYear.toInt()) {
+        QMessageBox::warning(this, "提示",
+                             "入学年份不能晚于毕业年份");
+        return;
+    }
 
     if (DatabaseManager::getInstance().updateUserInfo(user.getId(), grade,
                                                       gender, major, school,
+                                                      startYear, endYear,
                                                       phone, email,
                                                       jobTarget, website)) {
         user.refresh();

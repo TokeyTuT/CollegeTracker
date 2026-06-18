@@ -32,6 +32,7 @@ public:
     QVariantMap getUserInfo(int userId);
     bool updateUserInfo(int userId, const QString &grade, const QString &gender,
                         const QString &major, const QString &school,
+                        const QString &startYear, const QString &endYear,
                         const QString &phone, const QString &email,
                         const QString &jobTarget, const QString &website);
 
@@ -75,6 +76,8 @@ private:
     void migrateTables();
     bool ensureColumn(const QString &tableName, const QString &columnName,
                       const QString &columnDefinition);
+    bool hasColumn(const QString &tableName, const QString &columnName) const;
+    bool removeLegacyUserResumeColumns();
 };
 
 #endif // DATABASEMANAGER_H

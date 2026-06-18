@@ -51,8 +51,21 @@ QString sectionHtml(const QString &title, const QString &body) {
 QString dateRange(const QVariantMap &row) {
     const QString start = row.value("start_date").toString().trimmed();
     const QString end = row.value("end_date").toString().trimmed();
+    const QRegularExpression yearOnly("(?:19|20)\\d{2}");
+    if (yearOnly.match(start).hasMatch() &&
+        yearOnly.match(start).captured(0) == start &&
+        yearOnly.match(end).hasMatch() &&
+        yearOnly.match(end).captured(0) == end) {
+        return QString("%1～%2").arg(start, end);
+    }
     if (!start.isEmpty() && !end.isEmpty())
         return start + " - " + end;
+    if (yearOnly.match(start).hasMatch() &&
+        yearOnly.match(start).captured(0) == start)
+        return start;
+    if (yearOnly.match(end).hasMatch() &&
+        yearOnly.match(end).captured(0) == end)
+        return end;
     return start.isEmpty() ? end : start;
 }
 
@@ -277,7 +290,7 @@ QString ResumeExporter::generateHtml(int userId,
         contactLine2 << linkHtml(github, "GitHub");
     const QString website = profile.value("website_url").toString().trimmed();
     if (!website.isEmpty())
-        contactLine2 << linkHtml(website, "个人网站");
+        contactLine2 << QString("个人网站：%1").arg(website.toHtmlEscaped());
 
     if (contactLine1.isEmpty() && contactLine2.isEmpty()) {
         const QString school = user.value("school").toString().trimmed();
