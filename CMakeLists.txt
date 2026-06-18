@@ -34,6 +34,9 @@ set(EXTRA_SOURCES
     src/views/RegisterDialog.cpp
     src/models/User.h
     src/models/User.cpp
+    src/services/ResumeExporter.h
+    src/services/ResumeExporter.cpp
+    resources.qrc
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -63,6 +66,7 @@ target_include_directories(CollegeTracker PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/views
     ${CMAKE_CURRENT_SOURCE_DIR}/src/models
     ${CMAKE_CURRENT_SOURCE_DIR}/src/controllers
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/services
 )
 
 target_link_libraries(CollegeTracker PRIVATE

@@ -11,6 +11,7 @@
 #include <QDoubleSpinBox>
 
 class QShowEvent;
+class ResumeExporter;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -76,6 +77,9 @@ private:
     QPushButton *editSkillsBtn = nullptr;
     QLabel *summaryLbl = nullptr;
     QPushButton *editSummaryBtn = nullptr;
+    QPushButton *previewResumeBtn = nullptr;
+    QPushButton *exportResumePdfBtn = nullptr;
+    ResumeExporter *resumeExporter = nullptr;
     QString m_photoPath;
     QString m_skillsText;
     QString m_summaryText;

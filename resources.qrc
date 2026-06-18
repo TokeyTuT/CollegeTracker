@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/templates">
+        <file alias="resume_template.html">templates/resume_template.html</file>
+    </qresource>
+</RCC>

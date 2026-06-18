@@ -3,6 +3,7 @@
 
 #include "AddCourseDialog.h"
 #include "DatabaseMannager.h"
+#include "ResumeExporter.h"
 #include "Theme.h"
 #include "User.h"
 
@@ -28,10 +29,12 @@
 #include <QPainterPath>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QRegularExpression>
 #include <QSizePolicy>
 #include <QSlider>
 #include <QSpacerItem>
 #include <QSqlQuery>
+#include <QStandardPaths>
 #include <QStyle>
 #include <QTextStream>
 #include <QTimer>
@@ -42,6 +45,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    resumeExporter = new ResumeExporter(this);
     applyModernStyle();
     buildHomePage();
     buildExportPage();
@@ -1054,6 +1058,38 @@ void MainWindow::buildExportPage() {
     }
 
     mainLayout->addWidget(summaryCard);
+
+    // ===== 预览与导出操作区 =====
+    auto *exportActions = new QHBoxLayout;
+    exportActions->setSpacing(Spacing::sm);
+    exportActions->addStretch();
+
+    previewResumeBtn = new QPushButton("在浏览器中预览");
+    previewResumeBtn->setObjectName("previewResumeBtn");
+    previewResumeBtn->setCursor(Qt::PointingHandCursor);
+    previewResumeBtn->setMinimumHeight(42);
+    previewResumeBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background: transparent; color: %1;"
+        " border: 2px solid %1; border-radius: 9px;"
+        " font-size: 14px; font-weight: 700; padding: 0 22px; }"
+        "QPushButton:hover { background: %1; color: #FFFFFF; }"
+    ).arg(Color::primary));
+    exportActions->addWidget(previewResumeBtn);
+
+    exportResumePdfBtn = new QPushButton("导出 PDF");
+    exportResumePdfBtn->setObjectName("exportResumePdfBtn");
+    exportResumePdfBtn->setCursor(Qt::PointingHandCursor);
+    exportResumePdfBtn->setMinimumHeight(42);
+    exportResumePdfBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background: %1; color: #FFFFFF; border: none;"
+        " border-radius: 9px; font-size: 14px; font-weight: 700;"
+        " padding: 0 26px; }"
+        "QPushButton:hover { background: %2; }"
+        "QPushButton:disabled { background: #94A3B8; }"
+    ).arg(Color::primary).arg(Color::accent));
+    exportActions->addWidget(exportResumePdfBtn);
+
+    mainLayout->addLayout(exportActions);
     mainLayout->addStretch();
 
     // ---- 圆形裁切辅助函数 ----
@@ -1400,13 +1436,66 @@ void MainWindow::buildExportPage() {
             &MainWindow::editSkills);
     connect(editSummaryBtn, &QPushButton::clicked, this,
             &MainWindow::editSummary);
+
+    connect(previewResumeBtn, &QPushButton::clicked, this, [this]() {
+        saveResumeToDb();
+        QString errorMessage;
+        if (!resumeExporter->openPreview(User::getInstance().getId(),
+                                         &errorMessage)) {
+            QMessageBox::warning(this, "预览失败", errorMessage);
+        }
+    });
+
+    connect(exportResumePdfBtn, &QPushButton::clicked, this, [this]() {
+        saveResumeToDb();
+
+        QString username = User::getInstance().getUsername().trimmed();
+        username.replace(QRegularExpression("[\\\\/:*?\"<>|]"), "_");
+        if (username.isEmpty())
+            username = "Resume";
+
+        QString outputDirectory =
+            QStandardPaths::writableLocation(
+                QStandardPaths::DocumentsLocation);
+        if (outputDirectory.isEmpty())
+            outputDirectory = QDir::homePath();
+        const QString defaultPath =
+            QDir(outputDirectory)
+                .filePath(username + QStringLiteral("的Resume.pdf"));
+
+        QString filePath = QFileDialog::getSaveFileName(
+            this, "导出简历 PDF", defaultPath, "PDF 文件 (*.pdf)");
+        if (filePath.isEmpty())
+            return;
+        if (!filePath.endsWith(".pdf", Qt::CaseInsensitive))
+            filePath += ".pdf";
+
+        exportResumePdfBtn->setEnabled(false);
+        exportResumePdfBtn->setText("正在导出...");
+        resumeExporter->exportPdf(User::getInstance().getId(), filePath);
+    });
+
+    connect(resumeExporter, &ResumeExporter::pdfExportFinished, this,
+            [this](bool success, const QString &filePath,
+                   const QString &errorMessage) {
+                exportResumePdfBtn->setEnabled(true);
+                exportResumePdfBtn->setText("导出 PDF");
+                if (success) {
+                    QMessageBox::information(
+                        this, "导出成功",
+                        QString("简历已导出到：\n%1").arg(filePath));
+                } else {
+                    QMessageBox::critical(this, "导出失败", errorMessage);
+                }
+            });
 }
 
 void MainWindow::saveResumeToDb() {
     int userId = User::getInstance().getId();
     if (userId <= 0)
         return;
-    QVariantMap profile;
+    QVariantMap profile =
+        DatabaseManager::getInstance().getResumeProfile(userId);
     profile["skills"] = m_skillsText;
     profile["summary"] = m_summaryText;
     profile["photo_path"] = m_photoPath;

@@ -4,10 +4,15 @@
 <context>
     <name>MainWindow</name>
     <message>
+        <location filename="ui/mainwindow.ui" line="14"/>
+        <location filename="build/CollegeTracker_autogen/include/ui_mainwindow.h" line="482"/>
+        <source>College Tracker</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="ui/mainwindow.ui" line="51"/>
         <location filename="build/CollegeTracker_autogen/include/ui_mainwindow.h" line="483"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;我是默认姓名（不会加载&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <oldsource>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;数据科学与大数据技术&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</oldsource>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -38,7 +43,6 @@
         <location filename="ui/mainwindow.ui" line="107"/>
         <location filename="build/CollegeTracker_autogen/include/ui_mainwindow.h" line="488"/>
         <source>经历与荣誉</source>
-        <oldsource>经历 &amp; 荣誉</oldsource>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -71,6 +75,14 @@
         <location filename="ui/mainwindow.ui" line="312"/>
         <location filename="build/CollegeTracker_autogen/include/ui_mainwindow.h" line="495"/>
         <source>添加</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="ui/mainwindow.ui" line="332"/>
+        <location filename="ui/mainwindow.ui" line="552"/>
+        <location filename="build/CollegeTracker_autogen/include/ui_mainwindow.h" line="496"/>
+        <location filename="build/CollegeTracker_autogen/include/ui_mainwindow.h" line="503"/>
+        <source>删除选定行</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -145,20 +157,6 @@
         <location filename="ui/mainwindow.ui" line="654"/>
         <location filename="build/CollegeTracker_autogen/include/ui_mainwindow.h" line="510"/>
         <source>院级</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="ui/mainwindow.ui" line="332"/>
-        <location filename="ui/mainwindow.ui" line="552"/>
-        <location filename="build/CollegeTracker_autogen/include/ui_mainwindow.h" line="496"/>
-        <location filename="build/CollegeTracker_autogen/include/ui_mainwindow.h" line="503"/>
-        <source>删除选定行</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="ui/mainwindow.ui" line="14"/>
-        <location filename="build/CollegeTracker_autogen/include/ui_mainwindow.h" line="482"/>
-        <source>College Tracker</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
