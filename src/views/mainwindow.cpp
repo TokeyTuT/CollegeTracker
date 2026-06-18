@@ -618,9 +618,9 @@ void MainWindow::buildHomePage() {
         return card;
     };
 
-    statsLayout->addWidget(makeStatCard("课程", "已录入",
+    statsLayout->addWidget(makeStatCard("已修课程", "修读课程总数",
                                         &homeCourseCountLbl, "teal"), 0, 0);
-    statsLayout->addWidget(makeStatCard("平均 GPA", "学分加权",
+    statsLayout->addWidget(makeStatCard("GPA", "加权 GPA",
                                         &homeGpaLbl, "cyan"), 0, 1);
     statsLayout->addWidget(makeStatCard("竞赛", "课外活动",
                                         &homeCompetitionCountLbl, "amber"), 0, 2);
