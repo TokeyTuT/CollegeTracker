@@ -10,6 +10,8 @@
 #include <QPushButton>
 #include <QDoubleSpinBox>
 
+class QShowEvent;
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -23,6 +25,9 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
+
+protected:
+    void showEvent(QShowEvent *event) override;
 
 private slots:
     void on_navHomeBtn_clicked();

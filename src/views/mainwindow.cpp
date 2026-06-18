@@ -30,6 +30,7 @@
 #include <QSqlQuery>
 #include <QStyle>
 #include <QTextStream>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QVector>
 #include <QtMath>
@@ -53,6 +54,17 @@ MainWindow::~MainWindow() {
     delete expModel;
     delete awardModel;
     delete ui;
+}
+
+void MainWindow::showEvent(QShowEvent *event) {
+    QMainWindow::showEvent(event);
+
+    // 等窗口完成首次布局后再绘制首页图表。构造阶段控件尺寸尚未稳定，
+    // 会导致登录后首次显示的折线图仍使用初始化时的临时尺寸。
+    QTimer::singleShot(0, this, [this]() {
+        if (ui->stackedWidget->currentIndex() == 0)
+            updateHomePageStats();
+    });
 }
 
 void MainWindow::applyModernStyle() {
@@ -527,21 +539,21 @@ void MainWindow::buildHomePage() {
 
     auto *mainLayout = new QVBoxLayout(ui->homePage);
     mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->setSpacing(16);
+    mainLayout->setSpacing(14);
 
     auto makeCard = [](const QString &title, const QString &objectName) {
         auto *card = new QFrame;
         card->setObjectName(objectName);
         card->setFrameShape(QFrame::NoFrame);
         auto *shadow = new QGraphicsDropShadowEffect(card);
-        shadow->setBlurRadius(28);
-        shadow->setOffset(0, 10);
-        shadow->setColor(QColor(40, 62, 84, 18));
+        shadow->setBlurRadius(24);
+        shadow->setOffset(0, 8);
+        shadow->setColor(QColor(40, 62, 84, 16));
         card->setGraphicsEffect(shadow);
 
         auto *layout = new QVBoxLayout(card);
-        layout->setContentsMargins(22, 18, 22, 18);
-        layout->setSpacing(10);
+        layout->setContentsMargins(22, 16, 22, 18);
+        layout->setSpacing(8);
         auto *titleLbl = new QLabel(title);
         titleLbl->setObjectName("homeCardTitle");
         layout->addWidget(titleLbl);
@@ -549,28 +561,51 @@ void MainWindow::buildHomePage() {
     };
 
     QFrame *chartCard = makeCard("学期平均 GPA 走势", "homeChartCard");
-    chartCard->setMinimumHeight(330);
+    chartCard->setMinimumHeight(292);
+    chartCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     homeChartLabel = new QLabel;
     homeChartLabel->setObjectName("homeChartLabel");
-    homeChartLabel->setMinimumHeight(260);
+    homeChartLabel->setMinimumSize(520, 220);
+    homeChartLabel->setAlignment(Qt::AlignCenter);
     homeChartLabel->setSizePolicy(QSizePolicy::Expanding,
                                   QSizePolicy::Expanding);
     chartCard->layout()->addWidget(homeChartLabel);
 
-    auto *bottomLayout = new QGridLayout;
-    bottomLayout->setContentsMargins(0, 0, 0, 0);
-    bottomLayout->setHorizontalSpacing(14);
-    bottomLayout->setVerticalSpacing(14);
+    auto *metricsPanel = new QFrame;
+    metricsPanel->setObjectName("homeMetricsPanel");
+    metricsPanel->setFixedHeight(126);
+    auto *metricsLayout = new QVBoxLayout(metricsPanel);
+    metricsLayout->setContentsMargins(0, 0, 0, 0);
+    metricsLayout->setSpacing(7);
+
+    auto *metricsTitle = new QLabel("学习档案快照");
+    metricsTitle->setObjectName("homeMetricsTitle");
+    auto *metricsSub = new QLabel("课程、实践与成果概览");
+    metricsSub->setObjectName("homeMetricsSub");
+    auto *metricsHeader = new QHBoxLayout;
+    metricsHeader->setContentsMargins(2, 0, 2, 0);
+    metricsHeader->setSpacing(10);
+    metricsHeader->addWidget(metricsTitle);
+    metricsHeader->addWidget(metricsSub);
+    metricsHeader->addStretch();
+    metricsLayout->addLayout(metricsHeader);
+
+    auto *statsLayout = new QGridLayout;
+    statsLayout->setContentsMargins(0, 0, 0, 0);
+    statsLayout->setHorizontalSpacing(8);
+    statsLayout->setVerticalSpacing(0);
 
     auto makeStatCard = [](const QString &title, const QString &subTitle,
-                           QLabel **valueLabel, const QString &objectName) {
+                           QLabel **valueLabel, const QString &tone) {
         auto *card = new QFrame;
-        card->setObjectName(objectName);
+        card->setObjectName("homeStatCard");
+        card->setProperty("tone", tone);
         card->setFrameShape(QFrame::NoFrame);
-        card->setMinimumHeight(112);
+        card->setMinimumHeight(92);
+        card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         auto *layout = new QVBoxLayout(card);
-        layout->setContentsMargins(18, 14, 18, 14);
-        layout->setSpacing(4);
+        layout->setContentsMargins(12, 8, 10, 7);
+        layout->setSpacing(1);
         auto *titleLbl = new QLabel(title);
         titleLbl->setObjectName("homeStatTitle");
         *valueLabel = new QLabel("0");
@@ -583,65 +618,66 @@ void MainWindow::buildHomePage() {
         return card;
     };
 
-    bottomLayout->addWidget(makeStatCard("课程数量", "已录入课程",
-                                         &homeCourseCountLbl, "homeStatCard"),
-                            0, 0);
-    bottomLayout->addWidget(
-        makeStatCard("平均 GPA", "按学分加权", &homeGpaLbl, "homeStatCard"), 0,
-        1);
-    bottomLayout->addWidget(makeStatCard("竞赛经历", "课外活动统计",
-                                         &homeCompetitionCountLbl,
-                                         "homeStatCard"),
-                            0, 2);
-    bottomLayout->addWidget(makeStatCard("实习经历", "实践经历统计",
-                                         &homeInternshipCountLbl,
-                                         "homeStatCard"),
-                            0, 3);
-    bottomLayout->addWidget(makeStatCard("项目经历", "项目/科研统计",
-                                         &homeProjectCountLbl, "homeStatCard"),
-                            1, 0);
-    bottomLayout->addWidget(makeStatCard("个人荣誉", "奖学金与荣誉统计",
-                                         &homeAwardCountLbl, "homeStatCard"),
-                            1, 1);
-    bottomLayout->addItem(
-        new QSpacerItem(10, 10, QSizePolicy::Expanding, QSizePolicy::Minimum),
-        1, 2, 1, 2);
+    statsLayout->addWidget(makeStatCard("课程", "已录入",
+                                        &homeCourseCountLbl, "teal"), 0, 0);
+    statsLayout->addWidget(makeStatCard("平均 GPA", "学分加权",
+                                        &homeGpaLbl, "cyan"), 0, 1);
+    statsLayout->addWidget(makeStatCard("竞赛", "课外活动",
+                                        &homeCompetitionCountLbl, "amber"), 0, 2);
+    statsLayout->addWidget(makeStatCard("实习", "实践经历",
+                                        &homeInternshipCountLbl, "blue"), 0, 3);
+    statsLayout->addWidget(makeStatCard("项目", "项目 / 科研",
+                                        &homeProjectCountLbl, "violet"), 0, 4);
+    statsLayout->addWidget(makeStatCard("荣誉", "奖项成果",
+                                        &homeAwardCountLbl, "rose"), 0, 5);
+    for (int column = 0; column < 6; ++column)
+        statsLayout->setColumnStretch(column, 1);
+    metricsLayout->addLayout(statsLayout);
 
-    mainLayout->addWidget(chartCard);
-    mainLayout->addLayout(bottomLayout);
+    mainLayout->addWidget(chartCard, 1);
+    mainLayout->addWidget(metricsPanel);
 
     // 一键导入导出按钮栏
-    auto *csvAllLayout = new QHBoxLayout;
-    csvAllLayout->setContentsMargins(0, 4, 0, 0);
-    csvAllLayout->setSpacing(14);
+    auto *actionBar = new QFrame;
+    actionBar->setObjectName("homeActionBar");
+    actionBar->setFixedHeight(58);
+    auto *csvAllLayout = new QHBoxLayout(actionBar);
+    csvAllLayout->setContentsMargins(16, 8, 10, 8);
+    csvAllLayout->setSpacing(10);
+
+    auto *actionTextLayout = new QVBoxLayout;
+    actionTextLayout->setContentsMargins(0, 0, 0, 0);
+    actionTextLayout->setSpacing(0);
+    auto *actionTitle = new QLabel("数据管理");
+    actionTitle->setObjectName("homeActionTitle");
+    auto *actionSub = new QLabel("快速备份或迁移全部档案");
+    actionSub->setObjectName("homeActionSub");
+    actionTextLayout->addWidget(actionTitle);
+    actionTextLayout->addWidget(actionSub);
 
     homeImportAllBtn = new QPushButton("一键导入全部数据");
     homeImportAllBtn->setObjectName("homeImportAllBtn");
-    homeImportAllBtn->setMinimumHeight(42);
+    homeImportAllBtn->setFixedHeight(40);
     homeImportAllBtn->setCursor(Qt::PointingHandCursor);
 
     homeExportAllBtn = new QPushButton("一键导出全部数据");
     homeExportAllBtn->setObjectName("homeExportAllBtn");
-    homeExportAllBtn->setMinimumHeight(42);
+    homeExportAllBtn->setFixedHeight(40);
     homeExportAllBtn->setCursor(Qt::PointingHandCursor);
 
     homeCsvHelpBtn = new QPushButton("?");
     homeCsvHelpBtn->setObjectName("homeCsvHelpBtn");
-    homeCsvHelpBtn->setMinimumHeight(42);
-    homeCsvHelpBtn->setMaximumHeight(42);
-    homeCsvHelpBtn->setMinimumWidth(42);
-    homeCsvHelpBtn->setMaximumWidth(42);
+    homeCsvHelpBtn->setFixedSize(40, 40);
     homeCsvHelpBtn->setCursor(Qt::PointingHandCursor);
     homeCsvHelpBtn->setToolTip("查看一键导入导出 CSV 格式说明");
 
-    csvAllLayout->addStretch();
+    csvAllLayout->addLayout(actionTextLayout);
+    csvAllLayout->addStretch(1);
     csvAllLayout->addWidget(homeImportAllBtn);
     csvAllLayout->addWidget(homeExportAllBtn);
     csvAllLayout->addWidget(homeCsvHelpBtn);
-    csvAllLayout->addStretch();
 
-    mainLayout->addLayout(csvAllLayout);
-    mainLayout->addStretch();
+    mainLayout->addWidget(actionBar);
 }
 
 double MainWindow::scoreToGpa(double score) const {
@@ -741,17 +777,16 @@ void MainWindow::updateHomePageStats() {
     homeProjectCountLbl->setText(QString::number(projectCount));
     homeAwardCountLbl->setText(QString::number(awardCount));
 
-    const int width =
-        qMax(720, homeChartLabel->width() > 10 ? homeChartLabel->width() : 760);
-    const int height = qMax(
-        250, homeChartLabel->height() > 10 ? homeChartLabel->height() : 260);
+    // 使用标签的真实尺寸绘图，避免大尺寸 pixmap 在较窄的 QLabel 中被裁切。
+    const int width = qMax(360, homeChartLabel->width());
+    const int height = qMax(220, homeChartLabel->height());
     QPixmap pixmap(width, height);
     pixmap.fill(Qt::transparent);
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    QRectF plot(56, 22, width - 92, height - 70);
+    QRectF plot(48, 34, width - 62, height - 94);
     QPen gridPen(QColor(226, 232, 240));
     gridPen.setWidth(1);
     painter.setPen(gridPen);
@@ -790,15 +825,28 @@ void MainWindow::updateHomePageStats() {
         QPainterPath path(points.first());
         for (int i = 1; i < points.size(); ++i)
             path.lineTo(points[i]);
-        QPen linePen(QColor(14, 165, 233), 4, Qt::SolidLine, Qt::RoundCap,
+
+        QPainterPath areaPath = path;
+        areaPath.lineTo(points.last().x(), plot.bottom());
+        areaPath.lineTo(points.first().x(), plot.bottom());
+        areaPath.closeSubpath();
+        QLinearGradient areaGradient(0, plot.top(), 0, plot.bottom());
+        areaGradient.setColorAt(0, QColor(13, 148, 136, 72));
+        areaGradient.setColorAt(1, QColor(13, 148, 136, 4));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(areaGradient);
+        painter.drawPath(areaPath);
+
+        QPen linePen(QColor(13, 148, 136), 4, Qt::SolidLine, Qt::RoundCap,
                      Qt::RoundJoin);
         painter.setPen(linePen);
+        painter.setBrush(Qt::NoBrush);
         painter.drawPath(path);
     }
 
     for (const QPointF &point : points) {
-        painter.setPen(QPen(QColor(255, 255, 255), 5));
-        painter.setBrush(QColor(37, 99, 235));
+        painter.setPen(QPen(QColor(255, 255, 255), 4));
+        painter.setBrush(QColor(13, 148, 136));
         painter.drawEllipse(point, 6, 6);
     }
 
@@ -811,7 +859,7 @@ void MainWindow::updateHomePageStats() {
 
     painter.setPen(QColor(100, 116, 139));
     painter.setFont(QFont("PingFang SC", 10, QFont::DemiBold));
-    painter.drawText(QRectF(plot.left(), 0, plot.width(), 20),
+    painter.drawText(QRectF(plot.left(), 4, plot.width(), 22),
                      Qt::AlignLeft | Qt::AlignVCenter,
                      "横轴：学期    纵轴：平均 GPA");
 
