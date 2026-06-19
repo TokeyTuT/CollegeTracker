@@ -7,12 +7,15 @@
 #include "Theme.h"
 #include "User.h"
 
+#include <QApplication>
+#include <QButtonGroup>
 #include <QComboBox>
 #include <QCursor>
 #include <QDate>
 #include <QDir>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QEvent>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -24,6 +27,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QKeyEvent>
 #include <QLineEdit>
 #include <QPainter>
 #include <QPainterPath>
@@ -31,6 +35,7 @@
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
+#include <QResizeEvent>
 #include <QSignalBlocker>
 #include <QSizePolicy>
 #include <QSlider>
@@ -43,11 +48,39 @@
 #include <QStyledItemDelegate>
 #include <QTextStream>
 #include <QTimer>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QVector>
 #include <QtMath>
 
 namespace {
+
+constexpr qreal kHiResScale = 4.0;
+
+QPixmap circularHiResPixmap(const QPixmap &source, int logicalSize) {
+    if (source.isNull() || logicalSize <= 0)
+        return {};
+
+    const int pixelSize = qCeil(logicalSize * kHiResScale);
+    const QPixmap scaled = source.scaled(
+        pixelSize, pixelSize, Qt::KeepAspectRatioByExpanding,
+        Qt::SmoothTransformation);
+    const int x = (scaled.width() - pixelSize) / 2;
+    const int y = (scaled.height() - pixelSize) / 2;
+
+    QPixmap circular(pixelSize, pixelSize);
+    circular.fill(Qt::transparent);
+    QPainter painter(&circular);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    QPainterPath path;
+    path.addEllipse(2, 2, pixelSize - 4, pixelSize - 4);
+    painter.setClipPath(path);
+    painter.drawPixmap(-x, -y, scaled);
+    painter.end();
+    circular.setDevicePixelRatio(kHiResScale);
+    return circular;
+}
 
 class CoreCourseDelegate final : public QStyledItemDelegate {
 public:
@@ -88,10 +121,12 @@ public:
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    qApp->installEventFilter(this);
     resumeExporter = new ResumeExporter(this);
     applyModernStyle();
     buildHomePage();
     buildExportPage();
+    loadResumeProfile();
 
     InitFrame();
     updateSidebarUserInfo();
@@ -101,6 +136,7 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 MainWindow::~MainWindow() {
+    qApp->removeEventFilter(this);
     delete courseModel;
     delete expModel;
     delete awardModel;
@@ -116,6 +152,54 @@ void MainWindow::showEvent(QShowEvent *event) {
         if (ui->stackedWidget->currentIndex() == 0)
             updateHomePageStats();
     });
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event) {
+    QMainWindow::resizeEvent(event);
+    if (resumePreviewOverlay) {
+        resumePreviewOverlay->setGeometry(ui->centralwidget->rect());
+        if (resumePreviewOverlay->isVisible())
+            updateResumeTemplateMagnifier();
+    }
+}
+
+bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
+    Q_UNUSED(watched);
+
+    const bool canPreview =
+        ui && ui->stackedWidget->currentIndex() == 3 &&
+        QApplication::activeModalWidget() == nullptr &&
+        (QApplication::activeWindow() == this ||
+         (resumePreviewOverlay && resumePreviewOverlay->isVisible()));
+
+    if (canPreview && event->type() == QEvent::KeyPress) {
+        auto *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Space) {
+            if (!keyEvent->isAutoRepeat()) {
+                if (resumePreviewOverlay &&
+                    resumePreviewOverlay->isVisible()) {
+                    hideResumeTemplateMagnifier();
+                }
+                else
+                    showResumeTemplateMagnifier();
+            }
+            // 防止空格同时触发当前获得焦点的按钮。
+            return true;
+        }
+    }
+
+    if (canPreview && event->type() == QEvent::KeyRelease) {
+        auto *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Space)
+            return true;
+    }
+
+    if (event->type() == QEvent::ApplicationDeactivate ||
+        event->type() == QEvent::WindowDeactivate) {
+        hideResumeTemplateMagnifier();
+    }
+
+    return QMainWindow::eventFilter(watched, event);
 }
 
 #if 0
@@ -677,7 +761,7 @@ void MainWindow::applyModernStyle() {
 
     setStyleSheet(QStringLiteral(R"QSS(
         * {
-            font-family: "Avenir Next", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+            font-family: "Avenir Next", "PingFang SC";
             font-size: 14px;
             color: #17201D;
         }
@@ -714,6 +798,11 @@ void MainWindow::applyModernStyle() {
         }
         QLabel#majorLbl {
             color: #BFD0CA; font-size: 12px; font-weight: 500;
+        }
+        QLabel#sidebarAvatarLbl {
+            background: #E5EEE9; color: #315C53;
+            border: 2px solid #73968D; border-radius: 30px;
+            font-size: 21px; font-weight: 850;
         }
         QPushButton#editProfileBtn {
             min-height: 30px; max-height: 30px;
@@ -1195,14 +1284,19 @@ void MainWindow::updateHomePageStats() {
     homeProjectCountLbl->setText(QString::number(projectCount));
     homeAwardCountLbl->setText(QString::number(awardCount));
 
-    // 使用标签的真实尺寸绘图，避免大尺寸 pixmap 在较窄的 QLabel 中被裁切。
+    // 以 4 倍分辨率绘制，再作为高 DPI pixmap 显示。
+    // 这样文字、网格与折线在 Retina / 4K 屏幕上不会被系统二次放大。
     const int width = qMax(360, homeChartLabel->width());
     const int height = qMax(220, homeChartLabel->height());
-    QPixmap pixmap(width, height);
+    QPixmap pixmap(qCeil(width * kHiResScale),
+                   qCeil(height * kHiResScale));
     pixmap.fill(Qt::transparent);
+    pixmap.setDevicePixelRatio(kHiResScale);
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setRenderHint(QPainter::TextAntialiasing, true);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
 
     // 给纵轴刻度留出独立区域，避免折线端点压住 0.0–4.0 数值。
     constexpr qreal leftMargin = 68.0;
@@ -1303,7 +1397,7 @@ void MainWindow::buildExportPage() {
 
     auto *mainLayout = new QVBoxLayout(ui->profilePage);
     mainLayout->setContentsMargins(0, 6, 0, 0);
-    mainLayout->setSpacing(16);
+    mainLayout->setSpacing(12);
 
     // ---- 辅助：创建带标题的现代化卡片 ----
     auto makeSectionCard = [](const QString &title) {
@@ -1321,10 +1415,11 @@ void MainWindow::buildExportPage() {
         card->setGraphicsEffect(shadow);
 
         auto *layout = new QVBoxLayout(card);
-        layout->setContentsMargins(24, 18, 24, 18);
-        layout->setSpacing(Spacing::sm);
+        layout->setContentsMargins(20, 13, 20, 13);
+        layout->setSpacing(6);
 
         auto *titleLbl = new QLabel(title);
+        titleLbl->setObjectName("resumeSectionTitle");
         titleLbl->setStyleSheet(QStringLiteral(
             "font-size: %1px; font-weight: %2; color: %3; background: transparent;"
         ).arg(TypeScale::h2).arg(FontWeight::bold).arg(Color::onSurface));
@@ -1333,7 +1428,7 @@ void MainWindow::buildExportPage() {
     };
 
     // ===== 照片区域（标题栏内嵌导入按钮）=====
-    QFrame *photoCard = new QFrame;
+    QFrame *photoCard = new QFrame(ui->profilePage);
     photoCard->setObjectName("resumePhotoCard");
     photoCard->setFrameShape(QFrame::NoFrame);
     photoCard->setStyleSheet(QStringLiteral(
@@ -1392,10 +1487,154 @@ void MainWindow::buildExportPage() {
     photoRow->addWidget(photoPreviewLbl);
     photoRow->addStretch();
     photoCardLayout->addLayout(photoRow);
-    mainLayout->addWidget(photoCard);
+    // 头像属于个人资料：保留裁剪控件作为内部能力，不再显示在简历页。
+    photoCard->hide();
+
+    // ===== 简历模板预览画廊 =====
+    auto *templateGallery = new QFrame;
+    templateGallery->setObjectName("resumeTemplateGallery");
+    templateGallery->setStyleSheet(
+        "QFrame#resumeTemplateGallery { background:transparent; border:none; }");
+    auto *galleryLayout = new QVBoxLayout(templateGallery);
+    galleryLayout->setContentsMargins(0, 2, 0, 8);
+    galleryLayout->setSpacing(14);
+
+    auto *galleryHeader = new QHBoxLayout;
+    galleryHeader->setSpacing(12);
+    auto *galleryTitle = new QLabel("⌄  模板");
+    galleryTitle->setStyleSheet(
+        "color:#56615D; font-size:18px; font-weight:800;");
+    galleryHeader->addWidget(galleryTitle);
+
+    resumeTemplateDescriptionLbl = new QLabel(
+        "传统学术排版，信息清晰，适合通用申请。");
+    resumeTemplateDescriptionLbl->setStyleSheet(
+        "color:#7A827E; font-size:12px; font-weight:600; padding-top:2px;");
+    galleryHeader->addWidget(resumeTemplateDescriptionLbl, 1);
+    auto *galleryHint = new QLabel("点击切换 · 按空格放大 / 返回");
+    galleryHint->setStyleSheet(
+        "color:#1F6B5B; font-size:11px; font-weight:700; padding-top:2px;");
+    galleryHeader->addWidget(galleryHint);
+    galleryLayout->addLayout(galleryHeader);
+
+    resumeTemplateCombo = new QComboBox(ui->profilePage);
+    resumeTemplateCombo->setObjectName("resumeTemplateCombo");
+    resumeTemplateCombo->addItem("经典学术", "classic");
+    resumeTemplateCombo->addItem("深海蓝双栏", "navy");
+    resumeTemplateCombo->addItem("暖色编辑风", "editorial");
+    resumeTemplateCombo->hide();
+
+    struct TemplatePreview {
+        QString name;
+        QString resource;
+    };
+    const QList<TemplatePreview> previews = {
+        {"经典学术", ":/previews/resume-classic.png"},
+        {"深海蓝双栏", ":/previews/resume-navy.png"},
+        {"暖色编辑风", ":/previews/resume-editorial.png"},
+    };
+
+    auto *templateGroup = new QButtonGroup(templateGallery);
+    templateGroup->setExclusive(true);
+    auto *previewRow = new QHBoxLayout;
+    previewRow->setContentsMargins(6, 0, 6, 0);
+    previewRow->setSpacing(28);
+
+    auto makePaperIcon = [](const QString &resource) {
+        constexpr int canvasWidth = 170;
+        constexpr int canvasHeight = 226;
+        constexpr int paperWidth = 148;
+        constexpr int paperHeight = 210;
+        const int canvasPixelWidth = qCeil(canvasWidth * kHiResScale);
+        const int canvasPixelHeight = qCeil(canvasHeight * kHiResScale);
+        const int paperPixelWidth = qCeil(paperWidth * kHiResScale);
+        const int paperPixelHeight = qCeil(paperHeight * kHiResScale);
+
+        QPixmap canvas(canvasPixelWidth, canvasPixelHeight);
+        canvas.fill(Qt::transparent);
+
+        QPainter painter(&canvas);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(35, 45, 42, 28));
+        painter.drawRoundedRect(
+            QRectF(13 * kHiResScale, 10 * kHiResScale,
+                   paperPixelWidth, paperPixelHeight),
+            6 * kHiResScale, 6 * kHiResScale);
+        painter.setBrush(QColor(35, 45, 42, 13));
+        painter.drawRoundedRect(
+            QRectF(10 * kHiResScale, 7 * kHiResScale,
+                   paperPixelWidth, paperPixelHeight),
+            6 * kHiResScale, 6 * kHiResScale);
+
+        const QPixmap source(resource);
+        const QPixmap page = source.scaled(
+            paperPixelWidth, paperPixelHeight, Qt::IgnoreAspectRatio,
+            Qt::SmoothTransformation);
+        painter.drawPixmap(qCeil(7 * kHiResScale),
+                           qCeil(4 * kHiResScale), page);
+        painter.end();
+        canvas.setDevicePixelRatio(kHiResScale);
+        return QIcon(canvas);
+    };
+
+    for (int index = 0; index < previews.size(); ++index) {
+        const TemplatePreview &preview = previews.at(index);
+        auto *button = new QToolButton(templateGallery);
+        button->setObjectName("resumeTemplatePreview");
+        button->setCheckable(true);
+        button->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+        button->setIcon(makePaperIcon(preview.resource));
+        button->setIconSize(QSize(170, 226));
+        button->setText(preview.name);
+        button->setCursor(Qt::PointingHandCursor);
+        button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        button->setFixedHeight(264);
+        button->setStyleSheet(QStringLiteral(
+            "QToolButton { background:transparent; color:#37443F;"
+            " border:none; border-bottom:3px solid transparent;"
+            " padding:2px 4px 7px; font-size:13px; font-weight:700; }"
+            "QToolButton:hover { background:transparent; color:#1F6B5B; }"
+            "QToolButton:checked { background:transparent; color:#174F44;"
+            " border-bottom:3px solid #D97745; font-weight:850; }"));
+        templateGroup->addButton(button, index);
+        resumeTemplateCards.append(button);
+        previewRow->addWidget(button, 1);
+
+        connect(button, &QToolButton::clicked, this, [this, index]() {
+            resumeTemplateCombo->setCurrentIndex(index);
+        });
+    }
+    galleryLayout->addLayout(previewRow);
+    mainLayout->addWidget(templateGallery);
 
     // ===== 技术能力区域 =====
     QFrame *skillsCard = makeSectionCard("技术能力");
+    skillsCard->setFixedHeight(116);
+    auto *skillsLayout = static_cast<QVBoxLayout *>(skillsCard->layout());
+    auto *skillsTitle = skillsCard->findChild<QLabel *>("resumeSectionTitle");
+    skillsLayout->removeWidget(skillsTitle);
+
+    auto *skillsHeader = new QWidget;
+    auto *skillsHeaderLayout = new QHBoxLayout(skillsHeader);
+    skillsHeaderLayout->setContentsMargins(0, 0, 0, 0);
+    skillsHeaderLayout->setSpacing(10);
+    skillsHeaderLayout->addWidget(skillsTitle);
+    skillsHeaderLayout->addStretch();
+    editSkillsBtn = new QPushButton("编辑");
+    editSkillsBtn->setObjectName("editSkillsBtn");
+    editSkillsBtn->setCursor(Qt::PointingHandCursor);
+    editSkillsBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background:transparent; color:%1;"
+        " border:1px solid %1; border-radius:7px;"
+        " min-height:27px; max-height:27px;"
+        " font-size:12px; font-weight:700; padding:0 16px; }"
+        "QPushButton:hover { background:%1; color:#FFFFFF; }"
+    ).arg(Color::primary));
+    skillsHeaderLayout->addWidget(editSkillsBtn);
+    skillsLayout->addWidget(skillsHeader);
+
     skillsLbl = new QLabel("尚未填写技能，点击编辑补充。", skillsCard);
     skillsLbl->setObjectName("resumeBodyText");
     skillsLbl->setWordWrap(true);
@@ -1403,31 +1642,36 @@ void MainWindow::buildExportPage() {
     skillsLbl->setStyleSheet(
         "color:#59635F; font-size:13px; font-weight:550;"
         "background:transparent; padding:2px 0;");
-    static_cast<QVBoxLayout *>(skillsCard->layout())->addWidget(skillsLbl);
-
-    {
-        auto *header = new QWidget;
-        auto *hdr = new QHBoxLayout(header);
-        hdr->setContentsMargins(0, 0, 0, 0);
-        hdr->addStretch();
-        editSkillsBtn = new QPushButton("编辑");
-        editSkillsBtn->setObjectName("editSkillsBtn");
-        editSkillsBtn->setCursor(Qt::PointingHandCursor);
-        editSkillsBtn->setStyleSheet(QStringLiteral(
-            "QPushButton { background: transparent; color: %1;"
-            " border: 2px solid %1; border-radius: 8px;"
-            " min-height: 30px; max-height: 30px;"
-            " font-size: 13px; font-weight: 700; padding: 0 20px; }"
-            "QPushButton:hover { background: %1; color: #FFFFFF; }"
-        ).arg(Color::primary));
-        hdr->addWidget(editSkillsBtn);
-        static_cast<QVBoxLayout*>(skillsCard->layout())->addWidget(header);
-    }
+    skillsLayout->addWidget(skillsLbl);
 
     mainLayout->addWidget(skillsCard);
 
     // ===== 个人总结区域 =====
     QFrame *summaryCard = makeSectionCard("个人总结");
+    summaryCard->setFixedHeight(124);
+    auto *summaryLayout = static_cast<QVBoxLayout *>(summaryCard->layout());
+    auto *summaryTitle = summaryCard->findChild<QLabel *>("resumeSectionTitle");
+    summaryLayout->removeWidget(summaryTitle);
+
+    auto *summaryHeader = new QWidget;
+    auto *summaryHeaderLayout = new QHBoxLayout(summaryHeader);
+    summaryHeaderLayout->setContentsMargins(0, 0, 0, 0);
+    summaryHeaderLayout->setSpacing(10);
+    summaryHeaderLayout->addWidget(summaryTitle);
+    summaryHeaderLayout->addStretch();
+    editSummaryBtn = new QPushButton("编辑");
+    editSummaryBtn->setObjectName("editSummaryBtn");
+    editSummaryBtn->setCursor(Qt::PointingHandCursor);
+    editSummaryBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background:transparent; color:%1;"
+        " border:1px solid %1; border-radius:7px;"
+        " min-height:27px; max-height:27px;"
+        " font-size:12px; font-weight:700; padding:0 16px; }"
+        "QPushButton:hover { background:%1; color:#FFFFFF; }"
+    ).arg(Color::primary));
+    summaryHeaderLayout->addWidget(editSummaryBtn);
+    summaryLayout->addWidget(summaryHeader);
+
     summaryLbl = new QLabel("尚未填写个人总结，点击编辑补充。", summaryCard);
     summaryLbl->setObjectName("resumeBodyText");
     summaryLbl->setWordWrap(true);
@@ -1435,64 +1679,9 @@ void MainWindow::buildExportPage() {
     summaryLbl->setStyleSheet(
         "color:#59635F; font-size:13px; font-weight:550;"
         "background:transparent; padding:2px 0;");
-    static_cast<QVBoxLayout *>(summaryCard->layout())->addWidget(summaryLbl);
-
-    {
-        auto *header = new QWidget;
-        auto *hdr = new QHBoxLayout(header);
-        hdr->setContentsMargins(0, 0, 0, 0);
-        hdr->addStretch();
-        editSummaryBtn = new QPushButton("编辑");
-        editSummaryBtn->setObjectName("editSummaryBtn");
-        editSummaryBtn->setCursor(Qt::PointingHandCursor);
-        editSummaryBtn->setStyleSheet(QStringLiteral(
-            "QPushButton { background: transparent; color: %1;"
-            " border: 2px solid %1; border-radius: 8px;"
-            " min-height: 30px; max-height: 30px;"
-            " font-size: 13px; font-weight: 700; padding: 0 20px; }"
-            "QPushButton:hover { background: %1; color: #FFFFFF; }"
-        ).arg(Color::primary));
-        hdr->addWidget(editSummaryBtn);
-        static_cast<QVBoxLayout*>(summaryCard->layout())->addWidget(header);
-    }
+    summaryLayout->addWidget(summaryLbl);
 
     mainLayout->addWidget(summaryCard);
-
-    // ===== 简历模板选择 =====
-    auto *templateCard = new QFrame;
-    templateCard->setObjectName("resumeTemplateCard");
-    templateCard->setStyleSheet(QStringLiteral(
-        "QFrame#resumeTemplateCard { background: #FFFFFF;"
-        " border: 1px solid rgba(203,213,225,0.65); border-radius: 10px; }"));
-    auto *templateLayout = new QHBoxLayout(templateCard);
-    templateLayout->setContentsMargins(18, 10, 18, 10);
-    templateLayout->setSpacing(14);
-
-    auto *templateTitle = new QLabel("简历模板");
-    templateTitle->setStyleSheet(QStringLiteral(
-        "font-size: 14px; font-weight: 800; color: %1;"
-        " background: transparent;").arg(Color::onSurface));
-    templateLayout->addWidget(templateTitle);
-
-    resumeTemplateCombo = new QComboBox(templateCard);
-    resumeTemplateCombo->setObjectName("resumeTemplateCombo");
-    resumeTemplateCombo->addItem("经典学术", "classic");
-    resumeTemplateCombo->addItem("深海蓝双栏", "navy");
-    resumeTemplateCombo->addItem("暖色编辑风", "editorial");
-    resumeTemplateCombo->setMinimumWidth(156);
-    resumeTemplateCombo->setMinimumHeight(34);
-    resumeTemplateCombo->setCursor(Qt::PointingHandCursor);
-    resumeTemplateCombo->setStyleSheet(Theme::inputStyle());
-    templateLayout->addWidget(resumeTemplateCombo);
-
-    resumeTemplateDescriptionLbl = new QLabel(
-        "传统学术排版，信息清晰，适合通用申请。", templateCard);
-    resumeTemplateDescriptionLbl->setStyleSheet(QStringLiteral(
-        "font-size: 12px; font-weight: 600; color: %1;"
-        " background: transparent;").arg(Color::onSurfaceMuted));
-    resumeTemplateDescriptionLbl->setWordWrap(true);
-    templateLayout->addWidget(resumeTemplateDescriptionLbl, 1);
-    mainLayout->addWidget(templateCard);
 
     // ===== 预览与导出操作区 =====
     auto *exportActions = new QHBoxLayout;
@@ -1527,28 +1716,62 @@ void MainWindow::buildExportPage() {
     mainLayout->addLayout(exportActions);
     mainLayout->addStretch();
 
+    // 按空格开关的沉浸式模板预览层。
+    resumePreviewOverlay = new QWidget(ui->centralwidget);
+    resumePreviewOverlay->setObjectName("resumePreviewOverlay");
+    resumePreviewOverlay->setAttribute(Qt::WA_StyledBackground, true);
+    resumePreviewOverlay->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    resumePreviewOverlay->setStyleSheet(QStringLiteral(
+        "QWidget#resumePreviewOverlay { background:rgba(18,28,25,232); }"
+        "QLabel#resumePreviewOverlayTitle { color:#FFF9F1;"
+        " font-size:20px; font-weight:850; background:transparent; }"
+        "QLabel#resumePreviewOverlayHint { color:#BCCBC5;"
+        " font-size:12px; font-weight:650; background:transparent; }"
+        "QLabel#resumePreviewLargeLbl { background:#FFFFFF;"
+        " border:1px solid rgba(255,255,255,0.32); }"));
+    resumePreviewOverlay->setGeometry(ui->centralwidget->rect());
+
+    auto *overlayLayout = new QVBoxLayout(resumePreviewOverlay);
+    overlayLayout->setContentsMargins(34, 24, 34, 28);
+    overlayLayout->setSpacing(12);
+
+    auto *overlayHeader = new QHBoxLayout;
+    resumePreviewTitleLbl = new QLabel("简历模板");
+    resumePreviewTitleLbl->setObjectName("resumePreviewOverlayTitle");
+    overlayHeader->addWidget(resumePreviewTitleLbl);
+    overlayHeader->addStretch();
+    auto *overlayHint = new QLabel("再按一次空格返回");
+    overlayHint->setObjectName("resumePreviewOverlayHint");
+    overlayHeader->addWidget(overlayHint);
+    overlayLayout->addLayout(overlayHeader);
+
+    resumePreviewLargeLbl = new QLabel;
+    resumePreviewLargeLbl->setObjectName("resumePreviewLargeLbl");
+    resumePreviewLargeLbl->setAlignment(Qt::AlignCenter);
+    resumePreviewLargeLbl->setSizePolicy(
+        QSizePolicy::Expanding, QSizePolicy::Expanding);
+    overlayLayout->addWidget(resumePreviewLargeLbl, 1, Qt::AlignCenter);
+
+    auto *previewShadow =
+        new QGraphicsDropShadowEffect(resumePreviewLargeLbl);
+    previewShadow->setBlurRadius(38);
+    previewShadow->setOffset(0, 12);
+    previewShadow->setColor(QColor(0, 0, 0, 100));
+    resumePreviewLargeLbl->setGraphicsEffect(previewShadow);
+    resumePreviewOverlay->hide();
+
     // ---- 圆形裁切辅助函数 ----
     auto makeCircularPixmap = [](const QPixmap &source, int size) {
-        QPixmap scaled = source.scaled(size, size,
-            Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-        int x = (scaled.width() - size) / 2;
-        int y = (scaled.height() - size) / 2;
-        QPixmap circular(size, size);
-        circular.fill(Qt::transparent);
-        QPainter painter(&circular);
-        painter.setRenderHint(QPainter::Antialiasing, true);
-        QPainterPath path;
-        path.addEllipse(0, 0, size, size);
-        painter.setClipPath(path);
-        painter.drawPixmap(-x, -y, scaled);
-        painter.end();
-        return circular;
+        return circularHiResPixmap(source, size);
     };
 
     // ---- 信号连接 ----
     connect(selectPhotoBtn, &QPushButton::clicked, this, [this, makeCircularPixmap]() {
+        QWidget *photoDialogParent = QApplication::activeModalWidget();
+        if (!photoDialogParent)
+            photoDialogParent = this;
         QString filePath = QFileDialog::getOpenFileName(
-            this, "导入个人照片", QString(),
+            photoDialogParent, "导入个人照片", QString(),
             "JPEG 图片 (*.jpg *.jpeg);;所有文件 (*)");
         if (filePath.isEmpty())
             return;
@@ -1572,7 +1795,7 @@ void MainWindow::buildExportPage() {
         QString destPath = photosDir + "/" + newName;
 
         // ===== 手动框选头像对话框 =====
-        QDialog cropDialog(this);
+        QDialog cropDialog(photoDialogParent);
         cropDialog.setWindowTitle("框选头像 — 拖动圆形选区定位");
         cropDialog.setMinimumSize(520, 650);
 
@@ -1907,6 +2130,13 @@ void MainWindow::buildExportPage() {
         [this](int index) {
             const QString templateId =
                 resumeTemplateCombo->itemData(index).toString();
+            for (int cardIndex = 0;
+                 cardIndex < resumeTemplateCards.size(); ++cardIndex) {
+                resumeTemplateCards.at(cardIndex)
+                    ->setChecked(cardIndex == index);
+            }
+            if (resumePreviewOverlay && resumePreviewOverlay->isVisible())
+                updateResumeTemplateMagnifier();
             if (templateId == "navy") {
                 resumeTemplateDescriptionLbl->setText(
                     "左侧信息轨道与右侧履历，适合技术岗和项目型简历。");
@@ -1973,6 +2203,60 @@ void MainWindow::buildExportPage() {
             });
 }
 
+void MainWindow::showResumeTemplateMagnifier() {
+    if (!resumePreviewOverlay || !resumeTemplateCombo ||
+        ui->stackedWidget->currentIndex() != 3) {
+        return;
+    }
+
+    resumePreviewOverlay->setGeometry(ui->centralwidget->rect());
+    updateResumeTemplateMagnifier();
+    resumePreviewOverlay->show();
+    resumePreviewOverlay->raise();
+}
+
+void MainWindow::hideResumeTemplateMagnifier() {
+    if (resumePreviewOverlay)
+        resumePreviewOverlay->hide();
+}
+
+void MainWindow::updateResumeTemplateMagnifier() {
+    if (!resumePreviewOverlay || !resumePreviewLargeLbl ||
+        !resumeTemplateCombo) {
+        return;
+    }
+
+    const QStringList resources = {
+        ":/previews/resume-classic.png",
+        ":/previews/resume-navy.png",
+        ":/previews/resume-editorial.png",
+    };
+    const int index = qBound(
+        0, resumeTemplateCombo->currentIndex(), resources.size() - 1);
+    const QPixmap source(resources.at(index));
+    if (source.isNull())
+        return;
+
+    resumePreviewTitleLbl->setText(
+        resumeTemplateCombo->itemText(index) + " · 模板预览");
+
+    const int maxWidth = qMax(260, resumePreviewOverlay->width() - 180);
+    const int maxHeight = qMax(360, resumePreviewOverlay->height() - 105);
+    QSize logicalSize = source.size();
+    logicalSize.scale(maxWidth, maxHeight, Qt::KeepAspectRatio);
+
+    // 预览层同样按 4 倍像素密度合成，避免放大时出现锯齿。
+    const QSize pixelSize(
+        qCeil(logicalSize.width() * kHiResScale),
+        qCeil(logicalSize.height() * kHiResScale));
+    QPixmap preview = source.scaled(
+        pixelSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    preview.setDevicePixelRatio(kHiResScale);
+
+    resumePreviewLargeLbl->setFixedSize(logicalSize);
+    resumePreviewLargeLbl->setPixmap(preview);
+}
+
 void MainWindow::saveResumeToDb() {
     int userId = User::getInstance().getId();
     if (userId <= 0)
@@ -1989,6 +2273,7 @@ void MainWindow::saveResumeToDb() {
                 .toString();
     }
     DatabaseManager::getInstance().updateResumeProfile(userId, profile);
+    updateSidebarAvatar();
 }
 
 void MainWindow::editSkills() {
@@ -2118,6 +2403,11 @@ void MainWindow::loadResumeProfile() {
             templateIndex = resumeTemplateCombo->findData("classic");
         const QSignalBlocker blocker(resumeTemplateCombo);
         resumeTemplateCombo->setCurrentIndex(templateIndex);
+        for (int cardIndex = 0;
+             cardIndex < resumeTemplateCards.size(); ++cardIndex) {
+            resumeTemplateCards.at(cardIndex)
+                ->setChecked(cardIndex == templateIndex);
+        }
 
         if (templateId == "navy") {
             resumeTemplateDescriptionLbl->setText(
@@ -2140,23 +2430,8 @@ void MainWindow::loadResumeProfile() {
             QPixmap source(fullPath);
             if (!source.isNull()) {
                 int size = photoPreviewLbl->width();
-                QPixmap scaled = source.scaled(size, size,
-                    Qt::KeepAspectRatioByExpanding,
-                    Qt::SmoothTransformation);
-                int x = (scaled.width() - size) / 2;
-                int y = (scaled.height() - size) / 2;
-
-                QPixmap circular(size, size);
-                circular.fill(Qt::transparent);
-                QPainter painter(&circular);
-                painter.setRenderHint(QPainter::Antialiasing, true);
-                QPainterPath path;
-                path.addEllipse(0, 0, size, size);
-                painter.setClipPath(path);
-                painter.drawPixmap(-x, -y, scaled);
-                painter.end();
-
-                photoPreviewLbl->setPixmap(circular);
+                photoPreviewLbl->setPixmap(
+                    circularHiResPixmap(source, size));
                 photoPreviewLbl->setText(QString());
             } else {
                 photoPreviewLbl->setText("照片文件丢失");
@@ -2166,11 +2441,12 @@ void MainWindow::loadResumeProfile() {
             photoPreviewLbl->setText("暂无照片");
         }
     }
+    updateSidebarAvatar();
 }
 
 void MainWindow::InitFrame() {
     ui->sidebarFrame->setFixedWidth(252);
-    ui->userProfileWidget->setMinimumHeight(164);
+    ui->userProfileWidget->setMinimumHeight(190);
     ui->userNameLbl->setMinimumHeight(30);
     ui->detailLbl->setMaximumWidth(112);
     ui->majorLbl->setMinimumHeight(42);
@@ -2181,6 +2457,29 @@ void MainWindow::InitFrame() {
     ui->userNameLbl->setWordWrap(false);
     ui->detailLbl->setWordWrap(false);
     ui->majorLbl->setWordWrap(true);
+
+    if (sidebarAvatarLbl == nullptr) {
+        auto *identityRow = new QWidget(ui->userProfileWidget);
+        identityRow->setObjectName("identityRow");
+        auto *identityLayout = new QHBoxLayout(identityRow);
+        identityLayout->setContentsMargins(0, 0, 0, 0);
+        identityLayout->setSpacing(12);
+
+        sidebarAvatarLbl = new QLabel(identityRow);
+        sidebarAvatarLbl->setObjectName("sidebarAvatarLbl");
+        sidebarAvatarLbl->setFixedSize(60, 60);
+        sidebarAvatarLbl->setAlignment(Qt::AlignCenter);
+        identityLayout->addWidget(sidebarAvatarLbl);
+
+        auto *identityTextLayout = new QVBoxLayout;
+        identityTextLayout->setContentsMargins(0, 2, 0, 2);
+        identityTextLayout->setSpacing(5);
+        identityTextLayout->addWidget(ui->userNameLbl);
+        identityTextLayout->addWidget(ui->detailLbl, 0, Qt::AlignLeft);
+        identityTextLayout->addStretch();
+        identityLayout->addLayout(identityTextLayout, 1);
+        ui->verticalLayout->insertWidget(0, identityRow);
+    }
 
     if (editProfileBtn == nullptr) {
         editProfileBtn = new QPushButton("编辑资料", ui->userProfileWidget);
@@ -2211,6 +2510,7 @@ void MainWindow::InitFrame() {
     ui->verticalLayout_2->setSpacing(8);
     ui->verticalSpacer_2->changeSize(20, 6, QSizePolicy::Minimum,
                                      QSizePolicy::Fixed);
+    updateSidebarAvatar();
 
     const QList<QPushButton *> navButtonsForSize = {
         ui->navHomeBtn, ui->navCourseBtn, ui->navExpBtn, ui->navExportBtn};
@@ -2245,6 +2545,7 @@ void MainWindow::InitFrame() {
     setActiveNav(ui->navHomeBtn);
 
     connect(ui->navHomeBtn, &QPushButton::clicked, this, [=] {
+        hideResumeTemplateMagnifier();
         ui->stackedWidget->setCurrentIndex(0);
         ui->currentPageLbl->setText("首页总览");
         ui->headerSubtitleLbl->setText("把每一段成长，整理成清晰的轨迹。");
@@ -2252,18 +2553,21 @@ void MainWindow::InitFrame() {
         updateHomePageStats();
     });
     connect(ui->navCourseBtn, &QPushButton::clicked, this, [=] {
+        hideResumeTemplateMagnifier();
         ui->stackedWidget->setCurrentIndex(1);
         ui->currentPageLbl->setText("课程与成绩");
         ui->headerSubtitleLbl->setText("记录课程、学分与绩点，随时看见学习节奏。");
         setActiveNav(ui->navCourseBtn);
     });
     connect(ui->navExpBtn, &QPushButton::clicked, this, [=] {
+        hideResumeTemplateMagnifier();
         ui->stackedWidget->setCurrentIndex(2);
         ui->currentPageLbl->setText("经历与荣誉");
         ui->headerSubtitleLbl->setText("把课堂之外的投入，沉淀成可复用的履历。");
         setActiveNav(ui->navExpBtn);
     });
     connect(ui->navExportBtn, &QPushButton::clicked, this, [=] {
+        hideResumeTemplateMagnifier();
         ui->stackedWidget->setCurrentIndex(3);
         ui->currentPageLbl->setText("简历导出");
         ui->headerSubtitleLbl->setText("整理关键信息，生成一份真正属于你的简历。");
@@ -2454,7 +2758,34 @@ void MainWindow::updateSidebarUserInfo() {
             detail = user.getGrade() + " | " + user.getGender();
         }
         ui->detailLbl->setText(detail);
+        updateSidebarAvatar();
     }
+}
+
+void MainWindow::updateSidebarAvatar() {
+    if (!sidebarAvatarLbl)
+        return;
+
+    if (!m_photoPath.isEmpty()) {
+        const QString fullPath =
+            QDir(QCoreApplication::applicationDirPath()).filePath(m_photoPath);
+        const QPixmap source(fullPath);
+        if (!source.isNull()) {
+            constexpr int size = 60;
+            sidebarAvatarLbl->setPixmap(
+                circularHiResPixmap(source, size));
+            sidebarAvatarLbl->setText(QString());
+            sidebarAvatarLbl->setToolTip("个人头像");
+            return;
+        }
+    }
+
+    sidebarAvatarLbl->setPixmap(QPixmap());
+    QString initial = User::getInstance().getUsername().trimmed().left(1);
+    if (initial.isEmpty())
+        initial = QStringLiteral("我");
+    sidebarAvatarLbl->setText(initial.toUpper());
+    sidebarAvatarLbl->setToolTip("尚未设置个人头像");
 }
 
 void MainWindow::openEditProfileDialog() {
@@ -2498,6 +2829,110 @@ void MainWindow::openEditProfileDialog() {
     hint->setWordWrap(true);
     hint->setStyleSheet("color:#64748B; font-size:13px; font-weight:700;");
     layout->addWidget(hint);
+
+    auto *photoSection = new QFrame(&dialog);
+    photoSection->setObjectName("profilePhotoSection");
+    photoSection->setStyleSheet(
+        "QFrame#profilePhotoSection { background:#FFFEFA;"
+        "border:1px solid #DED8CC; border-radius:12px; }");
+    auto *photoLayout = new QHBoxLayout(photoSection);
+    photoLayout->setContentsMargins(16, 14, 16, 14);
+    photoLayout->setSpacing(14);
+
+    auto *avatarPreview = new QLabel(photoSection);
+    avatarPreview->setFixedSize(72, 72);
+    avatarPreview->setAlignment(Qt::AlignCenter);
+    avatarPreview->setStyleSheet(
+        "background:#E5EEE9; color:#315C53; border:2px solid #8AA89F;"
+        "border-radius:36px; font-size:22px; font-weight:850;");
+    photoLayout->addWidget(avatarPreview);
+
+    auto *photoTextLayout = new QVBoxLayout;
+    photoTextLayout->setSpacing(3);
+    auto *photoTitle = new QLabel("个人照片", photoSection);
+    photoTitle->setStyleSheet(
+        "color:#25332F; font-size:15px; font-weight:800;");
+    auto *photoHint = new QLabel(
+        "这张照片会显示在左侧资料卡，并用于简历导出。", photoSection);
+    photoHint->setWordWrap(true);
+    photoHint->setStyleSheet(
+        "color:#7A827E; font-size:12px; font-weight:550;");
+    photoTextLayout->addWidget(photoTitle);
+    photoTextLayout->addWidget(photoHint);
+    photoTextLayout->addStretch();
+    photoLayout->addLayout(photoTextLayout, 1);
+
+    auto *photoButtons = new QVBoxLayout;
+    photoButtons->setSpacing(7);
+    auto *changePhotoBtn = new QPushButton("更换照片", photoSection);
+    changePhotoBtn->setCursor(Qt::PointingHandCursor);
+    changePhotoBtn->setStyleSheet(
+        "QPushButton { min-height:32px; background:#1F6B5B; color:#FFF;"
+        "border:1px solid #1F6B5B; border-radius:8px; padding:0 14px;"
+        "font-size:12px; font-weight:750; }"
+        "QPushButton:hover { background:#174F44; }");
+    auto *removePhotoBtn = new QPushButton("移除照片", photoSection);
+    removePhotoBtn->setCursor(Qt::PointingHandCursor);
+    removePhotoBtn->setStyleSheet(
+        "QPushButton { min-height:30px; background:transparent;"
+        "color:#A8443F; border:none; padding:0 8px;"
+        "font-size:12px; font-weight:700; }"
+        "QPushButton:hover { background:#F8E7E4; border-radius:7px; }");
+    photoButtons->addWidget(changePhotoBtn);
+    photoButtons->addWidget(removePhotoBtn);
+    photoButtons->addStretch();
+    photoLayout->addLayout(photoButtons);
+    layout->addWidget(photoSection);
+
+    const QString profileInitial = user.getUsername().trimmed().left(1);
+    auto refreshPhotoPreview = [this, avatarPreview, profileInitial]() {
+        if (!m_photoPath.isEmpty()) {
+            const QString fullPath =
+                QDir(QCoreApplication::applicationDirPath()).filePath(m_photoPath);
+            const QPixmap source(fullPath);
+            if (!source.isNull()) {
+                constexpr int size = 72;
+                avatarPreview->setPixmap(
+                    circularHiResPixmap(source, size));
+                avatarPreview->setText(QString());
+                return;
+            }
+        }
+        avatarPreview->setPixmap(QPixmap());
+        avatarPreview->setText(profileInitial.isEmpty()
+                                   ? QStringLiteral("我")
+                                   : profileInitial.toUpper());
+    };
+    refreshPhotoPreview();
+
+    connect(changePhotoBtn, &QPushButton::clicked, &dialog,
+            [this, refreshPhotoPreview]() {
+                if (selectPhotoBtn)
+                    selectPhotoBtn->click();
+                refreshPhotoPreview();
+            });
+    connect(removePhotoBtn, &QPushButton::clicked, &dialog,
+            [this, &dialog, refreshPhotoPreview]() {
+                if (m_photoPath.isEmpty())
+                    return;
+                if (QMessageBox::question(
+                        &dialog, "移除照片",
+                        "确定移除当前个人照片吗？简历中的照片也会同步移除。")
+                    != QMessageBox::Yes) {
+                    return;
+                }
+
+                QFile::remove(
+                    QDir(QCoreApplication::applicationDirPath())
+                        .filePath(m_photoPath));
+                m_photoPath.clear();
+                if (photoPreviewLbl) {
+                    photoPreviewLbl->setPixmap(QPixmap());
+                    photoPreviewLbl->setText("暂无照片");
+                }
+                saveResumeToDb();
+                refreshPhotoPreview();
+            });
 
     auto *form = new QFormLayout;
     form->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);

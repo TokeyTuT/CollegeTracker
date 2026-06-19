@@ -7,11 +7,15 @@
 #include <QInputDialog>
 #include <QTableView>
 #include <QLabel>
+#include <QList>
 #include <QPushButton>
 #include <QDoubleSpinBox>
 
 class QShowEvent;
+class QResizeEvent;
+class QEvent;
 class QComboBox;
+class QToolButton;
 class ResumeExporter;
 
 QT_BEGIN_NAMESPACE
@@ -33,6 +37,8 @@ signals:
 
 protected:
     void showEvent(QShowEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
     void on_navHomeBtn_clicked();
@@ -59,6 +65,7 @@ private:
     QLabel *homeInternshipCountLbl = nullptr;
     QLabel *homeProjectCountLbl = nullptr;
     QLabel *homeAwardCountLbl = nullptr;
+    QLabel *sidebarAvatarLbl = nullptr;
     QPushButton *editProfileBtn = nullptr;
     QPushButton *logoutBtn = nullptr;
     QPushButton *expTabBtn = nullptr;
@@ -84,7 +91,11 @@ private:
     QLabel *summaryLbl = nullptr;
     QPushButton *editSummaryBtn = nullptr;
     QComboBox *resumeTemplateCombo = nullptr;
+    QList<QToolButton *> resumeTemplateCards;
     QLabel *resumeTemplateDescriptionLbl = nullptr;
+    QWidget *resumePreviewOverlay = nullptr;
+    QLabel *resumePreviewLargeLbl = nullptr;
+    QLabel *resumePreviewTitleLbl = nullptr;
     QPushButton *previewResumeBtn = nullptr;
     QPushButton *exportResumePdfBtn = nullptr;
     ResumeExporter *resumeExporter = nullptr;
@@ -100,6 +111,7 @@ private:
 
     void updateTotalStats();
     void updateSidebarUserInfo();
+    void updateSidebarAvatar();
     void openEditProfileDialog();
     void logout();
     void applyModernStyle();
@@ -110,6 +122,9 @@ private:
     void editSkills();
     void editSummary();
     void saveResumeToDb();
+    void showResumeTemplateMagnifier();
+    void hideResumeTemplateMagnifier();
+    void updateResumeTemplateMagnifier();
     void updateHomePageStats();
     void resetAllCourses();
     double scoreToGpa(double score) const;

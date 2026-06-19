@@ -4,4 +4,9 @@
         <file alias="resume_template_navy.html">templates/resume_template_navy.html</file>
         <file alias="resume_template_editorial.html">templates/resume_template_editorial.html</file>
     </qresource>
+    <qresource prefix="/previews">
+        <file alias="resume-classic.png">assets/resume-preview-classic.png</file>
+        <file alias="resume-navy.png">assets/resume-preview-navy.png</file>
+        <file alias="resume-editorial.png">assets/resume-preview-editorial.png</file>
+    </qresource>
 </RCC>
