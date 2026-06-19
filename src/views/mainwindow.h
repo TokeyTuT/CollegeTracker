@@ -100,6 +100,7 @@ private:
     QPushButton *exportResumePdfBtn = nullptr;
     ResumeExporter *resumeExporter = nullptr;
     QString m_photoPath;
+    QString m_avatarPath;
     QString m_skillsText;
     QString m_summaryText;
 

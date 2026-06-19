@@ -9,4 +9,18 @@
         <file alias="resume-navy.png">assets/resume-preview-navy.png</file>
         <file alias="resume-editorial.png">assets/resume-preview-editorial.png</file>
     </qresource>
+    <qresource prefix="/avatars">
+        <file alias="avatar_01.png">assets/avatars/avatar_01.png</file>
+        <file alias="avatar_02.png">assets/avatars/avatar_02.png</file>
+        <file alias="avatar_03.png">assets/avatars/avatar_03.png</file>
+        <file alias="avatar_04.png">assets/avatars/avatar_04.png</file>
+        <file alias="avatar_05.png">assets/avatars/avatar_05.png</file>
+        <file alias="avatar_06.png">assets/avatars/avatar_06.png</file>
+        <file alias="avatar_07.png">assets/avatars/avatar_07.png</file>
+        <file alias="avatar_08.png">assets/avatars/avatar_08.png</file>
+        <file alias="avatar_09.png">assets/avatars/avatar_09.png</file>
+        <file alias="avatar_10.png">assets/avatars/avatar_10.png</file>
+        <file alias="avatar_11.png">assets/avatars/avatar_11.png</file>
+        <file alias="avatar_12.png">assets/avatars/avatar_12.png</file>
+    </qresource>
 </RCC>

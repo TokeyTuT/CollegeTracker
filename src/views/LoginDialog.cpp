@@ -61,6 +61,7 @@ LoginDialog::LoginDialog(QWidget *parent)
         QPushButton#registerButton:hover {
             background: #E6ECE8; border-color: #7F958C;
         }
+
         QLabel#messageLabel {
             color: #B94B45; font-size: 12px; font-weight: 650;
         }
