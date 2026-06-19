@@ -18,16 +18,16 @@ int main(int argc, char *argv[])
     // 强制使用浅色模式，避免在 macOS / Windows 深色模式下被系统颜色影响。
     QApplication::setStyle(QStyleFactory::create("Fusion"));
     QPalette lightPalette;
-    lightPalette.setColor(QPalette::Window, QColor(244, 247, 251));
-    lightPalette.setColor(QPalette::WindowText, QColor(15, 23, 42));
-    lightPalette.setColor(QPalette::Base, QColor(255, 255, 255));
-    lightPalette.setColor(QPalette::AlternateBase, QColor(248, 250, 252));
-    lightPalette.setColor(QPalette::ToolTipBase, QColor(255, 255, 255));
-    lightPalette.setColor(QPalette::ToolTipText, QColor(15, 23, 42));
-    lightPalette.setColor(QPalette::Text, QColor(15, 23, 42));
-    lightPalette.setColor(QPalette::Button, QColor(255, 255, 255));
-    lightPalette.setColor(QPalette::ButtonText, QColor(15, 23, 42));
-    lightPalette.setColor(QPalette::Highlight, QColor(37, 99, 235));
+    lightPalette.setColor(QPalette::Window, QColor(244, 241, 234));
+    lightPalette.setColor(QPalette::WindowText, QColor(23, 32, 29));
+    lightPalette.setColor(QPalette::Base, QColor(255, 254, 250));
+    lightPalette.setColor(QPalette::AlternateBase, QColor(250, 248, 243));
+    lightPalette.setColor(QPalette::ToolTipBase, QColor(32, 63, 56));
+    lightPalette.setColor(QPalette::ToolTipText, QColor(255, 249, 241));
+    lightPalette.setColor(QPalette::Text, QColor(23, 32, 29));
+    lightPalette.setColor(QPalette::Button, QColor(255, 254, 250));
+    lightPalette.setColor(QPalette::ButtonText, QColor(23, 32, 29));
+    lightPalette.setColor(QPalette::Highlight, QColor(31, 107, 91));
     lightPalette.setColor(QPalette::HighlightedText, QColor(255, 255, 255));
     a.setPalette(lightPalette);
 

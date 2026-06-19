@@ -118,6 +118,7 @@ void MainWindow::showEvent(QShowEvent *event) {
     });
 }
 
+#if 0
 void MainWindow::applyModernStyle() {
     setWindowTitle("College Tracker");
     resize(1120, 720);
@@ -616,6 +617,307 @@ void MainWindow::applyModernStyle() {
     }
 }
 
+}
+#endif
+
+void MainWindow::applyModernStyle() {
+    setWindowTitle("College Tracker");
+    resize(1240, 780);
+    setMinimumSize(1080, 690);
+
+    ui->menubar->hide();
+    ui->statusbar->hide();
+    ui->mainContentFrame->setFrameShape(QFrame::NoFrame);
+    ui->sidebarFrame->setFrameShape(QFrame::NoFrame);
+
+    importCourseCsvBtn = new QPushButton("导入 CSV", ui->coursePage);
+    importCourseCsvBtn->setObjectName("importCourseCsvBtn");
+    exportCourseCsvBtn = new QPushButton("导出 CSV", ui->coursePage);
+    exportCourseCsvBtn->setObjectName("exportCourseCsvBtn");
+    csvHelpCourseBtn = new QPushButton("?", ui->coursePage);
+    csvHelpCourseBtn->setObjectName("csvHelpCourseBtn");
+    csvHelpCourseBtn->setToolTip("查看课程 CSV 格式说明");
+    resetCourseBtn = new QPushButton("清空课程", ui->coursePage);
+    resetCourseBtn->setObjectName("resetCourseBtn");
+    resetCourseBtn->setToolTip("清空当前用户的全部课程记录");
+
+    importExpCsvBtn = new QPushButton("导入 CSV", ui->expPage);
+    importExpCsvBtn->setObjectName("importExpCsvBtn");
+    exportExpCsvBtn = new QPushButton("导出 CSV", ui->expPage);
+    exportExpCsvBtn->setObjectName("exportExpCsvBtn");
+    csvHelpExpBtn = new QPushButton("?", ui->expPage);
+    csvHelpExpBtn->setObjectName("csvHelpExpBtn");
+    csvHelpExpBtn->setToolTip("查看 CSV 格式说明");
+
+    for (QPushButton *button : {importCourseCsvBtn, exportCourseCsvBtn,
+                                importExpCsvBtn, exportExpCsvBtn})
+        button->setProperty("variant", "secondary");
+    for (QPushButton *button : {csvHelpCourseBtn, csvHelpExpBtn}) {
+        button->setProperty("variant", "tool");
+        button->setFixedSize(40, 40);
+    }
+
+    resetCourseBtn->setProperty("variant", "quietDanger");
+    ui->addCourseBtn->setProperty("variant", "primary");
+    ui->addExpBtn->setProperty("variant", "primary");
+    ui->addAwardBtn->setProperty("variant", "primary");
+    ui->deleteCourseBtn->setProperty("variant", "danger");
+    ui->DelExpBtn->setProperty("variant", "danger");
+    ui->delAwardBtn->setProperty("variant", "danger");
+
+    ui->courseToolbarLayout->insertWidget(0, importCourseCsvBtn);
+    ui->courseToolbarLayout->insertWidget(1, exportCourseCsvBtn);
+    ui->courseToolbarLayout->insertWidget(2, csvHelpCourseBtn);
+    ui->courseToolbarLayout->insertWidget(3, resetCourseBtn);
+
+    ui->expToolbarLayout->addStretch(1);
+    ui->expToolbarLayout->addWidget(importExpCsvBtn);
+    ui->expToolbarLayout->addWidget(exportExpCsvBtn);
+    ui->expToolbarLayout->addWidget(csvHelpExpBtn);
+
+    setStyleSheet(QStringLiteral(R"QSS(
+        * {
+            font-family: "Avenir Next", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+            font-size: 14px;
+            color: #17201D;
+        }
+        QMainWindow, QWidget#centralwidget { background: #F4F1EA; }
+        QFrame#sidebarFrame { background: #315C53; border: none; }
+        QFrame#mainContentFrame { background: #F4F1EA; border: none; }
+        QStackedWidget, QWidget#homePage, QWidget#coursePage,
+        QWidget#expPage, QWidget#profilePage { background: transparent; }
+
+        QWidget#brandWidget { background: transparent; }
+        QLabel#brandMarkLbl {
+            background: #D97745; color: #FFF9F1; border-radius: 12px;
+            font-size: 15px; font-weight: 900; letter-spacing: 1px;
+        }
+        QLabel#brandTitleLbl {
+            color: #F8F2E8; font-size: 16px; font-weight: 900;
+            letter-spacing: 2px;
+        }
+        QLabel#brandCaptionLbl {
+            color: #9FB6AE; font-size: 10px; font-weight: 600;
+            letter-spacing: 0.6px;
+        }
+
+        QWidget#userProfileWidget {
+            background: #3B675E; border: 1px solid #537B72;
+            border-radius: 14px;
+        }
+        QLabel#userNameLbl {
+            color: #FFF9F1; font-size: 19px; font-weight: 800;
+        }
+        QLabel#detailLbl {
+            color: #17352F; font-size: 11px; font-weight: 800;
+            background: #BFD6CD; border-radius: 8px; padding: 4px 9px;
+        }
+        QLabel#majorLbl {
+            color: #BFD0CA; font-size: 12px; font-weight: 500;
+        }
+        QPushButton#editProfileBtn {
+            min-height: 30px; max-height: 30px;
+            border: 1px solid #6C9087; border-radius: 8px;
+            background: transparent; color: #E5EEE9;
+            font-size: 12px; font-weight: 700; padding: 0 10px;
+        }
+        QPushButton#editProfileBtn:hover {
+            background: #4A746B; border-color: #92ADA6;
+        }
+        QPushButton#logoutBtn {
+            min-height: 40px; border: 1px solid #62877E;
+            border-radius: 10px; background: transparent;
+            color: #E1EBE7; font-size: 12px; font-weight: 700;
+        }
+        QPushButton#logoutBtn:hover {
+            background: #B94B45; border-color: #B94B45; color: #FFF;
+        }
+
+        QLabel#currentPageLbl {
+            color: #17201D; font-size: 27px; font-weight: 800;
+            letter-spacing: -0.2px;
+        }
+        QLabel#headerSubtitleLbl {
+            color: #707873; font-size: 12px; font-weight: 500;
+        }
+
+        #sidebarFrame QPushButton {
+            min-height: 48px; max-height: 48px; border: none;
+            border-radius: 10px; padding: 0 14px; text-align: left;
+            color: #AFC4BC; background: transparent;
+            font-size: 13px; font-weight: 650; letter-spacing: 0.4px;
+        }
+        #sidebarFrame QPushButton:hover {
+            background: #416B62; color: #FFF9F1;
+        }
+        #sidebarFrame QPushButton[active="true"] {
+            background: #F2EBDD; color: #17352F;
+            border-left: 4px solid #D97745; padding-left: 12px;
+            font-weight: 800;
+        }
+
+        QPushButton {
+            min-height: 40px; border: 1px solid #1F6B5B;
+            border-radius: 9px; padding: 0 17px; color: #FFF;
+            background: #1F6B5B; font-weight: 700;
+        }
+        QPushButton:hover { background: #174F44; border-color: #174F44; }
+        QPushButton:pressed { background: #113F36; }
+        QPushButton:disabled {
+            background: #D2CEC4; border-color: #D2CEC4; color: #8C938F;
+        }
+        QPushButton[variant="secondary"] {
+            background: #FFFEFA; color: #38564F; border: 1px solid #D6D0C4;
+        }
+        QPushButton[variant="secondary"]:hover {
+            background: #ECE8DF; border-color: #9DABA5;
+        }
+        QPushButton[variant="danger"] {
+            background: #FFFEFA; color: #A8443F; border: 1px solid #E4C5BF;
+        }
+        QPushButton[variant="danger"]:hover {
+            background: #B94B45; border-color: #B94B45; color: #FFF;
+        }
+        QPushButton[variant="quietDanger"] {
+            background: transparent; color: #8E5B55; border: none;
+            padding: 0 10px;
+        }
+        QPushButton[variant="quietDanger"]:hover {
+            background: #F8E7E4; color: #A8443F;
+        }
+        QPushButton[variant="tool"], QPushButton#homeCsvHelpBtn {
+            min-width: 40px; max-width: 40px; padding: 0;
+            background: #FFFEFA; color: #59635F; border: 1px solid #D6D0C4;
+            border-radius: 9px; font-size: 16px;
+        }
+        QPushButton[variant="tool"]:hover, QPushButton#homeCsvHelpBtn:hover {
+            background: #F7E4D8; color: #A9502C; border-color: #E2A17E;
+        }
+
+        QLabel { color: #59635F; background: transparent; font-weight: 600; }
+        QLineEdit, QComboBox, QDateEdit, QDoubleSpinBox, QPlainTextEdit {
+            min-height: 40px; border: 1px solid #D6D0C4;
+            border-radius: 9px; padding: 0 12px; background: #FFFEFA;
+            color: #17201D; selection-background-color: #BFD6CD;
+            selection-color: #17201D;
+        }
+        QPlainTextEdit { padding: 10px 12px; }
+        QLineEdit:hover, QComboBox:hover, QDateEdit:hover,
+        QDoubleSpinBox:hover, QPlainTextEdit:hover { border-color: #9DABA5; }
+        QLineEdit:focus, QComboBox:focus, QDateEdit:focus,
+        QDoubleSpinBox:focus, QPlainTextEdit:focus {
+            border: 2px solid #1F6B5B;
+        }
+        QComboBox::drop-down, QDateEdit::drop-down { border: none; width: 30px; }
+        QComboBox QAbstractItemView {
+            background: #FFFEFA; border: 1px solid #D6D0C4;
+            selection-background-color: #DDEBE6;
+            selection-color: #17201D; outline: none;
+        }
+
+        QFrame#addExpFrame, QFrame#addAwardFrame {
+            background: #FFFEFA; border: 1px solid #DED8CC;
+            border-radius: 13px;
+        }
+        QLabel#addExpTitle, QLabel#addAwardTitle {
+            color: #25332F; font-size: 17px; font-weight: 800;
+        }
+        QTableView {
+            background: #FFFEFA; alternate-background-color: #FAF8F3;
+            border: 1px solid #DED8CC; border-radius: 12px;
+            gridline-color: transparent; selection-background-color: #DDEBE6;
+            selection-color: #17201D; outline: none;
+        }
+        QTableView::item {
+            padding: 9px; border-bottom: 1px solid #EEEAE2;
+        }
+        QHeaderView::section {
+            background: #E7E2D8; color: #46524E; border: none;
+            border-right: 1px solid #D6D0C4; padding: 11px 9px;
+            font-size: 12px; font-weight: 800;
+        }
+        QTableCornerButton::section { background: #E7E2D8; border: none; }
+        QScrollBar:vertical {
+            background: transparent; width: 10px; margin: 4px 2px;
+        }
+        QScrollBar::handle:vertical {
+            background: #B7B1A6; border-radius: 4px; min-height: 28px;
+        }
+        QScrollBar::handle:vertical:hover { background: #7E8C86; }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            height: 0px;
+        }
+
+        QFrame#homeChartCard {
+            background: #FFFEFA; border: 1px solid #DED8CC;
+            border-radius: 14px;
+        }
+        QFrame#homeStatCard {
+            background: #EBE7DE; border: none; border-radius: 11px;
+        }
+        QLabel#homeCardTitle {
+            color: #25332F; font-size: 18px; font-weight: 800;
+        }
+        QLabel#homeChartLabel { background: transparent; border: none; }
+        QLabel#homeStatTitle {
+            color: #68716D; font-size: 11px; font-weight: 700;
+        }
+        QLabel#homeStatValue {
+            color: #1F6B5B; font-size: 25px; font-weight: 800;
+        }
+        QLabel#homeStatSub {
+            color: #8A918D; font-size: 10px; font-weight: 600;
+        }
+        QLabel#labelStats {
+            background: #E9E4DA; border: none; border-radius: 11px;
+            color: #38564F; font-size: 13px; font-weight: 750;
+        }
+        QFrame#homeActionBar {
+            background: #203F38; border: none; border-radius: 12px;
+        }
+        QLabel#homeActionTitle {
+            color: #FFF9F1; font-size: 13px; font-weight: 800;
+        }
+        QLabel#homeActionSub {
+            color: #AEC2BA; font-size: 10px; font-weight: 500;
+        }
+        QPushButton#homeImportAllBtn {
+            background: transparent; color: #E8F0EC; border: 1px solid #66837A;
+        }
+        QPushButton#homeImportAllBtn:hover { background: #31554C; }
+        QPushButton#homeExportAllBtn {
+            background: #D97745; color: #FFF; border-color: #D97745;
+        }
+        QPushButton#homeExportAllBtn:hover {
+            background: #BC6033; border-color: #BC6033;
+        }
+
+        QPushButton#expTabBtn, QPushButton#awardTabBtn {
+            min-height: 38px; max-height: 38px; background: transparent;
+            color: #68716D; border: none; border-radius: 0; padding: 0 8px;
+            font-size: 13px; font-weight: 700;
+        }
+        QPushButton#expTabBtn:hover, QPushButton#awardTabBtn:hover {
+            color: #1F6B5B; background: transparent;
+        }
+        QPushButton#expTabBtn[active="true"],
+        QPushButton#awardTabBtn[active="true"] {
+            color: #1F6B5B; border-bottom: 3px solid #D97745;
+            background: transparent; font-weight: 850;
+        }
+
+        QMessageBox, QDialog { background: #F4F1EA; }
+        QToolTip {
+            background: #203F38; color: #FFF9F1;
+            border: 1px solid #31554C; padding: 6px 9px;
+        }
+    )QSS"));
+
+    const QList<QPushButton *> buttons = findChildren<QPushButton *>();
+    for (QPushButton *button : buttons)
+        button->setCursor(Qt::PointingHandCursor);
+}
+
 void MainWindow::setupTableView(QTableView *tableView) {
     tableView->setAlternatingRowColors(true);
     tableView->setShowGrid(false);
@@ -677,11 +979,11 @@ void MainWindow::buildHomePage() {
     auto *metricsTitle = new QLabel("学习档案快照");
     metricsTitle->setObjectName("homeMetricsTitle");
     metricsTitle->setStyleSheet(QStringLiteral(
-        "font-size: 18px; font-weight: 800; color: #0F172A; background: transparent;"));
+        "font-size: 18px; font-weight: 800; color: #25332F; background: transparent;"));
     auto *metricsSub = new QLabel("课程、实践与成果概览");
     metricsSub->setObjectName("homeMetricsSub");
     metricsSub->setStyleSheet(QStringLiteral(
-        "font-size: 13px; font-weight: 600; color: #64748B; background: transparent;"));
+        "font-size: 12px; font-weight: 600; color: #7A827E; background: transparent;"));
     auto *metricsHeader = new QHBoxLayout;
     metricsHeader->setContentsMargins(2, 0, 2, 0);
     metricsHeader->setSpacing(10);
@@ -902,8 +1204,15 @@ void MainWindow::updateHomePageStats() {
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    QRectF plot(48, 34, width - 62, height - 94);
-    QPen gridPen(QColor(226, 232, 240));
+    // 给纵轴刻度留出独立区域，避免折线端点压住 0.0–4.0 数值。
+    constexpr qreal leftMargin = 68.0;
+    constexpr qreal rightMargin = 30.0;
+    constexpr qreal topMargin = 44.0;
+    constexpr qreal bottomMargin = 62.0;
+    QRectF plot(leftMargin, topMargin,
+                width - leftMargin - rightMargin,
+                height - topMargin - bottomMargin);
+    QPen gridPen(QColor(226, 221, 211));
     gridPen.setWidth(1);
     painter.setPen(gridPen);
     painter.setFont(QFont("PingFang SC", 9, QFont::DemiBold));
@@ -912,22 +1221,26 @@ void MainWindow::updateHomePageStats() {
     for (int i = 0; i <= 4; ++i) {
         double y = plot.bottom() - plot.height() * i / 4.0;
         painter.drawLine(QPointF(plot.left(), y), QPointF(plot.right(), y));
-        painter.setPen(QColor(100, 116, 139));
-        painter.drawText(QRectF(10, y - 10, 40, 20),
+        painter.setPen(QColor(101, 112, 107));
+        painter.drawText(QRectF(8, y - 10, leftMargin - 22, 20),
                          Qt::AlignRight | Qt::AlignVCenter,
                          QString::number(i, 'f', 1));
+        painter.drawLine(QPointF(plot.left() - 5, y),
+                         QPointF(plot.left(), y));
         painter.setPen(gridPen);
     }
 
-    painter.setPen(QPen(QColor(203, 213, 225), 1));
+    painter.setPen(QPen(QColor(207, 201, 190), 1));
     painter.drawLine(plot.bottomLeft(), plot.bottomRight());
     painter.drawLine(plot.bottomLeft(), plot.topLeft());
 
     QVector<QPointF> points;
-    const double step = plot.width() / (semesters.size() - 1);
-    painter.setPen(QColor(71, 85, 105));
+    const double dataLeft = plot.left() + 10.0;
+    const double dataRight = plot.right() - 10.0;
+    const double step = (dataRight - dataLeft) / (semesters.size() - 1);
+    painter.setPen(QColor(70, 82, 78));
     for (int i = 0; i < semesters.size(); ++i) {
-        double x = plot.left() + i * step;
+        double x = dataLeft + i * step;
         painter.drawText(QRectF(x - 28, plot.bottom() + 10, 56, 28),
                          Qt::AlignCenter, semesters[i]);
         if (gpas[i] >= 0.0) {
@@ -947,13 +1260,13 @@ void MainWindow::updateHomePageStats() {
         areaPath.lineTo(points.first().x(), plot.bottom());
         areaPath.closeSubpath();
         QLinearGradient areaGradient(0, plot.top(), 0, plot.bottom());
-        areaGradient.setColorAt(0, QColor(13, 148, 136, 72));
-        areaGradient.setColorAt(1, QColor(13, 148, 136, 4));
+        areaGradient.setColorAt(0, QColor(31, 107, 91, 72));
+        areaGradient.setColorAt(1, QColor(31, 107, 91, 4));
         painter.setPen(Qt::NoPen);
         painter.setBrush(areaGradient);
         painter.drawPath(areaPath);
 
-        QPen linePen(QColor(13, 148, 136), 4, Qt::SolidLine, Qt::RoundCap,
+        QPen linePen(QColor(31, 107, 91), 4, Qt::SolidLine, Qt::RoundCap,
                      Qt::RoundJoin);
         painter.setPen(linePen);
         painter.setBrush(Qt::NoBrush);
@@ -962,18 +1275,18 @@ void MainWindow::updateHomePageStats() {
 
     for (const QPointF &point : points) {
         painter.setPen(QPen(QColor(255, 255, 255), 4));
-        painter.setBrush(QColor(13, 148, 136));
+        painter.setBrush(QColor(31, 107, 91));
         painter.drawEllipse(point, 6, 6);
     }
 
     if (points.isEmpty()) {
-        painter.setPen(QColor(148, 163, 184));
+        painter.setPen(QColor(140, 147, 143));
         painter.setFont(QFont("PingFang SC", 15, QFont::DemiBold));
         painter.drawText(plot, Qt::AlignCenter,
                          "暂无课程 GPA 数据\n录入课程后这里会自动生成折线图");
     }
 
-    painter.setPen(QColor(100, 116, 139));
+    painter.setPen(QColor(101, 112, 107));
     painter.setFont(QFont("PingFang SC", 10, QFont::DemiBold));
     painter.drawText(QRectF(plot.left(), 4, plot.width(), 22),
                      Qt::AlignLeft | Qt::AlignVCenter,
@@ -995,10 +1308,11 @@ void MainWindow::buildExportPage() {
     // ---- 辅助：创建带标题的现代化卡片 ----
     auto makeSectionCard = [](const QString &title) {
         auto *card = new QFrame;
+        card->setObjectName("resumeSectionCard");
         card->setFrameShape(QFrame::NoFrame);
         card->setStyleSheet(QStringLiteral(
-            "QFrame { background: #FFFFFF; border: 1px solid rgba(203,213,225,0.55);"
-            " border-radius: 12px; }"));
+            "QFrame#resumeSectionCard { background: #FFFEFA;"
+            " border: 1px solid #DED8CC; border-radius: 12px; }"));
 
         auto *shadow = new QGraphicsDropShadowEffect(card);
         shadow->setBlurRadius(20);
@@ -1020,10 +1334,11 @@ void MainWindow::buildExportPage() {
 
     // ===== 照片区域（标题栏内嵌导入按钮）=====
     QFrame *photoCard = new QFrame;
+    photoCard->setObjectName("resumePhotoCard");
     photoCard->setFrameShape(QFrame::NoFrame);
     photoCard->setStyleSheet(QStringLiteral(
-        "QFrame { background: #FFFFFF; border: 1px solid rgba(203,213,225,0.55);"
-        " border-radius: 12px; }"));
+        "QFrame#resumePhotoCard { background: #FFFEFA;"
+        " border: 1px solid #DED8CC; border-radius: 12px; }"));
     {
         auto *shadow = new QGraphicsDropShadowEffect(photoCard);
         shadow->setBlurRadius(20);
@@ -1081,6 +1396,14 @@ void MainWindow::buildExportPage() {
 
     // ===== 技术能力区域 =====
     QFrame *skillsCard = makeSectionCard("技术能力");
+    skillsLbl = new QLabel("尚未填写技能，点击编辑补充。", skillsCard);
+    skillsLbl->setObjectName("resumeBodyText");
+    skillsLbl->setWordWrap(true);
+    skillsLbl->setMinimumHeight(30);
+    skillsLbl->setStyleSheet(
+        "color:#59635F; font-size:13px; font-weight:550;"
+        "background:transparent; padding:2px 0;");
+    static_cast<QVBoxLayout *>(skillsCard->layout())->addWidget(skillsLbl);
 
     {
         auto *header = new QWidget;
@@ -1093,7 +1416,8 @@ void MainWindow::buildExportPage() {
         editSkillsBtn->setStyleSheet(QStringLiteral(
             "QPushButton { background: transparent; color: %1;"
             " border: 2px solid %1; border-radius: 8px;"
-            " font-size: 13px; font-weight: 700; padding: 6px 20px; }"
+            " min-height: 30px; max-height: 30px;"
+            " font-size: 13px; font-weight: 700; padding: 0 20px; }"
             "QPushButton:hover { background: %1; color: #FFFFFF; }"
         ).arg(Color::primary));
         hdr->addWidget(editSkillsBtn);
@@ -1104,6 +1428,14 @@ void MainWindow::buildExportPage() {
 
     // ===== 个人总结区域 =====
     QFrame *summaryCard = makeSectionCard("个人总结");
+    summaryLbl = new QLabel("尚未填写个人总结，点击编辑补充。", summaryCard);
+    summaryLbl->setObjectName("resumeBodyText");
+    summaryLbl->setWordWrap(true);
+    summaryLbl->setMinimumHeight(34);
+    summaryLbl->setStyleSheet(
+        "color:#59635F; font-size:13px; font-weight:550;"
+        "background:transparent; padding:2px 0;");
+    static_cast<QVBoxLayout *>(summaryCard->layout())->addWidget(summaryLbl);
 
     {
         auto *header = new QWidget;
@@ -1116,7 +1448,8 @@ void MainWindow::buildExportPage() {
         editSummaryBtn->setStyleSheet(QStringLiteral(
             "QPushButton { background: transparent; color: %1;"
             " border: 2px solid %1; border-radius: 8px;"
-            " font-size: 13px; font-weight: 700; padding: 6px 20px; }"
+            " min-height: 30px; max-height: 30px;"
+            " font-size: 13px; font-weight: 700; padding: 0 20px; }"
             "QPushButton:hover { background: %1; color: #FFFFFF; }"
         ).arg(Color::primary));
         hdr->addWidget(editSummaryBtn);
@@ -1694,6 +2027,12 @@ void MainWindow::editSkills() {
 
     if (dialog.exec() == QDialog::Accepted) {
         m_skillsText = edit->toPlainText().trimmed();
+        if (skillsLbl) {
+            skillsLbl->setText(
+                m_skillsText.isEmpty()
+                    ? "尚未填写技能，点击编辑补充。"
+                    : m_skillsText.split('\n', Qt::SkipEmptyParts).join("  ·  "));
+        }
         saveResumeToDb();
     }
 }
@@ -1734,6 +2073,12 @@ void MainWindow::editSummary() {
 
     if (dialog.exec() == QDialog::Accepted) {
         m_summaryText = edit->toPlainText().trimmed();
+        if (summaryLbl) {
+            summaryLbl->setText(
+                m_summaryText.isEmpty()
+                    ? "尚未填写个人总结，点击编辑补充。"
+                    : m_summaryText);
+        }
         saveResumeToDb();
     }
 }
@@ -1748,9 +2093,21 @@ void MainWindow::loadResumeProfile() {
 
     // 技术能力
     m_skillsText = profile.value("skills").toString();
+    if (skillsLbl) {
+        skillsLbl->setText(
+            m_skillsText.isEmpty()
+                ? "尚未填写技能，点击编辑补充。"
+                : m_skillsText.split('\n', Qt::SkipEmptyParts).join("  ·  "));
+    }
 
     // 个人总结
     m_summaryText = profile.value("summary").toString();
+    if (summaryLbl) {
+        summaryLbl->setText(
+            m_summaryText.isEmpty()
+                ? "尚未填写个人总结，点击编辑补充。"
+                : m_summaryText);
+    }
 
     // 简历模板
     if (resumeTemplateCombo) {
@@ -1812,11 +2169,15 @@ void MainWindow::loadResumeProfile() {
 }
 
 void MainWindow::InitFrame() {
-    ui->sidebarFrame->setFixedWidth(268);
-    ui->userProfileWidget->setFixedHeight(204);
-    ui->userNameLbl->setMinimumHeight(42);
-    ui->detailLbl->setMinimumHeight(28);
-    ui->majorLbl->setMinimumHeight(48);
+    ui->sidebarFrame->setFixedWidth(252);
+    ui->userProfileWidget->setMinimumHeight(164);
+    ui->userNameLbl->setMinimumHeight(30);
+    ui->detailLbl->setMaximumWidth(112);
+    ui->majorLbl->setMinimumHeight(42);
+    ui->userNameLbl->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    ui->detailLbl->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    ui->majorLbl->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    ui->labelStats->setAlignment(Qt::AlignCenter);
     ui->userNameLbl->setWordWrap(false);
     ui->detailLbl->setWordWrap(false);
     ui->majorLbl->setWordWrap(true);
@@ -1842,36 +2203,24 @@ void MainWindow::InitFrame() {
                 this, &MainWindow::logout);
     }
 
-    ui->verticalLayout->setContentsMargins(20, 17, 20, 17);
-    ui->verticalLayout->setSpacing(8);
-    ui->verticalLayout_3->setContentsMargins(14, 18, 14, 18);
+    ui->verticalLayout->setContentsMargins(16, 15, 16, 15);
+    ui->verticalLayout->setSpacing(7);
+    ui->verticalLayout_3->setContentsMargins(20, 24, 20, 22);
     ui->verticalLayout_3->setSpacing(18);
     ui->verticalLayout_2->setContentsMargins(0, 0, 0, 0);
-    ui->verticalLayout_2->setSpacing(14);
-    ui->verticalSpacer_2->changeSize(20, 0, QSizePolicy::Minimum,
+    ui->verticalLayout_2->setSpacing(8);
+    ui->verticalSpacer_2->changeSize(20, 6, QSizePolicy::Minimum,
                                      QSizePolicy::Fixed);
 
     const QList<QPushButton *> navButtonsForSize = {
         ui->navHomeBtn, ui->navCourseBtn, ui->navExpBtn, ui->navExportBtn};
-    auto *profileShadow = new QGraphicsDropShadowEffect(ui->userProfileWidget);
-    profileShadow->setBlurRadius(34);
-    profileShadow->setOffset(0, 10);
-    profileShadow->setColor(QColor(70, 95, 120, 18));
-    ui->userProfileWidget->setGraphicsEffect(profileShadow);
-
     for (QPushButton *button : navButtonsForSize) {
-        button->setFixedHeight(58);
+        button->setFixedHeight(48);
         button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         button->setFlat(true);
         button->setAutoDefault(false);
         button->setDefault(false);
         button->setAttribute(Qt::WA_StyledBackground, true);
-
-        auto *shadow = new QGraphicsDropShadowEffect(button);
-        shadow->setBlurRadius(16);
-        shadow->setOffset(0, 5);
-        shadow->setColor(QColor(35, 50, 65, 14));
-        button->setGraphicsEffect(shadow);
     }
 
     auto setActiveNav = [this](QPushButton *activeButton) {
@@ -1892,27 +2241,32 @@ void MainWindow::InitFrame() {
 
     ui->stackedWidget->setCurrentIndex(0);
     ui->currentPageLbl->setText("首页总览");
+    ui->headerSubtitleLbl->setText("把每一段成长，整理成清晰的轨迹。");
     setActiveNav(ui->navHomeBtn);
 
     connect(ui->navHomeBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(0);
         ui->currentPageLbl->setText("首页总览");
+        ui->headerSubtitleLbl->setText("把每一段成长，整理成清晰的轨迹。");
         setActiveNav(ui->navHomeBtn);
         updateHomePageStats();
     });
     connect(ui->navCourseBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(1);
         ui->currentPageLbl->setText("课程与成绩");
+        ui->headerSubtitleLbl->setText("记录课程、学分与绩点，随时看见学习节奏。");
         setActiveNav(ui->navCourseBtn);
     });
     connect(ui->navExpBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(2);
-        ui->currentPageLbl->setText("经历 & 荣誉");
+        ui->currentPageLbl->setText("经历与荣誉");
+        ui->headerSubtitleLbl->setText("把课堂之外的投入，沉淀成可复用的履历。");
         setActiveNav(ui->navExpBtn);
     });
     connect(ui->navExportBtn, &QPushButton::clicked, this, [=] {
         ui->stackedWidget->setCurrentIndex(3);
         ui->currentPageLbl->setText("简历导出");
+        ui->headerSubtitleLbl->setText("整理关键信息，生成一份真正属于你的简历。");
         setActiveNav(ui->navExportBtn);
         loadResumeProfile();
     });
@@ -2524,45 +2878,21 @@ void MainWindow::updateTotalStats() {
 
 void MainWindow::InitExpPage() {
     int userId = User::getInstance().getId();
+    ui->addExpFrame->setFixedHeight(224);
+    ui->addAwardFrame->setFixedHeight(224);
+    ui->expTableView->setMinimumHeight(250);
+    ui->awardTableView->setMinimumHeight(250);
 
     // ---- 切换标签按钮 ----
     expTabBtn = new QPushButton("课外活动", ui->expPage);
     expTabBtn->setObjectName("expTabBtn");
-    expTabBtn->setGeometry(28, 14, 130, 38);
     expTabBtn->setCursor(Qt::PointingHandCursor);
 
     awardTabBtn = new QPushButton("个人荣誉", ui->expPage);
     awardTabBtn->setObjectName("awardTabBtn");
-    awardTabBtn->setGeometry(166, 14, 130, 38);
     awardTabBtn->setCursor(Qt::PointingHandCursor);
-
-    // 标签切换样式
-    const QString tabStyle = R"(
-        QPushButton#expTabBtn, QPushButton#awardTabBtn {
-            background: #FFFFFF;
-            color: #64748B;
-            border: 1px solid #D2D8E1;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 850;
-            letter-spacing: 0.3px;
-        }
-        QPushButton#expTabBtn:hover, QPushButton#awardTabBtn:hover {
-            border-color: #00B7C7;
-            color: #111827;
-        }
-        QPushButton#expTabBtn[active="true"], QPushButton#awardTabBtn[active="true"] {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                        stop:0 #2563EB,
-                        stop:0.56 #0EA5E9,
-                        stop:1 #14B8A6);
-            color: #FFFFFF;
-            border: 1px solid rgba(255, 255, 255, 0.72);
-            font-weight: 900;
-        }
-    )";
-    expTabBtn->setStyleSheet(tabStyle);
-    awardTabBtn->setStyleSheet(tabStyle);
+    ui->expToolbarLayout->insertWidget(0, expTabBtn);
+    ui->expToolbarLayout->insertWidget(1, awardTabBtn);
 
     auto setActiveTab = [this](QPushButton *active) {
         for (QPushButton *btn : {expTabBtn, awardTabBtn}) {
@@ -2606,6 +2936,8 @@ void MainWindow::InitExpPage() {
     ui->expTableView->setModel(expModel);
     ui->expTableView->setColumnHidden(0, true);
     ui->expTableView->setColumnHidden(1, true);
+    for (int column = 6; column < expModel->columnCount(); ++column)
+        ui->expTableView->setColumnHidden(column, true);
 
     expModel->select();
 
@@ -2620,13 +2952,11 @@ void MainWindow::InitExpPage() {
     if (addAwardAmountLbl == nullptr) {
         addAwardAmountLbl = new QLabel("奖金金额", ui->addAwardFrame);
         addAwardAmountLbl->setObjectName("addAwardAmountLbl");
-        addAwardAmountLbl->setGeometry(36, 158, 88, 36);
-        addAwardAmountLbl->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        addAwardAmountLbl->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     }
     if (addAwardAmountSpin == nullptr) {
         addAwardAmountSpin = new QDoubleSpinBox(ui->addAwardFrame);
         addAwardAmountSpin->setObjectName("addAwardAmountSpin");
-        addAwardAmountSpin->setGeometry(134, 158, 180, 36);
         addAwardAmountSpin->setPrefix("¥ ");
         addAwardAmountSpin->setRange(0.0, 999999.0);
         addAwardAmountSpin->setDecimals(0);
@@ -2634,6 +2964,8 @@ void MainWindow::InitExpPage() {
         addAwardAmountSpin->setValue(0.0);
         addAwardAmountSpin->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     }
+    ui->awardFormGrid->addWidget(addAwardAmountLbl, 1, 2);
+    ui->awardFormGrid->addWidget(addAwardAmountSpin, 1, 3);
 
     ui->awardTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->awardTableView->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -2654,6 +2986,8 @@ void MainWindow::InitExpPage() {
     ui->awardTableView->setModel(awardModel);
     ui->awardTableView->setColumnHidden(0, true);
     ui->awardTableView->setColumnHidden(1, true);
+    for (int column = 6; column < awardModel->columnCount(); ++column)
+        ui->awardTableView->setColumnHidden(column, true);
 
     awardModel->select();
 

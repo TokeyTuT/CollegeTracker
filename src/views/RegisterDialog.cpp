@@ -1,202 +1,182 @@
 #include "RegisterDialog.h"
+
 #include "DatabaseMannager.h"
-#include "Theme.h"
-#include <QVBoxLayout>
+
+#include <QFormLayout>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QVBoxLayout>
 
 RegisterDialog::RegisterDialog(QWidget *parent)
     : QDialog(parent) {
-    using namespace Theme;
-
-    setWindowTitle("College Tracker - 注册");
+    setWindowTitle("College Tracker · 创建账号");
     setModal(true);
-    setFixedSize(420, 680);
+    setFixedSize(520, 650);
+    setStyleSheet(QStringLiteral(R"QSS(
+        QDialog {
+            background: #F4F1EA;
+            font-family: "Avenir Next", "PingFang SC", sans-serif;
+        }
+        QLabel#eyebrow {
+            color: #D97745; font-size: 11px; font-weight: 850;
+            letter-spacing: 2px;
+        }
+        QLabel#title { color: #17201D; font-size: 28px; font-weight: 850; }
+        QLabel#subtitle { color: #68716D; font-size: 13px; }
+        QLabel#fieldLabel {
+            color: #46524E; font-size: 12px; font-weight: 750;
+        }
+        QLineEdit, QComboBox {
+            min-height: 43px; background: #FFFEFA; color: #17201D;
+            border: 1px solid #D6D0C4; border-radius: 9px;
+            padding: 0 12px; font-size: 15px;
+            selection-background-color: #BFD6CD;
+        }
+        QLineEdit:hover, QComboBox:hover { border-color: #9DABA5; }
+        QLineEdit:focus, QComboBox:focus { border: 2px solid #1F6B5B; }
+        QComboBox::drop-down { border: none; width: 30px; }
+        QPushButton {
+            min-height: 44px; border-radius: 10px;
+            font-size: 14px; font-weight: 750;
+        }
+        QPushButton#registerButton {
+            background: #1F6B5B; color: #FFF; border: 1px solid #1F6B5B;
+        }
+        QPushButton#registerButton:hover {
+            background: #174F44; border-color: #174F44;
+        }
+        QPushButton#backButton {
+            background: transparent; color: #38564F;
+            border: 1px solid #B8C4BE;
+        }
+        QPushButton#backButton:hover { background: #E6ECE8; }
+        QLabel#messageLabel {
+            color: #B94B45; font-size: 12px; font-weight: 650;
+        }
+    )QSS"));
 
-    setStyleSheet(QString("QDialog { background: %1; }").arg(Color::surfaceVariant));
+    auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(42, 34, 42, 30);
+    layout->setSpacing(0);
 
-    QVBoxLayout *outerLayout = new QVBoxLayout(this);
-    outerLayout->setContentsMargins(40, 36, 40, 36);
-    outerLayout->setSpacing(0);
+    auto *eyebrow = new QLabel("NEW PROFILE", this);
+    eyebrow->setObjectName("eyebrow");
+    layout->addWidget(eyebrow);
+    layout->addSpacing(8);
 
-    QLabel *titleLabel = new QLabel("创建账号", this);
-    titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setStyleSheet(
-        QString("font-size: %1px; font-weight: %2; color: %3; margin-bottom: 6px;")
-            .arg(TypeScale::display).arg(FontWeight::heavy).arg(Color::onSurface));
-    outerLayout->addWidget(titleLabel);
+    auto *title = new QLabel("创建你的学业档案", this);
+    title->setObjectName("title");
+    layout->addWidget(title);
+    layout->addSpacing(6);
 
-    QLabel *subtitleLabel = new QLabel("注册一个新的账号", this);
-    subtitleLabel->setAlignment(Qt::AlignCenter);
-    subtitleLabel->setStyleSheet(
-        QString("font-size: %1px; color: %2; margin-bottom: 24px;")
-            .arg(TypeScale::body).arg(Color::onSurfaceVar));
-    outerLayout->addWidget(subtitleLabel);
+    auto *subtitle = new QLabel("先填写基础信息，之后都可以在应用内修改。", this);
+    subtitle->setObjectName("subtitle");
+    layout->addWidget(subtitle);
+    layout->addSpacing(26);
 
-    auto inputStyle = QString(
-        "QLineEdit {"
-        "  border: 2px solid %1; border-radius: %2px;"
-        "  padding: 0 14px; min-height: 40px;"
-        "  font-size: %3px; background: #FFFFFF; color: %4;"
-        "}"
-        "QLineEdit:focus { border-color: %5; }"
-    ).arg(Color::outline).arg(Radius::md)
-     .arg(TypeScale::body).arg(Color::onSurface).arg(Color::primary);
+    auto *form = new QGridLayout;
+    form->setHorizontalSpacing(14);
+    form->setVerticalSpacing(8);
 
-    auto comboStyle = QString(
-        "QComboBox {"
-        "  border: 2px solid %1; border-radius: %2px;"
-        "  padding: 0 10px; min-height: 40px;"
-        "  font-size: %3px; background: #FFFFFF; color: %4;"
-        "}"
-        "QComboBox:focus { border-color: %5; }"
-        "QComboBox::drop-down { border: none; width: 28px; }"
-    ).arg(Color::outline).arg(Radius::md)
-     .arg(TypeScale::body).arg(Color::onSurface).arg(Color::primary);
-
-    auto labelStyle = QString("font-size: %1px; color: %2; font-weight: %3; margin-bottom: 2px;")
-                          .arg(TypeScale::caption).arg(Color::onSurfaceVar).arg(FontWeight::bold);
-
-    // 辅助宏：快速添加 Label + Widget
-    auto addField = [&](const QString &text, QWidget *widget) {
-        QLabel *label = new QLabel(text, this);
-        label->setStyleSheet(labelStyle);
-        outerLayout->addWidget(label);
-        outerLayout->addWidget(widget);
-        outerLayout->addSpacing(12);
+    auto addField = [this, form](int row, int column, const QString &text,
+                                 QWidget *field) {
+        auto *label = new QLabel(text, this);
+        label->setObjectName("fieldLabel");
+        form->addWidget(label, row * 2, column);
+        form->addWidget(field, row * 2 + 1, column);
     };
 
-    // 用户名
     m_usernameEdit = new QLineEdit(this);
-    m_usernameEdit->setPlaceholderText("请输入用户名");
-    m_usernameEdit->setFixedHeight(40);
-    m_usernameEdit->setStyleSheet(inputStyle);
-    addField("用户名", m_usernameEdit);
-
-    // 密码
+    m_usernameEdit->setPlaceholderText("用于登录");
     m_passwordEdit = new QLineEdit(this);
+    m_passwordEdit->setPlaceholderText("至少 6 位");
     m_passwordEdit->setEchoMode(QLineEdit::Password);
-    m_passwordEdit->setPlaceholderText("请输入密码（至少6位）");
-    m_passwordEdit->setFixedHeight(40);
-    m_passwordEdit->setStyleSheet(inputStyle);
-    addField("密码", m_passwordEdit);
+    addField(0, 0, "用户名", m_usernameEdit);
+    addField(0, 1, "密码", m_passwordEdit);
 
-    // 确认密码
     m_confirmEdit = new QLineEdit(this);
+    m_confirmEdit->setPlaceholderText("再次输入密码");
     m_confirmEdit->setEchoMode(QLineEdit::Password);
-    m_confirmEdit->setPlaceholderText("请再次输入密码");
-    m_confirmEdit->setFixedHeight(40);
-    m_confirmEdit->setStyleSheet(inputStyle);
-    addField("确认密码", m_confirmEdit);
-
-    // 学校
     m_schoolEdit = new QLineEdit(this);
-    m_schoolEdit->setPlaceholderText("请输入学校");
-    m_schoolEdit->setFixedHeight(40);
-    m_schoolEdit->setStyleSheet(inputStyle);
-    addField("学校", m_schoolEdit);
+    m_schoolEdit->setPlaceholderText("例如：浙江大学");
+    addField(1, 0, "确认密码", m_confirmEdit);
+    addField(1, 1, "学校", m_schoolEdit);
 
-    // 年级
     m_gradeCombo = new QComboBox(this);
     m_gradeCombo->addItems({"大一", "大二", "大三", "大四"});
-    m_gradeCombo->setFixedHeight(40);
-    m_gradeCombo->setStyleSheet(comboStyle);
-    addField("年级", m_gradeCombo);
-
-    // 性别
     m_genderCombo = new QComboBox(this);
-    m_genderCombo->addItems({"男", "女"});
-    m_genderCombo->setFixedHeight(40);
-    m_genderCombo->setStyleSheet(comboStyle);
-    addField("性别", m_genderCombo);
+    m_genderCombo->addItems({"男", "女", "其他", "不显示"});
+    addField(2, 0, "年级", m_gradeCombo);
+    addField(2, 1, "性别", m_genderCombo);
 
-    // 专业
     m_majorEdit = new QLineEdit(this);
-    m_majorEdit->setPlaceholderText("请输入专业");
-    m_majorEdit->setFixedHeight(40);
-    m_majorEdit->setStyleSheet(inputStyle);
-    addField("专业", m_majorEdit);
+    m_majorEdit->setPlaceholderText("例如：计算机科学与技术");
+    addField(3, 0, "专业", m_majorEdit);
+    form->addWidget(m_majorEdit, 7, 0, 1, 2);
 
-    // 提示信息
-    m_messageLabel = new QLabel("", this);
-    m_messageLabel->setAlignment(Qt::AlignCenter);
+    layout->addLayout(form);
+    layout->addSpacing(12);
+
+    m_messageLabel = new QLabel(this);
+    m_messageLabel->setObjectName("messageLabel");
     m_messageLabel->setFixedHeight(24);
-    m_messageLabel->setStyleSheet(
-        QString("color: %1; font-size: %2px;").arg(Color::error).arg(TypeScale::caption));
-    outerLayout->addWidget(m_messageLabel);
+    layout->addWidget(m_messageLabel);
 
-    outerLayout->addSpacing(8);
-
-    // 注册按钮
-    m_registerBtn = new QPushButton("注 册", this);
-    m_registerBtn->setFixedHeight(44);
+    layout->addStretch();
+    m_registerBtn = new QPushButton("创建账号", this);
+    m_registerBtn->setObjectName("registerButton");
     m_registerBtn->setCursor(Qt::PointingHandCursor);
-    m_registerBtn->setStyleSheet(
-        QString("QPushButton { background: %1; color: #FFFFFF; border: none;"
-                "  border-radius: %2px; font-size: %3px; font-weight: %4; }"
-                "QPushButton:hover { background: %5; }"
-                "QPushButton:pressed { background: #0B5E57; }")
-            .arg(Color::primary).arg(Radius::md)
-            .arg(TypeScale::body).arg(FontWeight::bold).arg(Color::primaryHover));
-    outerLayout->addWidget(m_registerBtn);
+    m_registerBtn->setDefault(true);
+    layout->addWidget(m_registerBtn);
+    layout->addSpacing(10);
 
-    outerLayout->addSpacing(10);
-
-    // 返回按钮
-    m_backBtn = new QPushButton("返回登入", this);
-    m_backBtn->setFixedHeight(40);
+    m_backBtn = new QPushButton("返回登录", this);
+    m_backBtn->setObjectName("backButton");
     m_backBtn->setCursor(Qt::PointingHandCursor);
-    m_backBtn->setStyleSheet(
-        QString("QPushButton { background: transparent; color: %1;"
-                "  border: 2px solid %1; border-radius: %2px;"
-                "  font-size: %3px; font-weight: %4; }"
-                "QPushButton:hover { background: %5; }"
-                "QPushButton:pressed { background: rgba(13,148,136,0.14); }")
-            .arg(Color::primary).arg(Radius::md)
-            .arg(TypeScale::body).arg(FontWeight::medium).arg(Color::primaryBg));
-    outerLayout->addWidget(m_backBtn);
+    layout->addWidget(m_backBtn);
 
-    outerLayout->addStretch();
-
-    connect(m_registerBtn, &QPushButton::clicked, this, &RegisterDialog::onRegisterClicked);
-    connect(m_backBtn, &QPushButton::clicked, this, &RegisterDialog::onBackClicked);
+    connect(m_registerBtn, &QPushButton::clicked,
+            this, &RegisterDialog::onRegisterClicked);
+    connect(m_backBtn, &QPushButton::clicked,
+            this, &RegisterDialog::onBackClicked);
 }
 
 void RegisterDialog::onRegisterClicked() {
-    QString username = m_usernameEdit->text().trimmed();
-    QString password = m_passwordEdit->text();
-    QString confirm = m_confirmEdit->text();
+    const QString username = m_usernameEdit->text().trimmed();
+    const QString password = m_passwordEdit->text();
+    const QString confirm = m_confirmEdit->text();
 
     if (username.isEmpty() || password.isEmpty() || confirm.isEmpty()) {
-        showMessage("所有字段均不能为空", true);
+        showMessage("请完整填写账号信息", true);
         return;
     }
-
     if (password.length() < 6) {
         showMessage("密码长度不能少于 6 位", true);
         return;
     }
-
     if (password != confirm) {
         showMessage("两次输入的密码不一致", true);
         return;
     }
 
-    QString grade = m_gradeCombo->currentText();
+    const QString grade = m_gradeCombo->currentText();
     QString gender = m_genderCombo->currentText();
-    QString major = m_majorEdit->text().trimmed();
-    QString school = m_schoolEdit->text().trimmed();
+    if (gender == "不显示")
+        gender.clear();
+    const QString major = m_majorEdit->text().trimmed();
+    const QString school = m_schoolEdit->text().trimmed();
 
     if (school.isEmpty() || major.isEmpty()) {
-        showMessage("学校和专业不能为空", true);
+        showMessage("请填写学校和专业", true);
         return;
     }
 
-    DatabaseManager &db = DatabaseManager::getInstance();
-    if (db.registerUser(username, password, grade, gender, major, school)) {
+    if (DatabaseManager::getInstance().registerUser(
+            username, password, grade, gender, major, school)) {
         accept();
     } else {
-        showMessage("用户名已存在", true);
+        showMessage("这个用户名已经被使用", true);
     }
 }
 
@@ -208,7 +188,6 @@ void RegisterDialog::showMessage(const QString &msg, bool isError) {
     m_messageLabel->setText(msg);
     m_messageLabel->setStyleSheet(
         isError
-            ? "color: #d93232; font-size: 13px;"
-            : "color: #2e7d32; font-size: 13px;"
-    );
+            ? "color:#B94B45; font-size:12px; font-weight:650;"
+            : "color:#43846F; font-size:12px; font-weight:650;");
 }

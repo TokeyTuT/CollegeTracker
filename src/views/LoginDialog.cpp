@@ -1,126 +1,148 @@
 #include "LoginDialog.h"
-#include "RegisterDialog.h"
+
 #include "DatabaseMannager.h"
+#include "RegisterDialog.h"
 #include "Theme.h"
 #include "User.h"
-#include <QVBoxLayout>
+
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QVBoxLayout>
 
 LoginDialog::LoginDialog(QWidget *parent)
     : QDialog(parent) {
-    using namespace Theme;
-
-    setWindowTitle("College Tracker - 登入");
+    setWindowTitle("College Tracker · 登录");
     setModal(true);
-    setFixedSize(400, 500);
+    setFixedSize(460, 590);
+    setStyleSheet(QStringLiteral(R"QSS(
+        QDialog {
+            background: #F4F1EA;
+            font-family: "Avenir Next", "PingFang SC", sans-serif;
+        }
+        QLabel#brandMark {
+            background: #D97745; color: #FFF9F1; border-radius: 12px;
+            font-size: 15px; font-weight: 900; letter-spacing: 1px;
+        }
+        QLabel#eyebrow {
+            color: #1F6B5B; font-size: 11px; font-weight: 800;
+            letter-spacing: 2px;
+        }
+        QLabel#title {
+            color: #17201D; font-size: 30px; font-weight: 850;
+        }
+        QLabel#subtitle {
+            color: #68716D; font-size: 14px; font-weight: 500;
+        }
+        QLabel#fieldLabel {
+            color: #46524E; font-size: 12px; font-weight: 750;
+        }
+        QLineEdit {
+            min-height: 46px; background: #FFFEFA; color: #17201D;
+            border: 1px solid #D6D0C4; border-radius: 10px;
+            padding: 0 14px; font-size: 16px;
+            selection-background-color: #BFD6CD;
+        }
+        QLineEdit:hover { border-color: #9DABA5; }
+        QLineEdit:focus { border: 2px solid #1F6B5B; }
+        QPushButton {
+            min-height: 46px; border-radius: 10px;
+            font-size: 15px; font-weight: 750;
+        }
+        QPushButton#loginButton {
+            background: #1F6B5B; color: #FFF; border: 1px solid #1F6B5B;
+        }
+        QPushButton#loginButton:hover {
+            background: #174F44; border-color: #174F44;
+        }
+        QPushButton#registerButton {
+            background: transparent; color: #38564F;
+            border: 1px solid #B8C4BE;
+        }
+        QPushButton#registerButton:hover {
+            background: #E6ECE8; border-color: #7F958C;
+        }
+        QLabel#messageLabel {
+            color: #B94B45; font-size: 12px; font-weight: 650;
+        }
+        QLabel#footer {
+            color: #969C98; font-size: 10px; letter-spacing: 0.5px;
+        }
+    )QSS"));
 
-    setStyleSheet(Color::surfaceVariant
-                  ? QString("QDialog { background: %1; }").arg(Color::surfaceVariant)
-                  : QString());
+    auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(46, 40, 46, 32);
+    layout->setSpacing(0);
 
-    QVBoxLayout *outerLayout = new QVBoxLayout(this);
-    outerLayout->setContentsMargins(40, 44, 40, 40);
-    outerLayout->setSpacing(0);
+    auto *brandRow = new QHBoxLayout;
+    brandRow->setSpacing(12);
+    auto *brandMark = new QLabel("CT", this);
+    brandMark->setObjectName("brandMark");
+    brandMark->setFixedSize(44, 44);
+    brandMark->setAlignment(Qt::AlignCenter);
+    auto *eyebrow = new QLabel("COLLEGE TRACKER", this);
+    eyebrow->setObjectName("eyebrow");
+    brandRow->addWidget(brandMark);
+    brandRow->addWidget(eyebrow);
+    brandRow->addStretch();
+    layout->addLayout(brandRow);
 
-    // 标题
-    QLabel *titleLabel = new QLabel("College Tracker", this);
-    titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setStyleSheet(
-        QString("font-size: %1px; font-weight: %2; color: %3; margin-bottom: 6px;")
-            .arg(TypeScale::display).arg(FontWeight::heavy).arg(Color::onSurface));
-    outerLayout->addWidget(titleLabel);
+    layout->addSpacing(38);
+    auto *title = new QLabel("欢迎回来", this);
+    title->setObjectName("title");
+    layout->addWidget(title);
 
-    QLabel *subtitleLabel = new QLabel("登入您的账号", this);
-    subtitleLabel->setAlignment(Qt::AlignCenter);
-    subtitleLabel->setStyleSheet(
-        QString("font-size: %1px; color: %2; margin-bottom: 32px;")
-            .arg(TypeScale::body).arg(Color::onSurfaceVar));
-    outerLayout->addWidget(subtitleLabel);
+    layout->addSpacing(7);
+    auto *subtitle = new QLabel("继续整理你的课程、经历与成果。", this);
+    subtitle->setObjectName("subtitle");
+    layout->addWidget(subtitle);
 
-    auto inputStyle = QString(
-        "QLineEdit {"
-        "  border: 2px solid %1; border-radius: %2px;"
-        "  padding: 0 14px; min-height: 44px;"
-        "  font-size: %3px; background: #FFFFFF; color: %4;"
-        "}"
-        "QLineEdit:focus { border-color: %5; }"
-    ).arg(Color::outline).arg(Radius::md)
-     .arg(TypeScale::body).arg(Color::onSurface).arg(Color::primary);
+    layout->addSpacing(32);
+    auto addField = [this, layout](const QString &labelText,
+                                   const QString &placeholder,
+                                   QLineEdit **field) {
+        auto *label = new QLabel(labelText, this);
+        label->setObjectName("fieldLabel");
+        layout->addWidget(label);
+        layout->addSpacing(7);
+        *field = new QLineEdit(this);
+        (*field)->setPlaceholderText(placeholder);
+        layout->addWidget(*field);
+    };
 
-    auto labelStyle = QString("font-size: %1px; color: %2; font-weight: %3; margin-bottom: 4px;")
-                          .arg(TypeScale::caption).arg(Color::onSurfaceVar).arg(FontWeight::bold);
-
-    // 用户名
-    QLabel *userLabel = new QLabel("用户名", this);
-    userLabel->setStyleSheet(labelStyle);
-    outerLayout->addWidget(userLabel);
-
-    m_usernameEdit = new QLineEdit(this);
-    m_usernameEdit->setPlaceholderText("请输入用户名");
-    m_usernameEdit->setFixedHeight(44);
-    m_usernameEdit->setStyleSheet(inputStyle);
-    outerLayout->addWidget(m_usernameEdit);
-
-    outerLayout->addSpacing(18);
-
-    // 密码
-    QLabel *passLabel = new QLabel("密码", this);
-    passLabel->setStyleSheet(labelStyle);
-    outerLayout->addWidget(passLabel);
-
-    m_passwordEdit = new QLineEdit(this);
+    addField("用户名", "输入你的用户名", &m_usernameEdit);
+    layout->addSpacing(18);
+    addField("密码", "输入登录密码", &m_passwordEdit);
     m_passwordEdit->setEchoMode(QLineEdit::Password);
-    m_passwordEdit->setPlaceholderText("请输入密码");
-    m_passwordEdit->setFixedHeight(44);
-    m_passwordEdit->setStyleSheet(inputStyle);
-    outerLayout->addWidget(m_passwordEdit);
 
-    outerLayout->addSpacing(8);
+    layout->addSpacing(8);
+    m_messageLabel = new QLabel(this);
+    m_messageLabel->setObjectName("messageLabel");
+    m_messageLabel->setFixedHeight(24);
+    layout->addWidget(m_messageLabel);
 
-    // 提示信息
-    m_messageLabel = new QLabel("", this);
-    m_messageLabel->setAlignment(Qt::AlignCenter);
-    m_messageLabel->setFixedHeight(28);
-    m_messageLabel->setStyleSheet(
-        QString("color: %1; font-size: %2px;").arg(Color::error).arg(TypeScale::caption));
-    outerLayout->addWidget(m_messageLabel);
-
-    outerLayout->addSpacing(14);
-
-    // 登入按钮 — 使用 Theme primary style
-    m_loginBtn = new QPushButton("登 入", this);
-    m_loginBtn->setFixedHeight(44);
+    layout->addSpacing(10);
+    m_loginBtn = new QPushButton("登录", this);
+    m_loginBtn->setObjectName("loginButton");
     m_loginBtn->setCursor(Qt::PointingHandCursor);
-    m_loginBtn->setStyleSheet(
-        QString("QPushButton { background: %1; color: #FFFFFF; border: none;"
-                "  border-radius: %2px; font-size: %3px; font-weight: %4; }"
-                "QPushButton:hover { background: %5; }"
-                "QPushButton:pressed { background: #0B5E57; }")
-            .arg(Color::primary).arg(Radius::md)
-            .arg(TypeScale::body).arg(FontWeight::bold).arg(Color::primaryHover));
-    outerLayout->addWidget(m_loginBtn);
+    m_loginBtn->setDefault(true);
+    layout->addWidget(m_loginBtn);
 
-    outerLayout->addSpacing(12);
-
-    // 注册按钮
-    m_registerBtn = new QPushButton("注册新账号", this);
-    m_registerBtn->setFixedHeight(44);
+    layout->addSpacing(10);
+    m_registerBtn = new QPushButton("创建新账号", this);
+    m_registerBtn->setObjectName("registerButton");
     m_registerBtn->setCursor(Qt::PointingHandCursor);
-    m_registerBtn->setStyleSheet(
-        QString("QPushButton { background: transparent; color: %1;"
-                "  border: 2px solid %1; border-radius: %2px;"
-                "  font-size: %3px; font-weight: %4; }"
-                "QPushButton:hover { background: %5; }"
-                "QPushButton:pressed { background: rgba(13,148,136,0.14); }")
-            .arg(Color::primary).arg(Radius::md)
-            .arg(TypeScale::body).arg(FontWeight::medium).arg(Color::primaryBg));
-    outerLayout->addWidget(m_registerBtn);
+    layout->addWidget(m_registerBtn);
 
-    outerLayout->addStretch();
+    layout->addStretch();
+    auto *footer = new QLabel("你的数据仅保存在本机 SQLite 数据库中", this);
+    footer->setObjectName("footer");
+    footer->setAlignment(Qt::AlignCenter);
+    layout->addWidget(footer);
 
-    connect(m_loginBtn, &QPushButton::clicked, this, &LoginDialog::onLoginClicked);
-    connect(m_registerBtn, &QPushButton::clicked, this, &LoginDialog::onOpenRegister);
+    connect(m_loginBtn, &QPushButton::clicked,
+            this, &LoginDialog::onLoginClicked);
+    connect(m_registerBtn, &QPushButton::clicked,
+            this, &LoginDialog::onOpenRegister);
 }
 
 QString LoginDialog::getUsername() const {
@@ -128,28 +150,31 @@ QString LoginDialog::getUsername() const {
 }
 
 void LoginDialog::onLoginClicked() {
-    QString username = m_usernameEdit->text();
-    QString password = m_passwordEdit->text();
+    const QString username = m_usernameEdit->text().trimmed();
+    const QString password = m_passwordEdit->text();
 
     if (username.isEmpty() || password.isEmpty()) {
-        m_messageLabel->setText("用户名或密码不能为空");
+        m_messageLabel->setText("请输入用户名和密码");
         return;
     }
 
-    int userId = DatabaseManager::getInstance().loginUser(username, password);
+    const int userId =
+        DatabaseManager::getInstance().loginUser(username, password);
     if (userId != -1) {
         User::getInstance().login(userId);
         accept();
     } else {
-        m_messageLabel->setText("用户名或密码错误");
+        m_messageLabel->setText("用户名或密码不正确");
         m_passwordEdit->clear();
+        m_passwordEdit->setFocus();
     }
 }
 
 void LoginDialog::onOpenRegister() {
-    RegisterDialog reg(this);
-    if (reg.exec() == QDialog::Accepted) {
-        m_messageLabel->setStyleSheet("color: #2e7d32; font-size: 13px;");
-        m_messageLabel->setText("注册成功，请登入");
+    RegisterDialog dialog(this);
+    if (dialog.exec() == QDialog::Accepted) {
+        m_messageLabel->setStyleSheet(
+            "color:#43846F; font-size:12px; font-weight:650;");
+        m_messageLabel->setText("账号创建成功，现在可以登录了");
     }
 }
