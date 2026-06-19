@@ -28,6 +28,9 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
+signals:
+    void logoutRequested();
+
 protected:
     void showEvent(QShowEvent *event) override;
 
@@ -57,10 +60,12 @@ private:
     QLabel *homeProjectCountLbl = nullptr;
     QLabel *homeAwardCountLbl = nullptr;
     QPushButton *editProfileBtn = nullptr;
+    QPushButton *logoutBtn = nullptr;
     QPushButton *expTabBtn = nullptr;
     QPushButton *awardTabBtn = nullptr;
     QPushButton *importCourseCsvBtn = nullptr;
     QPushButton *exportCourseCsvBtn = nullptr;
+    QPushButton *resetCourseBtn = nullptr;
     QPushButton *importExpCsvBtn = nullptr;
     QPushButton *exportExpCsvBtn = nullptr;
     QPushButton *csvHelpCourseBtn = nullptr;
@@ -96,6 +101,7 @@ private:
     void updateTotalStats();
     void updateSidebarUserInfo();
     void openEditProfileDialog();
+    void logout();
     void applyModernStyle();
     void setupTableView(QTableView *tableView);
     void buildHomePage();
@@ -105,6 +111,7 @@ private:
     void editSummary();
     void saveResumeToDb();
     void updateHomePageStats();
+    void resetAllCourses();
     double scoreToGpa(double score) const;
 
     // CSV 导入导出

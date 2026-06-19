@@ -35,14 +35,55 @@
 #include <QSizePolicy>
 #include <QSlider>
 #include <QSpacerItem>
+#include <QSqlDatabase>
+#include <QSqlError>
 #include <QSqlQuery>
 #include <QStandardPaths>
 #include <QStyle>
+#include <QStyledItemDelegate>
 #include <QTextStream>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QVector>
 #include <QtMath>
+
+namespace {
+
+class CoreCourseDelegate final : public QStyledItemDelegate {
+public:
+    explicit CoreCourseDelegate(QObject *parent = nullptr)
+        : QStyledItemDelegate(parent) {}
+
+    QString displayText(const QVariant &value,
+                        const QLocale &locale) const override {
+        Q_UNUSED(locale);
+        return value.toBool() ? QStringLiteral("是") : QStringLiteral("否");
+    }
+
+    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &,
+                          const QModelIndex &) const override {
+        auto *editor = new QComboBox(parent);
+        editor->addItems({QStringLiteral("否"), QStringLiteral("是")});
+        return editor;
+    }
+
+    void setEditorData(QWidget *editor,
+                       const QModelIndex &index) const override {
+        auto *combo = qobject_cast<QComboBox *>(editor);
+        if (combo)
+            combo->setCurrentIndex(index.data(Qt::EditRole).toBool() ? 1 : 0);
+    }
+
+    void setModelData(QWidget *editor, QAbstractItemModel *model,
+                      const QModelIndex &index) const override {
+        auto *combo = qobject_cast<QComboBox *>(editor);
+        if (combo)
+            model->setData(index, combo->currentIndex() == 1 ? 1 : 0,
+                           Qt::EditRole);
+    }
+};
+
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -143,6 +184,12 @@ void MainWindow::applyModernStyle() {
     exportCourseCsvBtn->setGeometry(158, 38, 120, 40);
     exportCourseCsvBtn->setCursor(Qt::PointingHandCursor);
 
+    resetCourseBtn = new QPushButton("初始化课程", ui->coursePage);
+    resetCourseBtn->setObjectName("resetCourseBtn");
+    resetCourseBtn->setGeometry(350, 38, 130, 40);
+    resetCourseBtn->setCursor(Qt::PointingHandCursor);
+    resetCourseBtn->setToolTip("清空当前用户的全部课程记录");
+
     importExpCsvBtn = new QPushButton("导入CSV", ui->expPage);
     importExpCsvBtn->setObjectName("importExpCsvBtn");
     importExpCsvBtn->setGeometry(310, 14, 120, 38);
@@ -241,6 +288,21 @@ void MainWindow::applyModernStyle() {
             background: %10;
             border: 1px solid rgba(13,148,136,0.60);
             color: #0B5E57;
+        }
+        QPushButton#logoutBtn {
+            min-height: 40px; max-height: 42px;
+            border-radius: %11px;
+            border: 1px solid rgba(220,38,38,0.38);
+            background: rgba(255,255,255,0.72);
+            color: #B91C1C;
+            font-size: %13px;
+            font-weight: %9;
+            padding: 0 16px;
+        }
+        QPushButton#logoutBtn:hover {
+            background: #DC2626;
+            border-color: #DC2626;
+            color: #FFFFFF;
         }
 
         /* ===== 主内容区 ===== */
@@ -348,10 +410,12 @@ void MainWindow::applyModernStyle() {
         }
 
         /* 删除按钮 */
-        QPushButton#deleteCourseBtn, QPushButton#DelExpBtn, QPushButton#delAwardBtn {
+        QPushButton#deleteCourseBtn, QPushButton#resetCourseBtn,
+        QPushButton#DelExpBtn, QPushButton#delAwardBtn {
             background: %20; color: %22; border: 1px solid %22;
         }
-        QPushButton#deleteCourseBtn:hover, QPushButton#DelExpBtn:hover, QPushButton#delAwardBtn:hover {
+        QPushButton#deleteCourseBtn:hover, QPushButton#resetCourseBtn:hover,
+        QPushButton#DelExpBtn:hover, QPushButton#delAwardBtn:hover {
             background: %22; color: #FFFFFF;
         }
 
@@ -1767,6 +1831,17 @@ void MainWindow::InitFrame() {
                 &MainWindow::openEditProfileDialog);
     }
 
+    if (logoutBtn == nullptr) {
+        logoutBtn = new QPushButton("退出登录", ui->sidebarFrame);
+        logoutBtn->setObjectName("logoutBtn");
+        logoutBtn->setCursor(Qt::PointingHandCursor);
+        logoutBtn->setFixedHeight(42);
+        logoutBtn->setToolTip("退出当前账号并返回登录页");
+        ui->verticalLayout_3->addWidget(logoutBtn);
+        connect(logoutBtn, &QPushButton::clicked,
+                this, &MainWindow::logout);
+    }
+
     ui->verticalLayout->setContentsMargins(20, 17, 20, 17);
     ui->verticalLayout->setSpacing(8);
     ui->verticalLayout_3->setContentsMargins(14, 18, 14, 18);
@@ -1842,6 +1917,9 @@ void MainWindow::InitFrame() {
         loadResumeProfile();
     });
 
+    connect(resetCourseBtn, &QPushButton::clicked,
+            this, &MainWindow::resetAllCourses);
+
     // CSV 导入导出按钮信号
     connect(importCourseCsvBtn, &QPushButton::clicked, this, [this]() {
         QString filePath = QFileDialog::getOpenFileName(
@@ -1895,7 +1973,7 @@ void MainWindow::InitFrame() {
     connect(csvHelpCourseBtn, &QPushButton::clicked, this, [this]() {
         QMessageBox::information(this, "CSV 格式说明 — 课程",
             QString("<h3>表头</h3>"
-                    "<pre>课程名称,学分,成绩,学期</pre>"
+                    "<pre>课程名称,学分,成绩,学期,核心课程</pre>"
                     "<h3>字段说明</h3>"
                     "<table>"
                     "<tr><td><b>课程名称</b></td><td>课程名字（必填）</td></tr>"
@@ -1903,11 +1981,12 @@ void MainWindow::InitFrame() {
                     "<tr><td><b>成绩</b></td><td>数值，范围 0–100（必填）</td></tr>"
                     "<tr><td><b>学期</b></td><td>大一上 / 大一下 / 大二上 / 大二下<br>"
                     "大三上 / 大三下 / 大四上 / 大四下（必填）</td></tr>"
+                    "<tr><td><b>核心课程</b></td><td>是 / 否；标记是否展示在简历中</td></tr>"
                     "</table>"
                     "<h3>示例</h3>"
-                    "<pre>课程名称,学分,成绩,学期\n"
-                    "高等数学,4,92,大一上\n"
-                    "线性代数,3,85,大一下</pre>"
+                    "<pre>课程名称,学分,成绩,学期,核心课程\n"
+                    "高等数学,4,92,大一上,是\n"
+                    "线性代数,3,85,大一下,否</pre>"
                     "<p style='color:#64748B'>导入时绩点会自动根据成绩换算，无需手动填写。</p>"));
     });
 
@@ -1969,9 +2048,9 @@ void MainWindow::InitFrame() {
                     "<h3>完整示例</h3>"
                     "<pre style='line-height:1.6'>"
                     "#SECTION: 课程\n"
-                    "课程名称,学分,成绩,学期\n"
-                    "高等数学,4,92,大一上\n"
-                    "线性代数,3,85,大一下\n"
+                    "课程名称,学分,成绩,学期,核心课程\n"
+                    "高等数学,4,92,大一上,是\n"
+                    "线性代数,3,85,大一下,否\n"
                     "\n"
                     "#SECTION: 经历\n"
                     "标题,类型,时间,描述\n"
@@ -1990,6 +2069,7 @@ void MainWindow::InitFrame() {
                     "<tr><td>学分</td><td>数值 &gt; 0（必填）</td></tr>"
                     "<tr><td>成绩</td><td>数值 0–100（必填）</td></tr>"
                     "<tr><td>学期</td><td>大一上/大一下/大二上/大二下/大三上/大三下/大四上/大四下（必填）</td></tr>"
+                    "<tr><td>核心课程</td><td>是/否；标记是否展示在简历中</td></tr>"
                     "<tr><td colspan='2'><br><b>【经历】</b></td></tr>"
                     "<tr><td>标题</td><td>经历标题（必填）</td></tr>"
                     "<tr><td>类型</td><td>实习/竞赛/项目/其他（必填）</td></tr>"
@@ -2195,14 +2275,27 @@ void MainWindow::openEditProfileDialog() {
     }
 }
 
+void MainWindow::logout() {
+    const auto result = QMessageBox::question(
+        this, "退出登录", "确定要退出当前账号并返回登录页面吗？",
+        QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
+    if (result != QMessageBox::Yes)
+        return;
+
+    User::getInstance().logout();
+    emit logoutRequested();
+}
+
 // ==================== 课程页 ====================
 
 void MainWindow::InitCoursePage() {
     int userId = User::getInstance().getId();
 
-    ui->courseTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->courseTableView->setSelectionMode(QAbstractItemView::SingleSelection);
     setupTableView(ui->courseTableView);
+    ui->courseTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->courseTableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    ui->courseTableView->setToolTip(
+        "按住 Cmd（macOS）或 Ctrl（Windows/Linux）可选择多行课程");
 
     courseModel = new QSqlTableModel(this);
     courseModel->setTable("courses");
@@ -2214,6 +2307,7 @@ void MainWindow::InitCoursePage() {
     courseModel->setHeaderData(4, Qt::Horizontal, "成绩");
     courseModel->setHeaderData(5, Qt::Horizontal, "学期");
     courseModel->setHeaderData(6, Qt::Horizontal, "绩点");
+    courseModel->setHeaderData(8, Qt::Horizontal, "核心课程");
 
     // 按学期时间排序（semester_order 列：大一上=0 ... 大四下=7）
     courseModel->setSort(7, Qt::AscendingOrder);
@@ -2222,6 +2316,8 @@ void MainWindow::InitCoursePage() {
     ui->courseTableView->setColumnHidden(0, true);
     ui->courseTableView->setColumnHidden(1, true);
     ui->courseTableView->setColumnHidden(7, true); // 隐藏 semester_order 排序列
+    ui->courseTableView->setItemDelegateForColumn(
+        8, new CoreCourseDelegate(ui->courseTableView));
 
     courseModel->select();
 
@@ -2265,6 +2361,7 @@ void MainWindow::on_addCourseBtn_clicked() {
         double score = dialog.getScore();
         QString semester = dialog.getSemester();
         int semesterOrder = dialog.getSemesterOrder();
+        bool isCoreCourse = dialog.isCoreCourse();
 
         if (name.isEmpty())
             return;
@@ -2278,6 +2375,8 @@ void MainWindow::on_addCourseBtn_clicked() {
             courseModel->setData(courseModel->index(row, 5), semester);
             courseModel->setData(courseModel->index(row, 6), scoreToGpa(score));
             courseModel->setData(courseModel->index(row, 7), semesterOrder);
+            courseModel->setData(courseModel->index(row, 8),
+                                 isCoreCourse ? 1 : 0);
 
             if (courseModel->submitAll()) {
                 ui->courseTableView->selectRow(row);
@@ -2293,29 +2392,115 @@ void MainWindow::on_addCourseBtn_clicked() {
 }
 
 void MainWindow::on_deleteCourseBtn_clicked() {
-    QModelIndex currentIndex = ui->courseTableView->currentIndex();
-    if (!currentIndex.isValid()) {
-        QMessageBox::warning(this, "提示", "请先在表格中点击选择一行内容");
+    const QModelIndexList selectedRows =
+        ui->courseTableView->selectionModel()->selectedRows(0);
+    if (selectedRows.isEmpty()) {
+        QMessageBox::warning(
+            this, "提示",
+            "请先选择课程；按住 Cmd（macOS）或 Ctrl（Windows/Linux）可多选");
         return;
     }
 
-    auto result =
-        QMessageBox::question(this, "确认删除", "确定要删除该门课程吗？");
+    const int selectedCount = selectedRows.size();
+    auto result = QMessageBox::question(
+        this, "确认删除",
+        selectedCount == 1
+            ? "确定要删除选中的课程吗？"
+            : QString("确定要删除选中的 %1 门课程吗？").arg(selectedCount));
     if (result != QMessageBox::Yes)
         return;
 
-    int row = currentIndex.row();
-    courseModel->removeRow(row);
-
-    if (courseModel->submitAll()) {
-        qDebug() << "行号" << row << "已成功从数据库抹除";
-        updateTotalStats();
-        updateHomePageStats();
-    } else {
-        courseModel->revertAll();
-        qDebug() << "提交失败";
-        QMessageBox::critical(this, "错误", "数据库写入失败！");
+    QList<int> courseIds;
+    courseIds.reserve(selectedRows.size());
+    for (const QModelIndex &index : selectedRows) {
+        const int courseId =
+            courseModel->data(courseModel->index(index.row(), 0)).toInt();
+        if (courseId > 0)
+            courseIds.append(courseId);
     }
+    if (courseIds.isEmpty()) {
+        QMessageBox::critical(this, "删除失败",
+                              "无法读取选中课程的数据库编号。");
+        return;
+    }
+
+    if (!courseModel->submitAll()) {
+        QMessageBox::critical(this, "删除失败",
+                              "保存当前课程修改失败，请稍后再试。");
+        return;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.transaction()) {
+        QMessageBox::critical(this, "删除失败",
+                              "无法开始数据库事务，请稍后再试。");
+        return;
+    }
+
+    QSqlQuery query(db);
+    query.prepare(
+        "DELETE FROM courses WHERE id = :id AND user_id = :user_id");
+    const int userId = User::getInstance().getId();
+    for (int courseId : courseIds) {
+        query.bindValue(":id", courseId);
+        query.bindValue(":user_id", userId);
+        if (!query.exec()) {
+            const QString error = query.lastError().text();
+            db.rollback();
+            courseModel->select();
+            QMessageBox::critical(this, "删除失败",
+                                  "数据库写入失败：" + error);
+            return;
+        }
+    }
+
+    if (!db.commit()) {
+        const QString error = db.lastError().text();
+        db.rollback();
+        courseModel->select();
+        QMessageBox::critical(this, "删除失败",
+                              "提交删除失败：" + error);
+        return;
+    }
+
+    // 重新查询会立即压紧行号，避免被删除的位置残留空白行。
+    courseModel->select();
+    ui->courseTableView->clearSelection();
+    updateTotalStats();
+    updateHomePageStats();
+}
+
+void MainWindow::resetAllCourses() {
+    const int courseCount = courseModel->rowCount();
+    if (courseCount == 0) {
+        QMessageBox::information(this, "初始化课程", "当前没有课程数据。");
+        return;
+    }
+
+    const auto result = QMessageBox::warning(
+        this, "初始化全部课程",
+        QString("此操作将清空当前用户的全部 %1 门课程，且无法撤销。\n\n"
+                "确定要继续吗？")
+            .arg(courseCount),
+        QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
+    if (result != QMessageBox::Yes)
+        return;
+
+    QSqlQuery query;
+    query.prepare("DELETE FROM courses WHERE user_id = :user_id");
+    query.bindValue(":user_id", User::getInstance().getId());
+    if (!query.exec()) {
+        QMessageBox::critical(this, "初始化失败",
+                              "清空课程失败：" + query.lastError().text());
+        return;
+    }
+
+    courseModel->select();
+    ui->courseTableView->clearSelection();
+    updateTotalStats();
+    updateHomePageStats();
+    QMessageBox::information(this, "初始化完成",
+                             "当前用户的课程数据已全部清空。");
 }
 
 void MainWindow::updateTotalStats() {
@@ -2694,6 +2879,21 @@ static QStringList parseCsvLine(const QString &line) {
     return fields;
 }
 
+static bool parseCoreCourseValue(const QString &text, bool &isCoreCourse) {
+    const QString value = text.trimmed().toLower();
+    if (value.isEmpty() || value == "否" || value == "0" ||
+        value == "false" || value == "no" || value == "非核心") {
+        isCoreCourse = false;
+        return true;
+    }
+    if (value == "是" || value == "1" || value == "true" ||
+        value == "yes" || value == "核心") {
+        isCoreCourse = true;
+        return true;
+    }
+    return false;
+}
+
 // ==================== 课程 CSV 导入导出 ====================
 
 void MainWindow::importCoursesFromCsv(const QString &filePath) {
@@ -2718,13 +2918,18 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
 
     QStringList expectedHeader = {"课程名称", "学分", "成绩", "学期"};
     QStringList header = parseCsvLine(headerLine);
+    const bool hasCoreCourseColumn =
+        header.size() >= 5 && header[4] == "核心课程";
     if (header.size() < 4 ||
         header[0] != expectedHeader[0] ||
         header[1] != expectedHeader[1] ||
         header[2] != expectedHeader[2] ||
-        header[3] != expectedHeader[3]) {
+        header[3] != expectedHeader[3] ||
+        (header.size() >= 5 && !hasCoreCourseColumn)) {
         QMessageBox::warning(this, "格式错误",
-            "CSV 表头不匹配。期望的列：\n课程名称,学分,成绩,学期\n\n"
+            "CSV 表头不匹配。期望的列：\n"
+            "课程名称,学分,成绩,学期,核心课程\n\n"
+            "旧版四列表头仍可导入，核心课程会默认为“否”。\n\n"
             "请参考 CSV_FORMAT.md 了解正确格式。");
         return;
     }
@@ -2737,8 +2942,11 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
                                         "大三上","大三下","大四上","大四下"};
 
     QSqlQuery query;
-    query.prepare("INSERT INTO courses (user_id, name, credit, score, semester, gpa, semester_order) "
-                  "VALUES (:uid, :name, :credit, :score, :semester, :gpa, :order)");
+    query.prepare(
+        "INSERT INTO courses (user_id, name, credit, score, semester, gpa, "
+        "semester_order, is_core) "
+        "VALUES (:uid, :name, :credit, :score, :semester, :gpa, :order, "
+        ":is_core)");
 
     while (!stream.atEnd()) {
         ++lineNum;
@@ -2747,7 +2955,7 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
             continue;
 
         QStringList fields = parseCsvLine(line);
-        if (fields.size() < 4) {
+        if (fields.size() < (hasCoreCourseColumn ? 5 : 4)) {
             ++failCount;
             continue;
         }
@@ -2766,6 +2974,13 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
         int semOrder = validSemesters.indexOf(semester);
         if (semOrder < 0) { ++failCount; continue; }
 
+        bool isCoreCourse = false;
+        if (hasCoreCourseColumn &&
+            !parseCoreCourseValue(fields[4], isCoreCourse)) {
+            ++failCount;
+            continue;
+        }
+
         query.bindValue(":uid", userId);
         query.bindValue(":name", name);
         query.bindValue(":credit", credit);
@@ -2773,6 +2988,7 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
         query.bindValue(":semester", semester);
         query.bindValue(":gpa", scoreToGpa(score));
         query.bindValue(":order", semOrder);
+        query.bindValue(":is_core", isCoreCourse ? 1 : 0);
 
         if (query.exec()) {
             ++successCount;
@@ -2800,7 +3016,8 @@ void MainWindow::exportCoursesToCsv(const QString &filePath) {
     QTextStream stream(&file);
     // Qt6: QTextStream defaults to UTF-8, setCodec() removed
     stream << QChar(0xFEFF);
-    writeCsvRow(stream, {"课程名称", "学分", "成绩", "学期"});
+    writeCsvRow(stream,
+                {"课程名称", "学分", "成绩", "学期", "核心课程"});
 
     int rowCount = courseModel->rowCount();
     for (int row = 0; row < rowCount; ++row) {
@@ -2808,7 +3025,11 @@ void MainWindow::exportCoursesToCsv(const QString &filePath) {
         QString credit = courseModel->data(courseModel->index(row, 3)).toString();
         QString score = courseModel->data(courseModel->index(row, 4)).toString();
         QString semester = courseModel->data(courseModel->index(row, 5)).toString();
-        writeCsvRow(stream, {name, credit, score, semester});
+        QString isCoreCourse =
+            courseModel->data(courseModel->index(row, 8)).toBool()
+                ? "是" : "否";
+        writeCsvRow(stream,
+                    {name, credit, score, semester, isCoreCourse});
     }
 
     file.close();
@@ -3060,13 +3281,18 @@ void MainWindow::exportAllToCsv(const QString &filePath) {
 
     // Section 1: 课程
     writeCsvRow(stream, {"#SECTION: 课程"});
-    writeCsvRow(stream, {"课程名称", "学分", "成绩", "学期"});
+    writeCsvRow(stream,
+                {"课程名称", "学分", "成绩", "学期", "核心课程"});
     for (int row = 0; row < courseCount; ++row) {
         QString name     = courseModel->data(courseModel->index(row, 2)).toString();
         QString credit   = courseModel->data(courseModel->index(row, 3)).toString();
         QString score    = courseModel->data(courseModel->index(row, 4)).toString();
         QString semester = courseModel->data(courseModel->index(row, 5)).toString();
-        writeCsvRow(stream, {name, credit, score, semester});
+        QString isCoreCourse =
+            courseModel->data(courseModel->index(row, 8)).toBool()
+                ? "是" : "否";
+        writeCsvRow(stream,
+                    {name, credit, score, semester, isCoreCourse});
     }
     stream << "\n";
 
@@ -3119,6 +3345,7 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
     Section currentSection = NONE;
     bool headerValidated = false;
     bool headerBad = false;
+    bool courseHeaderHasCoreCourse = false;
 
     int courseOk = 0, courseFail = 0;
     int expOk = 0, expFail = 0;
@@ -3131,14 +3358,18 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
     const QStringList validTypes = {"实习", "竞赛", "项目", "其他"};
     const QStringList validLevels = {"国家级", "省级", "校级", "院级"};
 
-    const QStringList expectedCourseHdr = {"课程名称", "学分", "成绩", "学期"};
+    const QStringList expectedCourseHdr =
+        {"课程名称", "学分", "成绩", "学期"};
     const QStringList expectedExpHdr = {"标题", "类型", "时间", "描述"};
     const QStringList expectedAwardHdr = {"奖项名称", "荣誉级别", "获奖时间", "奖金金额"};
 
     // 预编译三条 INSERT 语句
     QSqlQuery courseQuery;
-    courseQuery.prepare("INSERT INTO courses (user_id, name, credit, score, semester, gpa, semester_order) "
-                        "VALUES (:uid, :name, :credit, :score, :semester, :gpa, :order)");
+    courseQuery.prepare(
+        "INSERT INTO courses (user_id, name, credit, score, semester, gpa, "
+        "semester_order, is_core) "
+        "VALUES (:uid, :name, :credit, :score, :semester, :gpa, :order, "
+        ":is_core)");
 
     QSqlQuery expQuery;
     expQuery.prepare("INSERT INTO experiences (user_id, title, type, date, content) "
@@ -3173,6 +3404,8 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
                 currentSection = NONE;
             headerValidated = false;
             headerBad = false;
+            if (currentSection == COURSES)
+                courseHeaderHasCoreCourse = false;
             continue;
         }
 
@@ -3181,11 +3414,15 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
             QStringList hdr = parseCsvLine(line);
             switch (currentSection) {
             case COURSES:
+                courseHeaderHasCoreCourse =
+                    hdr.size() >= 5 && hdr[4] == "核心课程";
                 headerBad = !(hdr.size() >= 4 &&
                               hdr[0] == expectedCourseHdr[0] &&
                               hdr[1] == expectedCourseHdr[1] &&
                               hdr[2] == expectedCourseHdr[2] &&
-                              hdr[3] == expectedCourseHdr[3]);
+                              hdr[3] == expectedCourseHdr[3] &&
+                              (hdr.size() < 5 ||
+                               courseHeaderHasCoreCourse));
                 break;
             case EXPERIENCES:
                 headerBad = !(hdr.size() >= 4 &&
@@ -3218,7 +3455,11 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
 
         switch (currentSection) {
         case COURSES: {
-            if (fields.size() < 4) { ++courseFail; continue; }
+            if (fields.size() <
+                (courseHeaderHasCoreCourse ? 5 : 4)) {
+                ++courseFail;
+                continue;
+            }
             QString name = fields[0];
             if (name.isEmpty()) { ++courseFail; continue; }
             bool ok;
@@ -3230,6 +3471,13 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
             int semOrder = validSemesters.indexOf(semester);
             if (semOrder < 0) { ++courseFail; continue; }
 
+            bool isCoreCourse = false;
+            if (courseHeaderHasCoreCourse &&
+                !parseCoreCourseValue(fields[4], isCoreCourse)) {
+                ++courseFail;
+                continue;
+            }
+
             courseQuery.bindValue(":uid", userId);
             courseQuery.bindValue(":name", name);
             courseQuery.bindValue(":credit", credit);
@@ -3237,6 +3485,7 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
             courseQuery.bindValue(":semester", semester);
             courseQuery.bindValue(":gpa", DatabaseManager::scoreToGpa(score));
             courseQuery.bindValue(":order", semOrder);
+            courseQuery.bindValue(":is_core", isCoreCourse ? 1 : 0);
 
             if (courseQuery.exec()) ++courseOk; else ++courseFail;
             break;

@@ -2,6 +2,7 @@
 #include "LoginDialog.h"
 
 #include <QApplication>
+#include <QEventLoop>
 #include <QLocale>
 #include <QTranslator>
 #include <QStyleFactory>
@@ -12,6 +13,7 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+    QApplication::setQuitOnLastWindowClosed(false);
 
     // 强制使用浅色模式，避免在 macOS / Windows 深色模式下被系统颜色影响。
     QApplication::setStyle(QStyleFactory::create("Fusion"));
@@ -44,14 +46,30 @@ int main(int argc, char *argv[])
         }
     }
 
-    LoginDialog login;
-    if (login.exec() != QDialog::Accepted) {
-        return 0;
-    }
+    while (true) {
+        LoginDialog login;
+        if (login.exec() != QDialog::Accepted)
+            return 0;
 
-    MainWindow w;
-    w.show();
-    return QCoreApplication::exec();
+        MainWindow window;
+        QEventLoop windowLoop;
+        bool loggingOut = false;
+
+        QObject::connect(&window, &MainWindow::logoutRequested,
+                         &windowLoop, [&]() {
+            loggingOut = true;
+            window.close();
+            windowLoop.quit();
+        });
+        QObject::connect(&a, &QGuiApplication::lastWindowClosed,
+                         &windowLoop, &QEventLoop::quit);
+
+        window.show();
+        windowLoop.exec();
+
+        if (!loggingOut)
+            return 0;
+    }
 
 
 }

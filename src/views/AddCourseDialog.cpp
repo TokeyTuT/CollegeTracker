@@ -70,6 +70,17 @@ AddCourseDialog::AddCourseDialog(QWidget *parent):QDialog(parent){
     semLbl->setStyleSheet(labelStyle);
     layout->addRow(semLbl, semesterCombo);
 
+    // 核心课程会被展示在导出的简历中
+    coreCourseCheck = new QCheckBox("作为简历中的主要课程", this);
+    coreCourseCheck->setChecked(false);
+    coreCourseCheck->setToolTip("勾选后，这门课程会出现在简历的“核心课程”中");
+    coreCourseCheck->setStyleSheet(
+        QString("font-size: %1px; color: %2;")
+            .arg(TypeScale::body).arg(Color::onSurface));
+    auto *coreCourseLbl = new QLabel("核心课程：", this);
+    coreCourseLbl->setStyleSheet(labelStyle);
+    layout->addRow(coreCourseLbl, coreCourseCheck);
+
     // 确认/取消按钮
     QDialogButtonBox *buttonBox = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);

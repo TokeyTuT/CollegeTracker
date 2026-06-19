@@ -8,6 +8,7 @@
 #include <QPushButton>
 #include <QDialogButtonBox>
 #include <QComboBox>
+#include <QCheckBox>
 #include <QLabel>
 
 class AddCourseDialog : public QDialog {
@@ -20,6 +21,7 @@ public:
     double getScore() const { return scoreSpin->value(); }
     QString getSemester() const{return semesterCombo->currentText();}
     int getSemesterOrder() const { return semesterCombo->currentIndex(); }
+    bool isCoreCourse() const { return coreCourseCheck->isChecked(); }
 private:
     double scoreToGpa(double score) const;
     void updateGpaPreview();
@@ -27,6 +29,7 @@ private:
     QDoubleSpinBox *creditSpin;
     QDoubleSpinBox *scoreSpin;
     QComboBox *semesterCombo;
+    QCheckBox *coreCourseCheck;
     QLabel *gpaPreviewLbl;
 };
 
