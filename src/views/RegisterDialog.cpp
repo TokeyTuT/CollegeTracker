@@ -2,17 +2,21 @@
 
 #include "DatabaseMannager.h"
 
+#include <QFileDialog>
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QScrollArea>
 #include <QVBoxLayout>
+
+static constexpr int kAvatarCount = 12;
 
 RegisterDialog::RegisterDialog(QWidget *parent)
     : QDialog(parent) {
     setWindowTitle("College Tracker · 创建账号");
     setModal(true);
-    setFixedSize(520, 650);
+    setFixedSize(540, 740);
     setStyleSheet(QStringLiteral(R"QSS(
         QDialog {
             background: #F4F1EA;
@@ -26,6 +30,9 @@ RegisterDialog::RegisterDialog(QWidget *parent)
         QLabel#subtitle { color: #68716D; font-size: 13px; }
         QLabel#fieldLabel {
             color: #46524E; font-size: 12px; font-weight: 750;
+        }
+        QLabel#sectionLabel {
+            color: #25332F; font-size: 13px; font-weight: 800;
         }
         QLineEdit, QComboBox {
             min-height: 43px; background: #FFFEFA; color: #17201D;
@@ -54,27 +61,82 @@ RegisterDialog::RegisterDialog(QWidget *parent)
         QLabel#messageLabel {
             color: #B94B45; font-size: 12px; font-weight: 650;
         }
+        QToolButton {
+            border: 2px solid transparent; border-radius: 6px;
+            padding: 2px; background: transparent;
+        }
+        QToolButton:hover { border-color: #9DABA5; }
     )QSS"));
 
     auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(42, 34, 42, 30);
+    layout->setContentsMargins(42, 30, 42, 24);
     layout->setSpacing(0);
 
     auto *eyebrow = new QLabel("NEW PROFILE", this);
     eyebrow->setObjectName("eyebrow");
     layout->addWidget(eyebrow);
-    layout->addSpacing(8);
+    layout->addSpacing(6);
 
     auto *title = new QLabel("创建你的学业档案", this);
     title->setObjectName("title");
     layout->addWidget(title);
-    layout->addSpacing(6);
+    layout->addSpacing(4);
 
     auto *subtitle = new QLabel("先填写基础信息，之后都可以在应用内修改。", this);
     subtitle->setObjectName("subtitle");
     layout->addWidget(subtitle);
-    layout->addSpacing(26);
+    layout->addSpacing(18);
 
+    // --- Avatar section ---
+    auto *avatarSection = new QHBoxLayout;
+    avatarSection->setSpacing(14);
+
+    m_avatarPreview = new QLabel(this);
+    m_avatarPreview->setFixedSize(64, 64);
+    m_avatarPreview->setAlignment(Qt::AlignCenter);
+    m_avatarPreview->setStyleSheet(
+        "background:#E5EEE9; color:#315C53; border:2px solid #8AA89F;"
+        "border-radius:32px; font-size:20px; font-weight:850;");
+    m_avatarPreview->setText("?");
+    avatarSection->addWidget(m_avatarPreview);
+
+    auto *avatarRight = new QVBoxLayout;
+    avatarRight->setSpacing(6);
+    auto *avatarLabel = new QLabel("选择头像", this);
+    avatarLabel->setObjectName("sectionLabel");
+    avatarRight->addWidget(avatarLabel);
+
+    auto *avatarGrid = new QGridLayout;
+    avatarGrid->setSpacing(4);
+    for (int i = 0; i < kAvatarCount; ++i) {
+        auto *btn = new QToolButton(this);
+        btn->setFixedSize(36, 36);
+        btn->setIconSize(QSize(32, 32));
+        QString path = QString(":/avatars/avatar_%1.png").arg(i + 1, 2, 10, QChar('0'));
+        btn->setIcon(QIcon(path));
+        btn->setCursor(Qt::PointingHandCursor);
+        connect(btn, &QToolButton::clicked, this, [this, i]() { selectAvatar(i); });
+        avatarGrid->addWidget(btn, i / 6, i % 6);
+        m_avatarButtons.append(btn);
+    }
+    auto *customBtn = new QToolButton(this);
+    customBtn->setFixedSize(36, 36);
+    customBtn->setText("+");
+    customBtn->setStyleSheet(
+        "QToolButton { font-size:18px; font-weight:900; color:#1F6B5B;"
+        "border:2px dashed #B8C4BE; border-radius:6px; }"
+        "QToolButton:hover { border-color:#1F6B5B; background:#E6ECE8; }");
+    customBtn->setCursor(Qt::PointingHandCursor);
+    customBtn->setToolTip("上传自定义头像");
+    connect(customBtn, &QToolButton::clicked, this, &RegisterDialog::pickCustomAvatar);
+    avatarGrid->addWidget(customBtn, kAvatarCount / 6, kAvatarCount % 6);
+
+    avatarRight->addLayout(avatarGrid);
+    avatarSection->addLayout(avatarRight, 1);
+    layout->addLayout(avatarSection);
+    layout->addSpacing(14);
+
+    // --- Form fields ---
     auto *form = new QGridLayout;
     form->setHorizontalSpacing(14);
     form->setVerticalSpacing(8);
@@ -116,7 +178,7 @@ RegisterDialog::RegisterDialog(QWidget *parent)
     form->addWidget(m_majorEdit, 7, 0, 1, 2);
 
     layout->addLayout(form);
-    layout->addSpacing(12);
+    layout->addSpacing(8);
 
     m_messageLabel = new QLabel(this);
     m_messageLabel->setObjectName("messageLabel");
@@ -140,6 +202,47 @@ RegisterDialog::RegisterDialog(QWidget *parent)
             this, &RegisterDialog::onRegisterClicked);
     connect(m_backBtn, &QPushButton::clicked,
             this, &RegisterDialog::onBackClicked);
+}
+
+void RegisterDialog::selectAvatar(int index) {
+    for (int i = 0; i < m_avatarButtons.size(); ++i) {
+        m_avatarButtons[i]->setStyleSheet(i == index
+            ? "QToolButton { border:2px solid #1F6B5B; border-radius:6px;"
+              "padding:2px; background:#E5EEE9; }"
+            : "QToolButton { border:2px solid transparent; border-radius:6px;"
+              "padding:2px; background:transparent; }"
+              "QToolButton:hover { border-color:#9DABA5; }");
+    }
+    m_selectedIndex = index;
+    m_selectedAvatar = QString(":/avatars/avatar_%1.png").arg(index + 1, 2, 10, QChar('0'));
+    QPixmap pm(m_selectedAvatar);
+    if (!pm.isNull()) {
+        m_avatarPreview->setPixmap(
+            pm.scaled(60, 60, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        m_avatarPreview->setText(QString());
+    }
+}
+
+void RegisterDialog::pickCustomAvatar() {
+    QString path = QFileDialog::getOpenFileName(
+        this, "选择头像图片", QString(),
+        "图片文件 (*.png *.jpg *.jpeg *.bmp)");
+    if (path.isEmpty()) return;
+
+    for (int i = 0; i < m_avatarButtons.size(); ++i) {
+        m_avatarButtons[i]->setStyleSheet(
+            "QToolButton { border:2px solid transparent; border-radius:6px;"
+            "padding:2px; background:transparent; }"
+            "QToolButton:hover { border-color:#9DABA5; }");
+    }
+    m_selectedIndex = -1;
+    m_selectedAvatar = path;
+    QPixmap pm(path);
+    if (!pm.isNull()) {
+        m_avatarPreview->setPixmap(
+            pm.scaled(60, 60, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        m_avatarPreview->setText(QString());
+    }
 }
 
 void RegisterDialog::onRegisterClicked() {
@@ -173,7 +276,7 @@ void RegisterDialog::onRegisterClicked() {
     }
 
     if (DatabaseManager::getInstance().registerUser(
-            username, password, grade, gender, major, school)) {
+            username, password, grade, gender, major, school, m_selectedAvatar)) {
         accept();
     } else {
         showMessage("这个用户名已经被使用", true);

@@ -6,6 +6,8 @@
 #include <QLineEdit>
 #include <QComboBox>
 #include <QLabel>
+#include <QToolButton>
+#include <QList>
 
 class RegisterDialog : public QDialog {
     Q_OBJECT
@@ -19,6 +21,8 @@ private slots:
 
 private:
     void showMessage(const QString &msg, bool isError);
+    void selectAvatar(int index);
+    void pickCustomAvatar();
 
     QLineEdit *m_usernameEdit;
     QLineEdit *m_passwordEdit;
@@ -30,6 +34,10 @@ private:
     QPushButton *m_registerBtn;
     QPushButton *m_backBtn;
     QLabel *m_messageLabel;
+    QLabel *m_avatarPreview;
+    QList<QToolButton *> m_avatarButtons;
+    QString m_selectedAvatar;
+    int m_selectedIndex = -1;
 };
 
 #endif // REGISTERDIALOG_H

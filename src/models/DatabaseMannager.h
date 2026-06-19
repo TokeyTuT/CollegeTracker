@@ -27,7 +27,9 @@ public:
 
     // 用户管理
     bool registerUser(const QString &username, const QString &password,
-                      const QString &grade, const QString &gender, const QString &major, const QString &school);
+                      const QString &grade, const QString &gender,
+                      const QString &major, const QString &school,
+                      const QString &avatarPath = QString());
     int loginUser(const QString &username, const QString &password); // 返回 user id，-1 表示失败
     QVariantMap getUserInfo(int userId);
     bool updateUserInfo(int userId, const QString &grade, const QString &gender,
@@ -35,6 +37,14 @@ public:
                         const QString &startYear, const QString &endYear,
                         const QString &phone, const QString &email,
                         const QString &jobTarget, const QString &website);
+    bool updateUsername(int userId, const QString &newUsername);
+    bool updatePassword(int userId, const QString &oldPassword, const QString &newPassword);
+    bool verifyUserIdentity(const QString &username, const QString &school,
+                            const QString &major, const QString &grade,
+                            const QString &email, const QString &phone);
+    bool resetPassword(const QString &username, const QString &newPassword);
+    bool updateUserAvatar(int userId, const QString &avatarPath);
+    QString getUserAvatar(int userId);
 
     // 简历基本资料（每个用户一份，updateResumeProfile 使用 upsert）
     QVariantMap getResumeProfile(int userId);

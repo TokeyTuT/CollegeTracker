@@ -64,7 +64,8 @@ bool DatabaseManager::createTables() {
                        "grade TEXT DEFAULT '', "
                        "gender TEXT DEFAULT '', "
                        "major TEXT DEFAULT '', "
-                       "school TEXT DEFAULT ''"
+                       "school TEXT DEFAULT '', "
+                       "avatar_path TEXT DEFAULT ''"
                        ");";
     if (!query.exec(sqlUsers)) success = false;
 
@@ -252,6 +253,7 @@ void DatabaseManager::migrateTables() {
     ensureColumn("users", "gender", "TEXT DEFAULT ''");
     ensureColumn("users", "major", "TEXT DEFAULT ''");
     ensureColumn("users", "school", "TEXT DEFAULT ''");
+    ensureColumn("users", "avatar_path", "TEXT DEFAULT ''");
 
     ensureColumn("courses", "user_id", "INTEGER NOT NULL DEFAULT 1");
     ensureColumn("courses", "gpa", "REAL DEFAULT 0");
@@ -529,19 +531,22 @@ QVariantMap DatabaseManager::getTotalStats(int userId) {
 }
 
 bool DatabaseManager::registerUser(const QString &username, const QString &password,
-                                    const QString &grade, const QString &gender, const QString &major, const QString &school) {
+                                    const QString &grade, const QString &gender,
+                                    const QString &major, const QString &school,
+                                    const QString &avatarPath) {
     if (!m_db.transaction())
         return false;
 
     QSqlQuery query(m_db);
-    query.prepare("INSERT INTO users (username, password, grade, gender, major, school) "
-                  "VALUES (:username, :password, :grade, :gender, :major, :school)");
+    query.prepare("INSERT INTO users (username, password, grade, gender, major, school, avatar_path) "
+                  "VALUES (:username, :password, :grade, :gender, :major, :school, :avatar_path)");
     query.bindValue(":username", username);
     query.bindValue(":password", password);
     query.bindValue(":grade", grade);
     query.bindValue(":gender", gender);
     query.bindValue(":major", major);
     query.bindValue(":school", school);
+    query.bindValue(":avatar_path", avatarPath);
     if (!query.exec()) {
         m_db.rollback();
         return false;
@@ -572,6 +577,93 @@ bool DatabaseManager::registerUser(const QString &username, const QString &passw
     }
 
     return m_db.commit();
+}
+
+bool DatabaseManager::updateUsername(int userId, const QString &newUsername) {
+    QSqlQuery query(m_db);
+    query.prepare("UPDATE users SET username = :name WHERE id = :id");
+    query.bindValue(":name", newUsername);
+    query.bindValue(":id", userId);
+    return query.exec() && query.numRowsAffected() > 0;
+}
+
+bool DatabaseManager::updatePassword(int userId, const QString &oldPassword,
+                                     const QString &newPassword) {
+    QSqlQuery query(m_db);
+    query.prepare("SELECT id FROM users WHERE id = :id AND password = :pw");
+    query.bindValue(":id", userId);
+    query.bindValue(":pw", oldPassword);
+    if (!query.exec() || !query.next())
+        return false;
+    query.prepare("UPDATE users SET password = :pw WHERE id = :id");
+    query.bindValue(":pw", newPassword);
+    query.bindValue(":id", userId);
+    return query.exec() && query.numRowsAffected() > 0;
+}
+
+bool DatabaseManager::verifyUserIdentity(const QString &username, const QString &school,
+                                         const QString &major, const QString &grade,
+                                         const QString &email, const QString &phone) {
+    QSqlQuery query(m_db);
+    query.prepare(
+        "SELECT u.id FROM users u "
+        "LEFT JOIN resume_profiles r ON r.user_id = u.id "
+        "WHERE u.username = :username AND u.school = :school "
+        "AND u.major = :major AND u.grade = :grade");
+    query.bindValue(":username", username);
+    query.bindValue(":school", school);
+    query.bindValue(":major", major);
+    query.bindValue(":grade", grade);
+    if (!query.exec() || !query.next())
+        return false;
+    if (!email.isEmpty()) {
+        QString storedEmail = query.value("email").toString();
+        if (storedEmail.isEmpty()) {
+            QSqlQuery eq(m_db);
+            eq.prepare("SELECT email FROM resume_profiles WHERE user_id = :uid");
+            eq.bindValue(":uid", query.value(0).toInt());
+            if (eq.exec() && eq.next())
+                storedEmail = eq.value(0).toString();
+        }
+        if (!storedEmail.isEmpty() && storedEmail != email)
+            return false;
+    }
+    if (!phone.isEmpty()) {
+        QString storedPhone;
+        QSqlQuery pq(m_db);
+        pq.prepare("SELECT phone FROM resume_profiles WHERE user_id = :uid");
+        pq.bindValue(":uid", query.value(0).toInt());
+        if (pq.exec() && pq.next())
+            storedPhone = pq.value(0).toString();
+        if (!storedPhone.isEmpty() && storedPhone != phone)
+            return false;
+    }
+    return true;
+}
+
+bool DatabaseManager::resetPassword(const QString &username, const QString &newPassword) {
+    QSqlQuery query(m_db);
+    query.prepare("UPDATE users SET password = :pw WHERE username = :name");
+    query.bindValue(":pw", newPassword);
+    query.bindValue(":name", username);
+    return query.exec() && query.numRowsAffected() > 0;
+}
+
+bool DatabaseManager::updateUserAvatar(int userId, const QString &avatarPath) {
+    QSqlQuery query(m_db);
+    query.prepare("UPDATE users SET avatar_path = :path WHERE id = :id");
+    query.bindValue(":path", avatarPath);
+    query.bindValue(":id", userId);
+    return query.exec() && query.numRowsAffected() > 0;
+}
+
+QString DatabaseManager::getUserAvatar(int userId) {
+    QSqlQuery query(m_db);
+    query.prepare("SELECT avatar_path FROM users WHERE id = :id");
+    query.bindValue(":id", userId);
+    if (query.exec() && query.next())
+        return query.value(0).toString();
+    return {};
 }
 
 int DatabaseManager::loginUser(const QString &username, const QString &password) {
