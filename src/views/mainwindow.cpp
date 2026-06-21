@@ -2,6 +2,7 @@
 #include "./ui_mainwindow.h"
 
 #include "AddCourseDialog.h"
+#include "CsvUtils.h"
 #include "DatabaseMannager.h"
 #include "ResumeExporter.h"
 #include "Theme.h"
@@ -12,9 +13,9 @@
 #include <QComboBox>
 #include <QCursor>
 #include <QDate>
-#include <QDir>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QDir>
 #include <QEvent>
 #include <QFile>
 #include <QFileDialog>
@@ -26,8 +27,8 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
-#include <QLabel>
 #include <QKeyEvent>
+#include <QLabel>
 #include <QLineEdit>
 #include <QPainter>
 #include <QPainterPath>
@@ -53,6 +54,10 @@
 #include <QVector>
 #include <QtMath>
 
+using CsvUtils::parseCoreCourseValue;
+using CsvUtils::parseCsvLine;
+using CsvUtils::writeCsvRow;
+
 namespace {
 
 constexpr qreal kHiResScale = 4.0;
@@ -62,9 +67,9 @@ QPixmap circularHiResPixmap(const QPixmap &source, int logicalSize) {
         return {};
 
     const int pixelSize = qCeil(logicalSize * kHiResScale);
-    const QPixmap scaled = source.scaled(
-        pixelSize, pixelSize, Qt::KeepAspectRatioByExpanding,
-        Qt::SmoothTransformation);
+    const QPixmap scaled =
+        source.scaled(pixelSize, pixelSize, Qt::KeepAspectRatioByExpanding,
+                      Qt::SmoothTransformation);
     const int x = (scaled.width() - pixelSize) / 2;
     const int y = (scaled.height() - pixelSize) / 2;
 
@@ -176,11 +181,9 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
         auto *keyEvent = static_cast<QKeyEvent *>(event);
         if (keyEvent->key() == Qt::Key_Space) {
             if (!keyEvent->isAutoRepeat()) {
-                if (resumePreviewOverlay &&
-                    resumePreviewOverlay->isVisible()) {
+                if (resumePreviewOverlay && resumePreviewOverlay->isVisible()) {
                     hideResumeTemplateMagnifier();
-                }
-                else
+                } else
                     showResumeTemplateMagnifier();
             }
             // 防止空格同时触发当前获得焦点的按钮。
@@ -700,8 +703,6 @@ void MainWindow::applyModernStyle() {
         button->setCursor(Qt::PointingHandCursor);
     }
 }
-
-}
 #endif
 
 void MainWindow::applyModernStyle() {
@@ -759,248 +760,11 @@ void MainWindow::applyModernStyle() {
     ui->expToolbarLayout->addWidget(exportExpCsvBtn);
     ui->expToolbarLayout->addWidget(csvHelpExpBtn);
 
-    setStyleSheet(QStringLiteral(R"QSS(
-        * {
-            font-family: "Avenir Next", "PingFang SC";
-            font-size: 14px;
-            color: #17201D;
-        }
-        QMainWindow, QWidget#centralwidget { background: #F4F1EA; }
-        QFrame#sidebarFrame { background: #315C53; border: none; }
-        QFrame#mainContentFrame { background: #F4F1EA; border: none; }
-        QStackedWidget, QWidget#homePage, QWidget#coursePage,
-        QWidget#expPage, QWidget#profilePage { background: transparent; }
-
-        QWidget#brandWidget { background: transparent; }
-        QLabel#brandMarkLbl {
-            background: #D97745; color: #FFF9F1; border-radius: 12px;
-            font-size: 15px; font-weight: 900; letter-spacing: 1px;
-        }
-        QLabel#brandTitleLbl {
-            color: #F8F2E8; font-size: 16px; font-weight: 900;
-            letter-spacing: 2px;
-        }
-        QLabel#brandCaptionLbl {
-            color: #9FB6AE; font-size: 10px; font-weight: 600;
-            letter-spacing: 0.6px;
-        }
-
-        QWidget#userProfileWidget {
-            background: #3B675E; border: 1px solid #537B72;
-            border-radius: 14px;
-        }
-        QLabel#userNameLbl {
-            color: #FFF9F1; font-size: 19px; font-weight: 800;
-        }
-        QLabel#detailLbl {
-            color: #17352F; font-size: 11px; font-weight: 800;
-            background: #BFD6CD; border-radius: 8px; padding: 4px 9px;
-        }
-        QLabel#majorLbl {
-            color: #BFD0CA; font-size: 12px; font-weight: 500;
-        }
-        QLabel#sidebarAvatarLbl {
-            background: #E5EEE9; color: #315C53;
-            border: 2px solid #73968D; border-radius: 30px;
-            font-size: 21px; font-weight: 850;
-        }
-        QPushButton#editProfileBtn {
-            min-height: 30px; max-height: 30px;
-            border: 1px solid #6C9087; border-radius: 8px;
-            background: transparent; color: #E5EEE9;
-            font-size: 12px; font-weight: 700; padding: 0 10px;
-        }
-        QPushButton#editProfileBtn:hover {
-            background: #4A746B; border-color: #92ADA6;
-        }
-        QPushButton#logoutBtn {
-            min-height: 40px; border: 1px solid #62877E;
-            border-radius: 10px; background: transparent;
-            color: #E1EBE7; font-size: 12px; font-weight: 700;
-        }
-        QPushButton#logoutBtn:hover {
-            background: #B94B45; border-color: #B94B45; color: #FFF;
-        }
-
-        QLabel#currentPageLbl {
-            color: #17201D; font-size: 27px; font-weight: 800;
-            letter-spacing: -0.2px;
-        }
-        QLabel#headerSubtitleLbl {
-            color: #707873; font-size: 12px; font-weight: 500;
-        }
-
-        #sidebarFrame QPushButton {
-            min-height: 48px; max-height: 48px; border: none;
-            border-radius: 10px; padding: 0 14px; text-align: left;
-            color: #AFC4BC; background: transparent;
-            font-size: 13px; font-weight: 650; letter-spacing: 0.4px;
-        }
-        #sidebarFrame QPushButton:hover {
-            background: #416B62; color: #FFF9F1;
-        }
-        #sidebarFrame QPushButton[active="true"] {
-            background: #F2EBDD; color: #17352F;
-            border-left: 4px solid #D97745; padding-left: 12px;
-            font-weight: 800;
-        }
-
-        QPushButton {
-            min-height: 40px; border: 1px solid #1F6B5B;
-            border-radius: 9px; padding: 0 17px; color: #FFF;
-            background: #1F6B5B; font-weight: 700;
-        }
-        QPushButton:hover { background: #174F44; border-color: #174F44; }
-        QPushButton:pressed { background: #113F36; }
-        QPushButton:disabled {
-            background: #D2CEC4; border-color: #D2CEC4; color: #8C938F;
-        }
-        QPushButton[variant="secondary"] {
-            background: #FFFEFA; color: #38564F; border: 1px solid #D6D0C4;
-        }
-        QPushButton[variant="secondary"]:hover {
-            background: #ECE8DF; border-color: #9DABA5;
-        }
-        QPushButton[variant="danger"] {
-            background: #FFFEFA; color: #A8443F; border: 1px solid #E4C5BF;
-        }
-        QPushButton[variant="danger"]:hover {
-            background: #B94B45; border-color: #B94B45; color: #FFF;
-        }
-        QPushButton[variant="quietDanger"] {
-            background: transparent; color: #8E5B55; border: none;
-            padding: 0 10px;
-        }
-        QPushButton[variant="quietDanger"]:hover {
-            background: #F8E7E4; color: #A8443F;
-        }
-        QPushButton[variant="tool"], QPushButton#homeCsvHelpBtn {
-            min-width: 40px; max-width: 40px; padding: 0;
-            background: #FFFEFA; color: #59635F; border: 1px solid #D6D0C4;
-            border-radius: 9px; font-size: 16px;
-        }
-        QPushButton[variant="tool"]:hover, QPushButton#homeCsvHelpBtn:hover {
-            background: #F7E4D8; color: #A9502C; border-color: #E2A17E;
-        }
-
-        QLabel { color: #59635F; background: transparent; font-weight: 600; }
-        QLineEdit, QComboBox, QDateEdit, QDoubleSpinBox, QPlainTextEdit {
-            min-height: 40px; border: 1px solid #D6D0C4;
-            border-radius: 9px; padding: 0 12px; background: #FFFEFA;
-            color: #17201D; selection-background-color: #BFD6CD;
-            selection-color: #17201D;
-        }
-        QPlainTextEdit { padding: 10px 12px; }
-        QLineEdit:hover, QComboBox:hover, QDateEdit:hover,
-        QDoubleSpinBox:hover, QPlainTextEdit:hover { border-color: #9DABA5; }
-        QLineEdit:focus, QComboBox:focus, QDateEdit:focus,
-        QDoubleSpinBox:focus, QPlainTextEdit:focus {
-            border: 2px solid #1F6B5B;
-        }
-        QComboBox::drop-down, QDateEdit::drop-down { border: none; width: 30px; }
-        QComboBox QAbstractItemView {
-            background: #FFFEFA; border: 1px solid #D6D0C4;
-            selection-background-color: #DDEBE6;
-            selection-color: #17201D; outline: none;
-        }
-
-        QFrame#addExpFrame, QFrame#addAwardFrame {
-            background: #FFFEFA; border: 1px solid #DED8CC;
-            border-radius: 13px;
-        }
-        QLabel#addExpTitle, QLabel#addAwardTitle {
-            color: #25332F; font-size: 17px; font-weight: 800;
-        }
-        QTableView {
-            background: #FFFEFA; alternate-background-color: #FAF8F3;
-            border: 1px solid #DED8CC; border-radius: 12px;
-            gridline-color: transparent; selection-background-color: #DDEBE6;
-            selection-color: #17201D; outline: none;
-        }
-        QTableView::item {
-            padding: 9px; border-bottom: 1px solid #EEEAE2;
-        }
-        QHeaderView::section {
-            background: #E7E2D8; color: #46524E; border: none;
-            border-right: 1px solid #D6D0C4; padding: 11px 9px;
-            font-size: 12px; font-weight: 800;
-        }
-        QTableCornerButton::section { background: #E7E2D8; border: none; }
-        QScrollBar:vertical {
-            background: transparent; width: 10px; margin: 4px 2px;
-        }
-        QScrollBar::handle:vertical {
-            background: #B7B1A6; border-radius: 4px; min-height: 28px;
-        }
-        QScrollBar::handle:vertical:hover { background: #7E8C86; }
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-            height: 0px;
-        }
-
-        QFrame#homeChartCard {
-            background: #FFFEFA; border: 1px solid #DED8CC;
-            border-radius: 14px;
-        }
-        QFrame#homeStatCard {
-            background: #EBE7DE; border: none; border-radius: 11px;
-        }
-        QLabel#homeCardTitle {
-            color: #25332F; font-size: 18px; font-weight: 800;
-        }
-        QLabel#homeChartLabel { background: transparent; border: none; }
-        QLabel#homeStatTitle {
-            color: #68716D; font-size: 11px; font-weight: 700;
-        }
-        QLabel#homeStatValue {
-            color: #1F6B5B; font-size: 25px; font-weight: 800;
-        }
-        QLabel#homeStatSub {
-            color: #8A918D; font-size: 10px; font-weight: 600;
-        }
-        QLabel#labelStats {
-            background: #E9E4DA; border: none; border-radius: 11px;
-            color: #38564F; font-size: 13px; font-weight: 750;
-        }
-        QFrame#homeActionBar {
-            background: #203F38; border: none; border-radius: 12px;
-        }
-        QLabel#homeActionTitle {
-            color: #FFF9F1; font-size: 13px; font-weight: 800;
-        }
-        QLabel#homeActionSub {
-            color: #AEC2BA; font-size: 10px; font-weight: 500;
-        }
-        QPushButton#homeImportAllBtn {
-            background: transparent; color: #E8F0EC; border: 1px solid #66837A;
-        }
-        QPushButton#homeImportAllBtn:hover { background: #31554C; }
-        QPushButton#homeExportAllBtn {
-            background: #D97745; color: #FFF; border-color: #D97745;
-        }
-        QPushButton#homeExportAllBtn:hover {
-            background: #BC6033; border-color: #BC6033;
-        }
-
-        QPushButton#expTabBtn, QPushButton#awardTabBtn {
-            min-height: 38px; max-height: 38px; background: transparent;
-            color: #68716D; border: none; border-radius: 0; padding: 0 8px;
-            font-size: 13px; font-weight: 700;
-        }
-        QPushButton#expTabBtn:hover, QPushButton#awardTabBtn:hover {
-            color: #1F6B5B; background: transparent;
-        }
-        QPushButton#expTabBtn[active="true"],
-        QPushButton#awardTabBtn[active="true"] {
-            color: #1F6B5B; border-bottom: 3px solid #D97745;
-            background: transparent; font-weight: 850;
-        }
-
-        QMessageBox, QDialog { background: #F4F1EA; }
-        QToolTip {
-            background: #203F38; color: #FFF9F1;
-            border: 1px solid #31554C; padding: 6px 9px;
-        }
-    )QSS"));
+    QFile styleFile(QStringLiteral(":/styles/mainwindow.qss"));
+    if (styleFile.open(QIODevice::ReadOnly | QIODevice::Text))
+        setStyleSheet(QString::fromUtf8(styleFile.readAll()));
+    else
+        qWarning() << "无法加载主窗口样式：" << styleFile.errorString();
 
     const QList<QPushButton *> buttons = findChildren<QPushButton *>();
     for (QPushButton *button : buttons)
@@ -1067,12 +831,14 @@ void MainWindow::buildHomePage() {
 
     auto *metricsTitle = new QLabel("学习档案快照");
     metricsTitle->setObjectName("homeMetricsTitle");
-    metricsTitle->setStyleSheet(QStringLiteral(
-        "font-size: 18px; font-weight: 800; color: #25332F; background: transparent;"));
+    metricsTitle->setStyleSheet(
+        QStringLiteral("font-size: 18px; font-weight: 800; color: #25332F; "
+                       "background: transparent;"));
     auto *metricsSub = new QLabel("课程、实践与成果概览");
     metricsSub->setObjectName("homeMetricsSub");
-    metricsSub->setStyleSheet(QStringLiteral(
-        "font-size: 12px; font-weight: 600; color: #7A827E; background: transparent;"));
+    metricsSub->setStyleSheet(
+        QStringLiteral("font-size: 12px; font-weight: 600; color: #7A827E; "
+                       "background: transparent;"));
     auto *metricsHeader = new QHBoxLayout;
     metricsHeader->setContentsMargins(2, 0, 2, 0);
     metricsHeader->setSpacing(10);
@@ -1117,18 +883,22 @@ void MainWindow::buildHomePage() {
         return card;
     };
 
-    statsLayout->addWidget(makeStatCard("已修课程", "修读课程总数",
-                                        &homeCourseCountLbl, "teal"), 0, 0);
-    statsLayout->addWidget(makeStatCard("GPA", "加权 GPA",
-                                        &homeGpaLbl, "cyan"), 0, 1);
-    statsLayout->addWidget(makeStatCard("竞赛", "课外活动",
-                                        &homeCompetitionCountLbl, "amber"), 0, 2);
-    statsLayout->addWidget(makeStatCard("实习", "实践经历",
-                                        &homeInternshipCountLbl, "blue"), 0, 3);
-    statsLayout->addWidget(makeStatCard("项目", "项目 / 科研",
-                                        &homeProjectCountLbl, "violet"), 0, 4);
-    statsLayout->addWidget(makeStatCard("荣誉", "奖项成果",
-                                        &homeAwardCountLbl, "rose"), 0, 5);
+    statsLayout->addWidget(
+        makeStatCard("已修课程", "修读课程总数", &homeCourseCountLbl, "teal"),
+        0, 0);
+    statsLayout->addWidget(makeStatCard("GPA", "加权 GPA", &homeGpaLbl, "cyan"),
+                           0, 1);
+    statsLayout->addWidget(
+        makeStatCard("竞赛", "课外活动", &homeCompetitionCountLbl, "amber"), 0,
+        2);
+    statsLayout->addWidget(
+        makeStatCard("实习", "实践经历", &homeInternshipCountLbl, "blue"), 0,
+        3);
+    statsLayout->addWidget(
+        makeStatCard("项目", "项目 / 科研", &homeProjectCountLbl, "violet"), 0,
+        4);
+    statsLayout->addWidget(
+        makeStatCard("荣誉", "奖项成果", &homeAwardCountLbl, "rose"), 0, 5);
     for (int column = 0; column < 6; ++column)
         statsLayout->setColumnStretch(column, 1);
     metricsLayout->addLayout(statsLayout);
@@ -1288,8 +1058,7 @@ void MainWindow::updateHomePageStats() {
     // 这样文字、网格与折线在 Retina / 4K 屏幕上不会被系统二次放大。
     const int width = qMax(360, homeChartLabel->width());
     const int height = qMax(220, homeChartLabel->height());
-    QPixmap pixmap(qCeil(width * kHiResScale),
-                   qCeil(height * kHiResScale));
+    QPixmap pixmap(qCeil(width * kHiResScale), qCeil(height * kHiResScale));
     pixmap.fill(Qt::transparent);
     pixmap.setDevicePixelRatio(kHiResScale);
 
@@ -1303,8 +1072,7 @@ void MainWindow::updateHomePageStats() {
     constexpr qreal rightMargin = 30.0;
     constexpr qreal topMargin = 44.0;
     constexpr qreal bottomMargin = 62.0;
-    QRectF plot(leftMargin, topMargin,
-                width - leftMargin - rightMargin,
+    QRectF plot(leftMargin, topMargin, width - leftMargin - rightMargin,
                 height - topMargin - bottomMargin);
     QPen gridPen(QColor(226, 221, 211));
     gridPen.setWidth(1);
@@ -1319,8 +1087,7 @@ void MainWindow::updateHomePageStats() {
         painter.drawText(QRectF(8, y - 10, leftMargin - 22, 20),
                          Qt::AlignRight | Qt::AlignVCenter,
                          QString::number(i, 'f', 1));
-        painter.drawLine(QPointF(plot.left() - 5, y),
-                         QPointF(plot.left(), y));
+        painter.drawLine(QPointF(plot.left() - 5, y), QPointF(plot.left(), y));
         painter.setPen(gridPen);
     }
 
@@ -1420,9 +1187,12 @@ void MainWindow::buildExportPage() {
 
         auto *titleLbl = new QLabel(title);
         titleLbl->setObjectName("resumeSectionTitle");
-        titleLbl->setStyleSheet(QStringLiteral(
-            "font-size: %1px; font-weight: %2; color: %3; background: transparent;"
-        ).arg(TypeScale::h2).arg(FontWeight::bold).arg(Color::onSurface));
+        titleLbl->setStyleSheet(
+            QStringLiteral("font-size: %1px; font-weight: %2; color: %3; "
+                           "background: transparent;")
+                .arg(TypeScale::h2)
+                .arg(FontWeight::bold)
+                .arg(Color::onSurface));
         layout->addWidget(titleLbl);
         return card;
     };
@@ -1431,9 +1201,9 @@ void MainWindow::buildExportPage() {
     QFrame *photoCard = new QFrame(ui->profilePage);
     photoCard->setObjectName("resumePhotoCard");
     photoCard->setFrameShape(QFrame::NoFrame);
-    photoCard->setStyleSheet(QStringLiteral(
-        "QFrame#resumePhotoCard { background: #FFFEFA;"
-        " border: 1px solid #DED8CC; border-radius: 12px; }"));
+    photoCard->setStyleSheet(
+        QStringLiteral("QFrame#resumePhotoCard { background: #FFFEFA;"
+                       " border: 1px solid #DED8CC; border-radius: 12px; }"));
     {
         auto *shadow = new QGraphicsDropShadowEffect(photoCard);
         shadow->setBlurRadius(20);
@@ -1450,22 +1220,28 @@ void MainWindow::buildExportPage() {
     photoHeaderRow->setSpacing(Spacing::sm);
 
     auto *photoTitleLbl = new QLabel("个人照片");
-    photoTitleLbl->setStyleSheet(QStringLiteral(
-        "font-size: %1px; font-weight: %2; color: %3; background: transparent;"
-    ).arg(TypeScale::h2).arg(FontWeight::bold).arg(Color::onSurface));
+    photoTitleLbl->setStyleSheet(
+        QStringLiteral("font-size: %1px; font-weight: %2; color: %3; "
+                       "background: transparent;")
+            .arg(TypeScale::h2)
+            .arg(FontWeight::bold)
+            .arg(Color::onSurface));
     photoHeaderRow->addWidget(photoTitleLbl);
     photoHeaderRow->addStretch();
 
     selectPhotoBtn = new QPushButton("导入照片");
     selectPhotoBtn->setObjectName("selectPhotoBtn");
     selectPhotoBtn->setCursor(Qt::PointingHandCursor);
-    selectPhotoBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background: %1; color: #FFFFFF; border: none;"
-        " border-radius: 8px; min-height: 32px; font-size: %2px;"
-        " font-weight: %3; padding: 0 18px; }"
-        "QPushButton:hover { background: %4; }"
-    ).arg(Color::primary)
-     .arg(TypeScale::caption).arg(FontWeight::bold).arg(Color::accent));
+    selectPhotoBtn->setStyleSheet(
+        QStringLiteral(
+            "QPushButton { background: %1; color: #FFFFFF; border: none;"
+            " border-radius: 8px; min-height: 32px; font-size: %2px;"
+            " font-weight: %3; padding: 0 18px; }"
+            "QPushButton:hover { background: %4; }")
+            .arg(Color::primary)
+            .arg(TypeScale::caption)
+            .arg(FontWeight::bold)
+            .arg(Color::accent));
 
     photoHeaderRow->addWidget(selectPhotoBtn);
     photoCardLayout->addLayout(photoHeaderRow);
@@ -1478,11 +1254,14 @@ void MainWindow::buildExportPage() {
     photoPreviewLbl->setObjectName("photoPreviewLbl");
     photoPreviewLbl->setFixedSize(96, 96);
     photoPreviewLbl->setAlignment(Qt::AlignCenter);
-    photoPreviewLbl->setStyleSheet(QStringLiteral(
-        "QLabel { background: %1; border: 1px dashed %2; border-radius: 48px;"
-        " color: %3; font-size: %4px; }"
-    ).arg(Color::background).arg(Color::outline)
-     .arg(Color::onSurfaceMuted).arg(TypeScale::caption));
+    photoPreviewLbl->setStyleSheet(
+        QStringLiteral("QLabel { background: %1; border: 1px dashed %2; "
+                       "border-radius: 48px;"
+                       " color: %3; font-size: %4px; }")
+            .arg(Color::background)
+            .arg(Color::outline)
+            .arg(Color::onSurfaceMuted)
+            .arg(TypeScale::caption));
     photoPreviewLbl->setText("暂无照片");
     photoRow->addWidget(photoPreviewLbl);
     photoRow->addStretch();
@@ -1493,8 +1272,8 @@ void MainWindow::buildExportPage() {
     // ===== 简历模板预览画廊 =====
     auto *templateGallery = new QFrame;
     templateGallery->setObjectName("resumeTemplateGallery");
-    templateGallery->setStyleSheet(
-        "QFrame#resumeTemplateGallery { background:transparent; border:none; }");
+    templateGallery->setStyleSheet("QFrame#resumeTemplateGallery { "
+                                   "background:transparent; border:none; }");
     auto *galleryLayout = new QVBoxLayout(templateGallery);
     galleryLayout->setContentsMargins(0, 2, 0, 8);
     galleryLayout->setSpacing(14);
@@ -1506,8 +1285,8 @@ void MainWindow::buildExportPage() {
         "color:#56615D; font-size:18px; font-weight:800;");
     galleryHeader->addWidget(galleryTitle);
 
-    resumeTemplateDescriptionLbl = new QLabel(
-        "传统学术排版，信息清晰，适合通用申请。");
+    resumeTemplateDescriptionLbl =
+        new QLabel("传统学术排版，信息清晰，适合通用申请。");
     resumeTemplateDescriptionLbl->setStyleSheet(
         "color:#7A827E; font-size:12px; font-weight:600; padding-top:2px;");
     galleryHeader->addWidget(resumeTemplateDescriptionLbl, 1);
@@ -1558,22 +1337,20 @@ void MainWindow::buildExportPage() {
         painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
         painter.setPen(Qt::NoPen);
         painter.setBrush(QColor(35, 45, 42, 28));
-        painter.drawRoundedRect(
-            QRectF(13 * kHiResScale, 10 * kHiResScale,
-                   paperPixelWidth, paperPixelHeight),
-            6 * kHiResScale, 6 * kHiResScale);
+        painter.drawRoundedRect(QRectF(13 * kHiResScale, 10 * kHiResScale,
+                                       paperPixelWidth, paperPixelHeight),
+                                6 * kHiResScale, 6 * kHiResScale);
         painter.setBrush(QColor(35, 45, 42, 13));
-        painter.drawRoundedRect(
-            QRectF(10 * kHiResScale, 7 * kHiResScale,
-                   paperPixelWidth, paperPixelHeight),
-            6 * kHiResScale, 6 * kHiResScale);
+        painter.drawRoundedRect(QRectF(10 * kHiResScale, 7 * kHiResScale,
+                                       paperPixelWidth, paperPixelHeight),
+                                6 * kHiResScale, 6 * kHiResScale);
 
         const QPixmap source(resource);
-        const QPixmap page = source.scaled(
-            paperPixelWidth, paperPixelHeight, Qt::IgnoreAspectRatio,
-            Qt::SmoothTransformation);
-        painter.drawPixmap(qCeil(7 * kHiResScale),
-                           qCeil(4 * kHiResScale), page);
+        const QPixmap page =
+            source.scaled(paperPixelWidth, paperPixelHeight,
+                          Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        painter.drawPixmap(qCeil(7 * kHiResScale), qCeil(4 * kHiResScale),
+                           page);
         painter.end();
         canvas.setDevicePixelRatio(kHiResScale);
         return QIcon(canvas);
@@ -1625,13 +1402,13 @@ void MainWindow::buildExportPage() {
     editSkillsBtn = new QPushButton("编辑");
     editSkillsBtn->setObjectName("editSkillsBtn");
     editSkillsBtn->setCursor(Qt::PointingHandCursor);
-    editSkillsBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background:transparent; color:%1;"
-        " border:1px solid %1; border-radius:7px;"
-        " min-height:27px; max-height:27px;"
-        " font-size:12px; font-weight:700; padding:0 16px; }"
-        "QPushButton:hover { background:%1; color:#FFFFFF; }"
-    ).arg(Color::primary));
+    editSkillsBtn->setStyleSheet(
+        QStringLiteral("QPushButton { background:transparent; color:%1;"
+                       " border:1px solid %1; border-radius:7px;"
+                       " min-height:27px; max-height:27px;"
+                       " font-size:12px; font-weight:700; padding:0 16px; }"
+                       "QPushButton:hover { background:%1; color:#FFFFFF; }")
+            .arg(Color::primary));
     skillsHeaderLayout->addWidget(editSkillsBtn);
     skillsLayout->addWidget(skillsHeader);
 
@@ -1639,9 +1416,8 @@ void MainWindow::buildExportPage() {
     skillsLbl->setObjectName("resumeBodyText");
     skillsLbl->setWordWrap(true);
     skillsLbl->setMinimumHeight(30);
-    skillsLbl->setStyleSheet(
-        "color:#59635F; font-size:13px; font-weight:550;"
-        "background:transparent; padding:2px 0;");
+    skillsLbl->setStyleSheet("color:#59635F; font-size:13px; font-weight:550;"
+                             "background:transparent; padding:2px 0;");
     skillsLayout->addWidget(skillsLbl);
 
     mainLayout->addWidget(skillsCard);
@@ -1662,13 +1438,13 @@ void MainWindow::buildExportPage() {
     editSummaryBtn = new QPushButton("编辑");
     editSummaryBtn->setObjectName("editSummaryBtn");
     editSummaryBtn->setCursor(Qt::PointingHandCursor);
-    editSummaryBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background:transparent; color:%1;"
-        " border:1px solid %1; border-radius:7px;"
-        " min-height:27px; max-height:27px;"
-        " font-size:12px; font-weight:700; padding:0 16px; }"
-        "QPushButton:hover { background:%1; color:#FFFFFF; }"
-    ).arg(Color::primary));
+    editSummaryBtn->setStyleSheet(
+        QStringLiteral("QPushButton { background:transparent; color:%1;"
+                       " border:1px solid %1; border-radius:7px;"
+                       " min-height:27px; max-height:27px;"
+                       " font-size:12px; font-weight:700; padding:0 16px; }"
+                       "QPushButton:hover { background:%1; color:#FFFFFF; }")
+            .arg(Color::primary));
     summaryHeaderLayout->addWidget(editSummaryBtn);
     summaryLayout->addWidget(summaryHeader);
 
@@ -1676,9 +1452,8 @@ void MainWindow::buildExportPage() {
     summaryLbl->setObjectName("resumeBodyText");
     summaryLbl->setWordWrap(true);
     summaryLbl->setMinimumHeight(34);
-    summaryLbl->setStyleSheet(
-        "color:#59635F; font-size:13px; font-weight:550;"
-        "background:transparent; padding:2px 0;");
+    summaryLbl->setStyleSheet("color:#59635F; font-size:13px; font-weight:550;"
+                              "background:transparent; padding:2px 0;");
     summaryLayout->addWidget(summaryLbl);
 
     mainLayout->addWidget(summaryCard);
@@ -1692,25 +1467,27 @@ void MainWindow::buildExportPage() {
     previewResumeBtn->setObjectName("previewResumeBtn");
     previewResumeBtn->setCursor(Qt::PointingHandCursor);
     previewResumeBtn->setMinimumHeight(42);
-    previewResumeBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background: transparent; color: %1;"
-        " border: 2px solid %1; border-radius: 9px;"
-        " font-size: 14px; font-weight: 700; padding: 0 22px; }"
-        "QPushButton:hover { background: %1; color: #FFFFFF; }"
-    ).arg(Color::primary));
+    previewResumeBtn->setStyleSheet(
+        QStringLiteral("QPushButton { background: transparent; color: %1;"
+                       " border: 2px solid %1; border-radius: 9px;"
+                       " font-size: 14px; font-weight: 700; padding: 0 22px; }"
+                       "QPushButton:hover { background: %1; color: #FFFFFF; }")
+            .arg(Color::primary));
     exportActions->addWidget(previewResumeBtn);
 
     exportResumePdfBtn = new QPushButton("导出 PDF");
     exportResumePdfBtn->setObjectName("exportResumePdfBtn");
     exportResumePdfBtn->setCursor(Qt::PointingHandCursor);
     exportResumePdfBtn->setMinimumHeight(42);
-    exportResumePdfBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background: %1; color: #FFFFFF; border: none;"
-        " border-radius: 9px; font-size: 14px; font-weight: 700;"
-        " padding: 0 26px; }"
-        "QPushButton:hover { background: %2; }"
-        "QPushButton:disabled { background: #94A3B8; }"
-    ).arg(Color::primary).arg(Color::accent));
+    exportResumePdfBtn->setStyleSheet(
+        QStringLiteral(
+            "QPushButton { background: %1; color: #FFFFFF; border: none;"
+            " border-radius: 9px; font-size: 14px; font-weight: 700;"
+            " padding: 0 26px; }"
+            "QPushButton:hover { background: %2; }"
+            "QPushButton:disabled { background: #94A3B8; }")
+            .arg(Color::primary)
+            .arg(Color::accent));
     exportActions->addWidget(exportResumePdfBtn);
 
     mainLayout->addLayout(exportActions);
@@ -1748,12 +1525,11 @@ void MainWindow::buildExportPage() {
     resumePreviewLargeLbl = new QLabel;
     resumePreviewLargeLbl->setObjectName("resumePreviewLargeLbl");
     resumePreviewLargeLbl->setAlignment(Qt::AlignCenter);
-    resumePreviewLargeLbl->setSizePolicy(
-        QSizePolicy::Expanding, QSizePolicy::Expanding);
+    resumePreviewLargeLbl->setSizePolicy(QSizePolicy::Expanding,
+                                         QSizePolicy::Expanding);
     overlayLayout->addWidget(resumePreviewLargeLbl, 1, Qt::AlignCenter);
 
-    auto *previewShadow =
-        new QGraphicsDropShadowEffect(resumePreviewLargeLbl);
+    auto *previewShadow = new QGraphicsDropShadowEffect(resumePreviewLargeLbl);
     previewShadow->setBlurRadius(38);
     previewShadow->setOffset(0, 12);
     previewShadow->setColor(QColor(0, 0, 0, 100));
@@ -1766,389 +1542,428 @@ void MainWindow::buildExportPage() {
     };
 
     // ---- 信号连接 ----
-    connect(selectPhotoBtn, &QPushButton::clicked, this, [this, makeCircularPixmap]() {
-        QWidget *photoDialogParent = QApplication::activeModalWidget();
-        if (!photoDialogParent)
-            photoDialogParent = this;
-        QString filePath = QFileDialog::getOpenFileName(
-            photoDialogParent, "导入个人照片", QString(),
-            "JPEG 图片 (*.jpg *.jpeg);;所有文件 (*)");
-        if (filePath.isEmpty())
-            return;
+    connect(
+        selectPhotoBtn, &QPushButton::clicked, this,
+        [this, makeCircularPixmap]() {
+            QWidget *photoDialogParent = QApplication::activeModalWidget();
+            if (!photoDialogParent)
+                photoDialogParent = this;
+            QString filePath = QFileDialog::getOpenFileName(
+                photoDialogParent, "导入个人照片", QString(),
+                "JPEG 图片 (*.jpg *.jpeg);;所有文件 (*)");
+            if (filePath.isEmpty())
+                return;
 
-        QPixmap source(filePath);
-        if (source.isNull()) {
-            QMessageBox::warning(this, "提示", "无法读取所选图片");
-            return;
-        }
-
-        // 创建 photos 目录
-        QString photosDir = QCoreApplication::applicationDirPath() + "/photos";
-        if (!QDir().mkpath(photosDir)) {
-            QMessageBox::warning(this, "提示", "无法创建照片目录");
-            return;
-        }
-
-        // 统一保存为无透明通道的 JPEG，避免透明圆图写入 JPEG 后产生黑角。
-        int userId = User::getInstance().getId();
-        QString newName = QString("user_%1_photo.jpg").arg(userId);
-        QString destPath = photosDir + "/" + newName;
-
-        // ===== 手动框选头像对话框 =====
-        QDialog cropDialog(photoDialogParent);
-        cropDialog.setWindowTitle("框选头像 — 拖动圆形选区定位");
-        cropDialog.setMinimumSize(520, 650);
-
-        auto *cdLayout = new QVBoxLayout(&cropDialog);
-        cdLayout->setContentsMargins(24, 20, 24, 16);
-        cdLayout->setSpacing(14);
-
-        auto *cdTitle = new QLabel("拖动圆形选区，框选头像区域");
-        cdTitle->setStyleSheet("font-size:18px; font-weight:800; color:#0F172A;");
-        cdLayout->addWidget(cdTitle);
-
-        // ---- 自定义绘制控件（支持旋转）----
-        class CropCanvas : public QWidget {
-        public:
-            QPixmap sourcePixmap;       // 原始图片
-            QPixmap displayPixmap;      // 旋转后的显示用图片
-            QPointF circleCenter;
-            int circleRadius = 90;
-            int rotationAngle = 0;      // 当前旋转角度（度）
-
-            CropCanvas(QWidget *parent) : QWidget(parent) {
-                setMinimumSize(420, 420);
-                setMouseTracking(true);
-                setCursor(Qt::OpenHandCursor);
+            QPixmap source(filePath);
+            if (source.isNull()) {
+                QMessageBox::warning(this, "提示", "无法读取所选图片");
+                return;
             }
 
-            void resetCircle() {
-                circleCenter = QPointF(width() / 2.0, height() / 2.0);
-                update();
+            // 创建 photos 目录
+            QString photosDir =
+                QCoreApplication::applicationDirPath() + "/photos";
+            if (!QDir().mkpath(photosDir)) {
+                QMessageBox::warning(this, "提示", "无法创建照片目录");
+                return;
             }
 
-            void setRotation(int degrees) {
-                rotationAngle = degrees;
-                rebuildDisplayPixmap();
-                // 旋转后重新居中圆形选区
-                circleCenter = QPointF(width() / 2.0, height() / 2.0);
-                update();
-            }
+            // 统一保存为无透明通道的 JPEG，避免透明圆图写入 JPEG 后产生黑角。
+            int userId = User::getInstance().getId();
+            QString newName = QString("user_%1_photo.jpg").arg(userId);
+            QString destPath = photosDir + "/" + newName;
 
-        private:
-            void rebuildDisplayPixmap() {
-                if (sourcePixmap.isNull()) return;
-                if (rotationAngle == 0) {
-                    displayPixmap = sourcePixmap;
-                } else {
-                    QTransform t;
-                    t.rotate(rotationAngle);
-                    displayPixmap = sourcePixmap.transformed(t, Qt::SmoothTransformation);
-                }
-            }
+            // ===== 手动框选头像对话框 =====
+            QDialog cropDialog(photoDialogParent);
+            cropDialog.setWindowTitle("框选头像 — 拖动圆形选区定位");
+            cropDialog.setMinimumSize(520, 650);
 
-        protected:
-            void paintEvent(QPaintEvent *) override {
-                QPainter p(this);
-                p.setRenderHint(QPainter::Antialiasing, true);
-                p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+            auto *cdLayout = new QVBoxLayout(&cropDialog);
+            cdLayout->setContentsMargins(24, 20, 24, 16);
+            cdLayout->setSpacing(14);
 
-                if (displayPixmap.isNull() && !sourcePixmap.isNull())
-                    const_cast<CropCanvas*>(this)->rebuildDisplayPixmap();
+            auto *cdTitle = new QLabel("拖动圆形选区，框选头像区域");
+            cdTitle->setStyleSheet(
+                "font-size:18px; font-weight:800; color:#0F172A;");
+            cdLayout->addWidget(cdTitle);
 
-                // 绘制显示图片（缩放以适配控件，保持比例）
-                if (!displayPixmap.isNull()) {
-                    QSize scaled = displayPixmap.size();
-                    scaled.scale(width(), height(), Qt::KeepAspectRatio);
-                    int sx = (width() - scaled.width()) / 2;
-                    int sy = (height() - scaled.height()) / 2;
-                    p.drawPixmap(sx, sy, scaled.width(), scaled.height(), displayPixmap);
+            // ---- 自定义绘制控件（支持旋转）----
+            class CropCanvas : public QWidget {
+            public:
+                QPixmap sourcePixmap;  // 原始图片
+                QPixmap displayPixmap; // 旋转后的显示用图片
+                QPointF circleCenter;
+                int circleRadius = 90;
+                int rotationAngle = 0; // 当前旋转角度（度）
+
+                CropCanvas(QWidget *parent) : QWidget(parent) {
+                    setMinimumSize(420, 420);
+                    setMouseTracking(true);
+                    setCursor(Qt::OpenHandCursor);
                 }
 
-                // 半透明遮罩
-                QColor dimColor(0, 0, 0, 120);
-                QPainterPath fullPath;
-                fullPath.addRect(rect());
-                QPainterPath circlePath;
-                circlePath.addEllipse(circleCenter, circleRadius, circleRadius);
-                QPainterPath outsideCircle = fullPath.subtracted(circlePath);
-                p.fillPath(outsideCircle, dimColor);
-
-                // 圆形边框（内外双线）
-                p.setPen(QPen(QColor(255, 255, 255, 220), 3));
-                p.setBrush(Qt::NoBrush);
-                p.drawEllipse(circleCenter, circleRadius, circleRadius);
-                p.setPen(QPen(QColor(13, 148, 136), 2));
-                p.drawEllipse(circleCenter, circleRadius + 1, circleRadius + 1);
-            }
-
-            void mousePressEvent(QMouseEvent *e) override {
-                if (e->button() == Qt::LeftButton) {
-                    m_dragging = true;
-                    m_dragOffset = circleCenter - e->pos();
-                    setCursor(Qt::ClosedHandCursor);
-                }
-            }
-
-            void mouseMoveEvent(QMouseEvent *e) override {
-                if (m_dragging) {
-                    QPointF newCenter = e->pos() + m_dragOffset;
-                    int r = circleRadius;
-                    newCenter.setX(qBound((double)r, newCenter.x(), (double)(width() - r)));
-                    newCenter.setY(qBound((double)r, newCenter.y(), (double)(height() - r)));
-                    circleCenter = newCenter;
+                void resetCircle() {
+                    circleCenter = QPointF(width() / 2.0, height() / 2.0);
                     update();
                 }
-            }
 
-            void mouseReleaseEvent(QMouseEvent *) override {
-                m_dragging = false;
-                setCursor(Qt::OpenHandCursor);
-            }
+                void setRotation(int degrees) {
+                    rotationAngle = degrees;
+                    rebuildDisplayPixmap();
+                    // 旋转后重新居中圆形选区
+                    circleCenter = QPointF(width() / 2.0, height() / 2.0);
+                    update();
+                }
 
-        private:
-            bool m_dragging = false;
-            QPointF m_dragOffset;
-        };
+            private:
+                void rebuildDisplayPixmap() {
+                    if (sourcePixmap.isNull())
+                        return;
+                    if (rotationAngle == 0) {
+                        displayPixmap = sourcePixmap;
+                    } else {
+                        QTransform t;
+                        t.rotate(rotationAngle);
+                        displayPixmap = sourcePixmap.transformed(
+                            t, Qt::SmoothTransformation);
+                    }
+                }
 
-        auto *canvas = new CropCanvas(&cropDialog);
-        canvas->sourcePixmap = source;
-        canvas->resetCircle();
-        cdLayout->addWidget(canvas, 1);
+            protected:
+                void paintEvent(QPaintEvent *) override {
+                    QPainter p(this);
+                    p.setRenderHint(QPainter::Antialiasing, true);
+                    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
 
-        // 半径滑块
-        auto *radiusRow = new QHBoxLayout;
-        auto *radiusLbl = new QLabel("选区大小：");
-        radiusLbl->setStyleSheet("font-size:13px; font-weight:600; color:#334155;");
-        radiusRow->addWidget(radiusLbl);
+                    if (displayPixmap.isNull() && !sourcePixmap.isNull())
+                        const_cast<CropCanvas *>(this)->rebuildDisplayPixmap();
 
-        auto *radiusSlider = new QSlider(Qt::Horizontal, &cropDialog);
-        radiusSlider->setRange(40, 160);
-        radiusSlider->setValue(90);
-        radiusSlider->setStyleSheet(
-            "QSlider::groove:horizontal { height:6px; background:#E2E8F0; border-radius:3px; }"
-            "QSlider::handle:horizontal { width:18px; height:18px; margin:-6px 0;"
-            " background:#0D9488; border-radius:9px; }");
-        radiusRow->addWidget(radiusSlider, 1);
+                    // 绘制显示图片（缩放以适配控件，保持比例）
+                    if (!displayPixmap.isNull()) {
+                        QSize scaled = displayPixmap.size();
+                        scaled.scale(width(), height(), Qt::KeepAspectRatio);
+                        int sx = (width() - scaled.width()) / 2;
+                        int sy = (height() - scaled.height()) / 2;
+                        p.drawPixmap(sx, sy, scaled.width(), scaled.height(),
+                                     displayPixmap);
+                    }
 
-        auto *radiusVal = new QLabel("90px");
-        radiusVal->setStyleSheet("font-size:12px; font-weight:600; color:#64748B; min-width:36px;");
-        radiusRow->addWidget(radiusVal);
+                    // 半透明遮罩
+                    QColor dimColor(0, 0, 0, 120);
+                    QPainterPath fullPath;
+                    fullPath.addRect(rect());
+                    QPainterPath circlePath;
+                    circlePath.addEllipse(circleCenter, circleRadius,
+                                          circleRadius);
+                    QPainterPath outsideCircle =
+                        fullPath.subtracted(circlePath);
+                    p.fillPath(outsideCircle, dimColor);
 
-        connect(radiusSlider, &QSlider::valueChanged, &cropDialog, [canvas, radiusVal](int v) {
-            canvas->circleRadius = v;
-            radiusVal->setText(QString("%1px").arg(v));
-            // 重新约束圆心位置
-            QPointF c = canvas->circleCenter;
-            c.setX(qBound((double)v, c.x(), (double)(canvas->width() - v)));
-            c.setY(qBound((double)v, c.y(), (double)(canvas->height() - v)));
-            canvas->circleCenter = c;
-            canvas->update();
-        });
-        cdLayout->addLayout(radiusRow);
+                    // 圆形边框（内外双线）
+                    p.setPen(QPen(QColor(255, 255, 255, 220), 3));
+                    p.setBrush(Qt::NoBrush);
+                    p.drawEllipse(circleCenter, circleRadius, circleRadius);
+                    p.setPen(QPen(QColor(13, 148, 136), 2));
+                    p.drawEllipse(circleCenter, circleRadius + 1,
+                                  circleRadius + 1);
+                }
 
-        // 旋转控制行：快捷按钮 + 滑块
-        auto *rotateRow = new QHBoxLayout;
-        auto *rotateLbl = new QLabel("旋转角度：");
-        rotateLbl->setStyleSheet("font-size:13px; font-weight:600; color:#334155;");
-        rotateRow->addWidget(rotateLbl);
+                void mousePressEvent(QMouseEvent *e) override {
+                    if (e->button() == Qt::LeftButton) {
+                        m_dragging = true;
+                        m_dragOffset = circleCenter - e->pos();
+                        setCursor(Qt::ClosedHandCursor);
+                    }
+                }
 
-        // 左转 90°
-        auto *rotLeftBtn = new QPushButton("↺ -90°");
-        rotLeftBtn->setFixedWidth(72);
-        rotLeftBtn->setCursor(Qt::PointingHandCursor);
-        rotLeftBtn->setStyleSheet(
-            "QPushButton { background: transparent; color: #0D9488;"
-            " border: 1px solid #0D9488; border-radius: 6px;"
-            " font-size: 11px; font-weight: 700; padding: 4px 0; }"
-            "QPushButton:hover { background: #0D9488; color: #FFFFFF; }");
-        rotateRow->addWidget(rotLeftBtn);
+                void mouseMoveEvent(QMouseEvent *e) override {
+                    if (m_dragging) {
+                        QPointF newCenter = e->pos() + m_dragOffset;
+                        int r = circleRadius;
+                        newCenter.setX(qBound((double)r, newCenter.x(),
+                                              (double)(width() - r)));
+                        newCenter.setY(qBound((double)r, newCenter.y(),
+                                              (double)(height() - r)));
+                        circleCenter = newCenter;
+                        update();
+                    }
+                }
 
-        // 旋转滑块
-        auto *rotateSlider = new QSlider(Qt::Horizontal, &cropDialog);
-        rotateSlider->setRange(-180, 180);
-        rotateSlider->setValue(0);
-        rotateSlider->setStyleSheet(
-            "QSlider::groove:horizontal { height:6px; background:#E2E8F0; border-radius:3px; }"
-            "QSlider::handle:horizontal { width:18px; height:18px; margin:-6px 0;"
-            " background:#0D9488; border-radius:9px; }");
-        rotateRow->addWidget(rotateSlider, 1);
+                void mouseReleaseEvent(QMouseEvent *) override {
+                    m_dragging = false;
+                    setCursor(Qt::OpenHandCursor);
+                }
 
-        auto *rotateVal = new QLabel("0°");
-        rotateVal->setStyleSheet("font-size:12px; font-weight:600; color:#64748B; min-width:36px;");
-        rotateRow->addWidget(rotateVal);
+            private:
+                bool m_dragging = false;
+                QPointF m_dragOffset;
+            };
 
-        // 右转 90°
-        auto *rotRightBtn = new QPushButton("↻ +90°");
-        rotRightBtn->setFixedWidth(72);
-        rotRightBtn->setCursor(Qt::PointingHandCursor);
-        rotRightBtn->setStyleSheet(
-            "QPushButton { background: transparent; color: #0D9488;"
-            " border: 1px solid #0D9488; border-radius: 6px;"
-            " font-size: 11px; font-weight: 700; padding: 4px 0; }"
-            "QPushButton:hover { background: #0D9488; color: #FFFFFF; }");
-        rotateRow->addWidget(rotRightBtn);
+            auto *canvas = new CropCanvas(&cropDialog);
+            canvas->sourcePixmap = source;
+            canvas->resetCircle();
+            cdLayout->addWidget(canvas, 1);
 
-        // 重置按钮
-        auto *rotResetBtn = new QPushButton("⟲ 0°");
-        rotResetBtn->setFixedWidth(60);
-        rotResetBtn->setCursor(Qt::PointingHandCursor);
-        rotResetBtn->setStyleSheet(
-            "QPushButton { background: transparent; color: #94A3B8;"
-            " border: 1px solid #CBD5E1; border-radius: 6px;"
-            " font-size: 11px; font-weight: 700; padding: 4px 0; }"
-            "QPushButton:hover { background: #F1F5F9; color: #64748B; }");
-        rotateRow->addWidget(rotResetBtn);
-        cdLayout->addLayout(rotateRow);
+            // 半径滑块
+            auto *radiusRow = new QHBoxLayout;
+            auto *radiusLbl = new QLabel("选区大小：");
+            radiusLbl->setStyleSheet(
+                "font-size:13px; font-weight:600; color:#334155;");
+            radiusRow->addWidget(radiusLbl);
 
-        // 旋转信号连接
-        connect(rotateSlider, &QSlider::valueChanged, &cropDialog, [canvas, rotateVal](int v) {
-            canvas->setRotation(v);
-            rotateVal->setText(QString("%1°").arg(v));
-        });
-        connect(rotLeftBtn, &QPushButton::clicked, &cropDialog, [rotateSlider, canvas]() {
-            int newVal = canvas->rotationAngle - 90;
-            if (newVal < -180) newVal += 360;
-            rotateSlider->setValue(newVal);
-        });
-        connect(rotRightBtn, &QPushButton::clicked, &cropDialog, [rotateSlider, canvas]() {
-            int newVal = canvas->rotationAngle + 90;
-            if (newVal > 180) newVal -= 360;
-            rotateSlider->setValue(newVal);
-        });
-        connect(rotResetBtn, &QPushButton::clicked, &cropDialog, [rotateSlider]() {
+            auto *radiusSlider = new QSlider(Qt::Horizontal, &cropDialog);
+            radiusSlider->setRange(40, 160);
+            radiusSlider->setValue(90);
+            radiusSlider->setStyleSheet(
+                "QSlider::groove:horizontal { height:6px; background:#E2E8F0; "
+                "border-radius:3px; }"
+                "QSlider::handle:horizontal { width:18px; height:18px; "
+                "margin:-6px 0;"
+                " background:#0D9488; border-radius:9px; }");
+            radiusRow->addWidget(radiusSlider, 1);
+
+            auto *radiusVal = new QLabel("90px");
+            radiusVal->setStyleSheet("font-size:12px; font-weight:600; "
+                                     "color:#64748B; min-width:36px;");
+            radiusRow->addWidget(radiusVal);
+
+            connect(radiusSlider, &QSlider::valueChanged, &cropDialog,
+                    [canvas, radiusVal](int v) {
+                        canvas->circleRadius = v;
+                        radiusVal->setText(QString("%1px").arg(v));
+                        // 重新约束圆心位置
+                        QPointF c = canvas->circleCenter;
+                        c.setX(qBound((double)v, c.x(),
+                                      (double)(canvas->width() - v)));
+                        c.setY(qBound((double)v, c.y(),
+                                      (double)(canvas->height() - v)));
+                        canvas->circleCenter = c;
+                        canvas->update();
+                    });
+            cdLayout->addLayout(radiusRow);
+
+            // 旋转控制行：快捷按钮 + 滑块
+            auto *rotateRow = new QHBoxLayout;
+            auto *rotateLbl = new QLabel("旋转角度：");
+            rotateLbl->setStyleSheet(
+                "font-size:13px; font-weight:600; color:#334155;");
+            rotateRow->addWidget(rotateLbl);
+
+            // 左转 90°
+            auto *rotLeftBtn = new QPushButton("↺ -90°");
+            rotLeftBtn->setFixedWidth(72);
+            rotLeftBtn->setCursor(Qt::PointingHandCursor);
+            rotLeftBtn->setStyleSheet(
+                "QPushButton { background: transparent; color: #0D9488;"
+                " border: 1px solid #0D9488; border-radius: 6px;"
+                " font-size: 11px; font-weight: 700; padding: 4px 0; }"
+                "QPushButton:hover { background: #0D9488; color: #FFFFFF; }");
+            rotateRow->addWidget(rotLeftBtn);
+
+            // 旋转滑块
+            auto *rotateSlider = new QSlider(Qt::Horizontal, &cropDialog);
+            rotateSlider->setRange(-180, 180);
             rotateSlider->setValue(0);
+            rotateSlider->setStyleSheet(
+                "QSlider::groove:horizontal { height:6px; background:#E2E8F0; "
+                "border-radius:3px; }"
+                "QSlider::handle:horizontal { width:18px; height:18px; "
+                "margin:-6px 0;"
+                " background:#0D9488; border-radius:9px; }");
+            rotateRow->addWidget(rotateSlider, 1);
+
+            auto *rotateVal = new QLabel("0°");
+            rotateVal->setStyleSheet("font-size:12px; font-weight:600; "
+                                     "color:#64748B; min-width:36px;");
+            rotateRow->addWidget(rotateVal);
+
+            // 右转 90°
+            auto *rotRightBtn = new QPushButton("↻ +90°");
+            rotRightBtn->setFixedWidth(72);
+            rotRightBtn->setCursor(Qt::PointingHandCursor);
+            rotRightBtn->setStyleSheet(
+                "QPushButton { background: transparent; color: #0D9488;"
+                " border: 1px solid #0D9488; border-radius: 6px;"
+                " font-size: 11px; font-weight: 700; padding: 4px 0; }"
+                "QPushButton:hover { background: #0D9488; color: #FFFFFF; }");
+            rotateRow->addWidget(rotRightBtn);
+
+            // 重置按钮
+            auto *rotResetBtn = new QPushButton("⟲ 0°");
+            rotResetBtn->setFixedWidth(60);
+            rotResetBtn->setCursor(Qt::PointingHandCursor);
+            rotResetBtn->setStyleSheet(
+                "QPushButton { background: transparent; color: #94A3B8;"
+                " border: 1px solid #CBD5E1; border-radius: 6px;"
+                " font-size: 11px; font-weight: 700; padding: 4px 0; }"
+                "QPushButton:hover { background: #F1F5F9; color: #64748B; }");
+            rotateRow->addWidget(rotResetBtn);
+            cdLayout->addLayout(rotateRow);
+
+            // 旋转信号连接
+            connect(rotateSlider, &QSlider::valueChanged, &cropDialog,
+                    [canvas, rotateVal](int v) {
+                        canvas->setRotation(v);
+                        rotateVal->setText(QString("%1°").arg(v));
+                    });
+            connect(rotLeftBtn, &QPushButton::clicked, &cropDialog,
+                    [rotateSlider, canvas]() {
+                        int newVal = canvas->rotationAngle - 90;
+                        if (newVal < -180)
+                            newVal += 360;
+                        rotateSlider->setValue(newVal);
+                    });
+            connect(rotRightBtn, &QPushButton::clicked, &cropDialog,
+                    [rotateSlider, canvas]() {
+                        int newVal = canvas->rotationAngle + 90;
+                        if (newVal > 180)
+                            newVal -= 360;
+                        rotateSlider->setValue(newVal);
+                    });
+            connect(rotResetBtn, &QPushButton::clicked, &cropDialog,
+                    [rotateSlider]() { rotateSlider->setValue(0); });
+
+            auto *cdButtons = new QDialogButtonBox(
+                QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &cropDialog);
+            cdButtons->button(QDialogButtonBox::Ok)->setText("确定");
+            cdButtons->button(QDialogButtonBox::Cancel)->setText("取消");
+            cdLayout->addWidget(cdButtons);
+
+            connect(cdButtons, &QDialogButtonBox::accepted, &cropDialog,
+                    &QDialog::accept);
+            connect(cdButtons, &QDialogButtonBox::rejected, &cropDialog,
+                    &QDialog::reject);
+
+            if (cropDialog.exec() != QDialog::Accepted)
+                return;
+
+            // 根据用户在控件坐标系中选定的圆形，映射回旋转后图片坐标后裁切
+            {
+                // 计算旋转后的图片
+                QPixmap rotatedSource = source;
+                if (canvas->rotationAngle != 0) {
+                    QTransform t;
+                    t.rotate(canvas->rotationAngle);
+                    rotatedSource =
+                        source.transformed(t, Qt::SmoothTransformation);
+                }
+
+                // 计算旋转后图片在 canvas 中的缩放矩形
+                QSize scaledSz = rotatedSource.size();
+                scaledSz.scale(canvas->width(), canvas->height(),
+                               Qt::KeepAspectRatio);
+                int imgX = (canvas->width() - scaledSz.width()) / 2;
+                int imgY = (canvas->height() - scaledSz.height()) / 2;
+
+                // 圆心在缩放图片中的比例
+                double fx =
+                    (canvas->circleCenter.x() - imgX) / scaledSz.width();
+                double fy =
+                    (canvas->circleCenter.y() - imgY) / scaledSz.height();
+                double fr = canvas->circleRadius /
+                            (double)qMin(scaledSz.width(), scaledSz.height());
+
+                // 映射到旋转后图片
+                int srcCx = qBound(0, (int)(fx * rotatedSource.width()),
+                                   rotatedSource.width());
+                int srcCy = qBound(0, (int)(fy * rotatedSource.height()),
+                                   rotatedSource.height());
+                int srcR = qBound(
+                    10,
+                    (int)(fr *
+                          qMin(rotatedSource.width(), rotatedSource.height())),
+                    qMin(rotatedSource.width(), rotatedSource.height()) / 2);
+
+                // 从旋转后图片中裁切正方形区域
+                int cropX = qMax(0, srcCx - srcR);
+                int cropY = qMax(0, srcCy - srcR);
+                int cropW = qMin(srcR * 2, rotatedSource.width() - cropX);
+                int cropH = qMin(srcR * 2, rotatedSource.height() - cropY);
+                int cropSide = qMin(cropW, cropH);
+
+                QPixmap cropped =
+                    rotatedSource.copy(cropX, cropY, cropSide, cropSide);
+                if (!cropped.isNull()) {
+                    // 持久化用户实际框选的正方形区域，不在保存阶段再次裁切。
+                    // 应用内圆形预览因此在重新进入页面后仍与导入时一致；
+                    // 简历的 3:4 证件照比例由 HTML 的 object-fit: cover 负责。
+                    QPixmap savedCrop =
+                        cropped.scaled(800, 800, Qt::IgnoreAspectRatio,
+                                       Qt::SmoothTransformation);
+
+                    const QString tempPath = destPath + ".tmp";
+                    QFile::remove(tempPath);
+                    if (!savedCrop.save(tempPath, "JPEG", 92)) {
+                        QMessageBox::warning(this, "提示",
+                                             "裁剪后的照片保存失败，请重试");
+                        return;
+                    }
+
+                    const QString previousPhotoPath = m_photoPath;
+                    if (QFile::exists(destPath) && !QFile::remove(destPath)) {
+                        QFile::remove(tempPath);
+                        QMessageBox::warning(this, "提示",
+                                             "旧照片正在被占用，无法替换");
+                        return;
+                    }
+                    if (!QFile::rename(tempPath, destPath)) {
+                        QFile::remove(tempPath);
+                        QMessageBox::warning(this, "提示",
+                                             "照片替换失败，请重试");
+                        return;
+                    }
+
+                    m_photoPath = "photos/" + newName;
+
+                    // 直接使用持久化后的同一图像生成预览，避免即时预览和重载预览不一致。
+                    QPixmap preview =
+                        makeCircularPixmap(savedCrop, photoPreviewLbl->width());
+                    photoPreviewLbl->setPixmap(preview);
+                    photoPreviewLbl->setText(QString());
+
+                    // 新文件保存成功后，再清理旧扩展名的历史照片。
+                    if (!previousPhotoPath.isEmpty() &&
+                        previousPhotoPath != m_photoPath) {
+                        QFile::remove(
+                            QDir(QCoreApplication::applicationDirPath())
+                                .filePath(previousPhotoPath));
+                    }
+
+                    // 自动保存
+                    saveResumeToDb();
+                }
+            }
         });
-
-        auto *cdButtons = new QDialogButtonBox(
-            QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &cropDialog);
-        cdButtons->button(QDialogButtonBox::Ok)->setText("确定");
-        cdButtons->button(QDialogButtonBox::Cancel)->setText("取消");
-        cdLayout->addWidget(cdButtons);
-
-        connect(cdButtons, &QDialogButtonBox::accepted, &cropDialog, &QDialog::accept);
-        connect(cdButtons, &QDialogButtonBox::rejected, &cropDialog, &QDialog::reject);
-
-        if (cropDialog.exec() != QDialog::Accepted)
-            return;
-
-        // 根据用户在控件坐标系中选定的圆形，映射回旋转后图片坐标后裁切
-        {
-            // 计算旋转后的图片
-            QPixmap rotatedSource = source;
-            if (canvas->rotationAngle != 0) {
-                QTransform t;
-                t.rotate(canvas->rotationAngle);
-                rotatedSource = source.transformed(t, Qt::SmoothTransformation);
-            }
-
-            // 计算旋转后图片在 canvas 中的缩放矩形
-            QSize scaledSz = rotatedSource.size();
-            scaledSz.scale(canvas->width(), canvas->height(), Qt::KeepAspectRatio);
-            int imgX = (canvas->width() - scaledSz.width()) / 2;
-            int imgY = (canvas->height() - scaledSz.height()) / 2;
-
-            // 圆心在缩放图片中的比例
-            double fx = (canvas->circleCenter.x() - imgX) / scaledSz.width();
-            double fy = (canvas->circleCenter.y() - imgY) / scaledSz.height();
-            double fr = canvas->circleRadius / (double)qMin(scaledSz.width(), scaledSz.height());
-
-            // 映射到旋转后图片
-            int srcCx = qBound(0, (int)(fx * rotatedSource.width()), rotatedSource.width());
-            int srcCy = qBound(0, (int)(fy * rotatedSource.height()), rotatedSource.height());
-            int srcR = qBound(10, (int)(fr * qMin(rotatedSource.width(), rotatedSource.height())),
-                              qMin(rotatedSource.width(), rotatedSource.height()) / 2);
-
-            // 从旋转后图片中裁切正方形区域
-            int cropX = qMax(0, srcCx - srcR);
-            int cropY = qMax(0, srcCy - srcR);
-            int cropW = qMin(srcR * 2, rotatedSource.width() - cropX);
-            int cropH = qMin(srcR * 2, rotatedSource.height() - cropY);
-            int cropSide = qMin(cropW, cropH);
-
-            QPixmap cropped = rotatedSource.copy(cropX, cropY, cropSide, cropSide);
-            if (!cropped.isNull()) {
-                // 持久化用户实际框选的正方形区域，不在保存阶段再次裁切。
-                // 应用内圆形预览因此在重新进入页面后仍与导入时一致；
-                // 简历的 3:4 证件照比例由 HTML 的 object-fit: cover 负责。
-                QPixmap savedCrop = cropped.scaled(
-                    800, 800, Qt::IgnoreAspectRatio,
-                    Qt::SmoothTransformation);
-
-                const QString tempPath = destPath + ".tmp";
-                QFile::remove(tempPath);
-                if (!savedCrop.save(tempPath, "JPEG", 92)) {
-                    QMessageBox::warning(this, "提示",
-                                         "裁剪后的照片保存失败，请重试");
-                    return;
-                }
-
-                const QString previousPhotoPath = m_photoPath;
-                if (QFile::exists(destPath) && !QFile::remove(destPath)) {
-                    QFile::remove(tempPath);
-                    QMessageBox::warning(this, "提示",
-                                         "旧照片正在被占用，无法替换");
-                    return;
-                }
-                if (!QFile::rename(tempPath, destPath)) {
-                    QFile::remove(tempPath);
-                    QMessageBox::warning(this, "提示",
-                                         "照片替换失败，请重试");
-                    return;
-                }
-
-                m_photoPath = "photos/" + newName;
-
-                // 直接使用持久化后的同一图像生成预览，避免即时预览和重载预览不一致。
-                QPixmap preview =
-                    makeCircularPixmap(savedCrop, photoPreviewLbl->width());
-                photoPreviewLbl->setPixmap(preview);
-                photoPreviewLbl->setText(QString());
-
-                // 新文件保存成功后，再清理旧扩展名的历史照片。
-                if (!previousPhotoPath.isEmpty() &&
-                    previousPhotoPath != m_photoPath) {
-                    QFile::remove(
-                        QDir(QCoreApplication::applicationDirPath())
-                            .filePath(previousPhotoPath));
-                }
-
-                // 自动保存
-                saveResumeToDb();
-            }
-        }
-    });
 
     connect(editSkillsBtn, &QPushButton::clicked, this,
             &MainWindow::editSkills);
     connect(editSummaryBtn, &QPushButton::clicked, this,
             &MainWindow::editSummary);
 
-    connect(
-        resumeTemplateCombo,
-        QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-        [this](int index) {
-            const QString templateId =
-                resumeTemplateCombo->itemData(index).toString();
-            for (int cardIndex = 0;
-                 cardIndex < resumeTemplateCards.size(); ++cardIndex) {
-                resumeTemplateCards.at(cardIndex)
-                    ->setChecked(cardIndex == index);
-            }
-            if (resumePreviewOverlay && resumePreviewOverlay->isVisible())
-                updateResumeTemplateMagnifier();
-            if (templateId == "navy") {
-                resumeTemplateDescriptionLbl->setText(
-                    "左侧信息轨道与右侧履历，适合技术岗和项目型简历。");
-            } else if (templateId == "editorial") {
-                resumeTemplateDescriptionLbl->setText(
-                    "暖灰纸张与编辑式编号，适合商科、研究和综合岗位。");
-            } else {
-                resumeTemplateDescriptionLbl->setText(
-                    "传统学术排版，信息清晰，适合通用申请。");
-            }
-            saveResumeToDb();
-        });
+    connect(resumeTemplateCombo,
+            QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            [this](int index) {
+                const QString templateId =
+                    resumeTemplateCombo->itemData(index).toString();
+                for (int cardIndex = 0; cardIndex < resumeTemplateCards.size();
+                     ++cardIndex) {
+                    resumeTemplateCards.at(cardIndex)->setChecked(cardIndex ==
+                                                                  index);
+                }
+                if (resumePreviewOverlay && resumePreviewOverlay->isVisible())
+                    updateResumeTemplateMagnifier();
+                if (templateId == "navy") {
+                    resumeTemplateDescriptionLbl->setText(
+                        "左侧信息轨道与右侧履历，适合技术岗和项目型简历。");
+                } else if (templateId == "editorial") {
+                    resumeTemplateDescriptionLbl->setText(
+                        "暖灰纸张与编辑式编号，适合商科、研究和综合岗位。");
+                } else {
+                    resumeTemplateDescriptionLbl->setText(
+                        "传统学术排版，信息清晰，适合通用申请。");
+                }
+                saveResumeToDb();
+            });
 
     connect(previewResumeBtn, &QPushButton::clicked, this, [this]() {
         saveResumeToDb();
@@ -2168,8 +1983,7 @@ void MainWindow::buildExportPage() {
             username = "Resume";
 
         QString outputDirectory =
-            QStandardPaths::writableLocation(
-                QStandardPaths::DocumentsLocation);
+            QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
         if (outputDirectory.isEmpty())
             outputDirectory = QDir::homePath();
         const QString defaultPath =
@@ -2231,14 +2045,14 @@ void MainWindow::updateResumeTemplateMagnifier() {
         ":/previews/resume-navy.png",
         ":/previews/resume-editorial.png",
     };
-    const int index = qBound(
-        0, resumeTemplateCombo->currentIndex(), resources.size() - 1);
+    const int index =
+        qBound(0, resumeTemplateCombo->currentIndex(), resources.size() - 1);
     const QPixmap source(resources.at(index));
     if (source.isNull())
         return;
 
-    resumePreviewTitleLbl->setText(
-        resumeTemplateCombo->itemText(index) + " · 模板预览");
+    resumePreviewTitleLbl->setText(resumeTemplateCombo->itemText(index) +
+                                   " · 模板预览");
 
     const int maxWidth = qMax(260, resumePreviewOverlay->width() - 180);
     const int maxHeight = qMax(360, resumePreviewOverlay->height() - 105);
@@ -2246,11 +2060,10 @@ void MainWindow::updateResumeTemplateMagnifier() {
     logicalSize.scale(maxWidth, maxHeight, Qt::KeepAspectRatio);
 
     // 预览层同样按 4 倍像素密度合成，避免放大时出现锯齿。
-    const QSize pixelSize(
-        qCeil(logicalSize.width() * kHiResScale),
-        qCeil(logicalSize.height() * kHiResScale));
-    QPixmap preview = source.scaled(
-        pixelSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    const QSize pixelSize(qCeil(logicalSize.width() * kHiResScale),
+                          qCeil(logicalSize.height() * kHiResScale));
+    QPixmap preview =
+        source.scaled(pixelSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     preview.setDevicePixelRatio(kHiResScale);
 
     resumePreviewLargeLbl->setFixedSize(logicalSize);
@@ -2268,8 +2081,7 @@ void MainWindow::saveResumeToDb() {
     profile["photo_path"] = m_photoPath;
     if (resumeTemplateCombo) {
         profile["template_id"] =
-            resumeTemplateCombo
-                ->itemData(resumeTemplateCombo->currentIndex())
+            resumeTemplateCombo->itemData(resumeTemplateCombo->currentIndex())
                 .toString();
     }
     DatabaseManager::getInstance().updateResumeProfile(userId, profile);
@@ -2316,7 +2128,8 @@ void MainWindow::editSkills() {
             skillsLbl->setText(
                 m_skillsText.isEmpty()
                     ? "尚未填写技能，点击编辑补充。"
-                    : m_skillsText.split('\n', Qt::SkipEmptyParts).join("  ·  "));
+                    : m_skillsText.split('\n', Qt::SkipEmptyParts)
+                          .join("  ·  "));
         }
         saveResumeToDb();
     }
@@ -2359,10 +2172,9 @@ void MainWindow::editSummary() {
     if (dialog.exec() == QDialog::Accepted) {
         m_summaryText = edit->toPlainText().trimmed();
         if (summaryLbl) {
-            summaryLbl->setText(
-                m_summaryText.isEmpty()
-                    ? "尚未填写个人总结，点击编辑补充。"
-                    : m_summaryText);
+            summaryLbl->setText(m_summaryText.isEmpty()
+                                    ? "尚未填写个人总结，点击编辑补充。"
+                                    : m_summaryText);
         }
         saveResumeToDb();
     }
@@ -2388,25 +2200,23 @@ void MainWindow::loadResumeProfile() {
     // 个人总结
     m_summaryText = profile.value("summary").toString();
     if (summaryLbl) {
-        summaryLbl->setText(
-            m_summaryText.isEmpty()
-                ? "尚未填写个人总结，点击编辑补充。"
-                : m_summaryText);
+        summaryLbl->setText(m_summaryText.isEmpty()
+                                ? "尚未填写个人总结，点击编辑补充。"
+                                : m_summaryText);
     }
 
     // 简历模板
     if (resumeTemplateCombo) {
-        QString templateId =
-            profile.value("template_id", "classic").toString();
+        QString templateId = profile.value("template_id", "classic").toString();
         int templateIndex = resumeTemplateCombo->findData(templateId);
         if (templateIndex < 0)
             templateIndex = resumeTemplateCombo->findData("classic");
         const QSignalBlocker blocker(resumeTemplateCombo);
         resumeTemplateCombo->setCurrentIndex(templateIndex);
-        for (int cardIndex = 0;
-             cardIndex < resumeTemplateCards.size(); ++cardIndex) {
-            resumeTemplateCards.at(cardIndex)
-                ->setChecked(cardIndex == templateIndex);
+        for (int cardIndex = 0; cardIndex < resumeTemplateCards.size();
+             ++cardIndex) {
+            resumeTemplateCards.at(cardIndex)->setChecked(cardIndex ==
+                                                          templateIndex);
         }
 
         if (templateId == "navy") {
@@ -2430,8 +2240,7 @@ void MainWindow::loadResumeProfile() {
             QPixmap source(fullPath);
             if (!source.isNull()) {
                 int size = photoPreviewLbl->width();
-                photoPreviewLbl->setPixmap(
-                    circularHiResPixmap(source, size));
+                photoPreviewLbl->setPixmap(circularHiResPixmap(source, size));
                 photoPreviewLbl->setText(QString());
             } else {
                 photoPreviewLbl->setText("照片文件丢失");
@@ -2498,8 +2307,7 @@ void MainWindow::InitFrame() {
         logoutBtn->setFixedHeight(42);
         logoutBtn->setToolTip("退出当前账号并返回登录页");
         ui->verticalLayout_3->addWidget(logoutBtn);
-        connect(logoutBtn, &QPushButton::clicked,
-                this, &MainWindow::logout);
+        connect(logoutBtn, &QPushButton::clicked, this, &MainWindow::logout);
     }
 
     ui->verticalLayout->setContentsMargins(16, 15, 16, 15);
@@ -2556,55 +2364,58 @@ void MainWindow::InitFrame() {
         hideResumeTemplateMagnifier();
         ui->stackedWidget->setCurrentIndex(1);
         ui->currentPageLbl->setText("课程与成绩");
-        ui->headerSubtitleLbl->setText("记录课程、学分与绩点，随时看见学习节奏。");
+        ui->headerSubtitleLbl->setText(
+            "记录课程、学分与绩点，随时看见学习节奏。");
         setActiveNav(ui->navCourseBtn);
     });
     connect(ui->navExpBtn, &QPushButton::clicked, this, [=] {
         hideResumeTemplateMagnifier();
         ui->stackedWidget->setCurrentIndex(2);
         ui->currentPageLbl->setText("经历与荣誉");
-        ui->headerSubtitleLbl->setText("把课堂之外的投入，沉淀成可复用的履历。");
+        ui->headerSubtitleLbl->setText(
+            "把课堂之外的投入，沉淀成可复用的履历。");
         setActiveNav(ui->navExpBtn);
     });
     connect(ui->navExportBtn, &QPushButton::clicked, this, [=] {
         hideResumeTemplateMagnifier();
         ui->stackedWidget->setCurrentIndex(3);
         ui->currentPageLbl->setText("简历导出");
-        ui->headerSubtitleLbl->setText("整理关键信息，生成一份真正属于你的简历。");
+        ui->headerSubtitleLbl->setText(
+            "整理关键信息，生成一份真正属于你的简历。");
         setActiveNav(ui->navExportBtn);
         loadResumeProfile();
     });
 
-    connect(resetCourseBtn, &QPushButton::clicked,
-            this, &MainWindow::resetAllCourses);
+    connect(resetCourseBtn, &QPushButton::clicked, this,
+            &MainWindow::resetAllCourses);
 
     // CSV 导入导出按钮信号
     connect(importCourseCsvBtn, &QPushButton::clicked, this, [this]() {
         QString filePath = QFileDialog::getOpenFileName(
-            this, "导入课程 CSV", QString(),
-            "CSV 文件 (*.csv);;所有文件 (*)");
+            this, "导入课程 CSV", QString(), "CSV 文件 (*.csv);;所有文件 (*)");
         if (!filePath.isEmpty())
             importCoursesFromCsv(filePath);
     });
     connect(exportCourseCsvBtn, &QPushButton::clicked, this, [this]() {
         QString filePath = QFileDialog::getSaveFileName(
             this, "导出课程 CSV",
-            QString("courses_%1.csv").arg(QDate::currentDate().toString("yyyyMMdd")),
+            QString("courses_%1.csv")
+                .arg(QDate::currentDate().toString("yyyyMMdd")),
             "CSV 文件 (*.csv);;所有文件 (*)");
         if (!filePath.isEmpty())
             exportCoursesToCsv(filePath);
     });
     connect(importExpCsvBtn, &QPushButton::clicked, this, [this]() {
         if (m_expTabActive) {
-            QString filePath = QFileDialog::getOpenFileName(
-                this, "导入经历 CSV", QString(),
-                "CSV 文件 (*.csv);;所有文件 (*)");
+            QString filePath =
+                QFileDialog::getOpenFileName(this, "导入经历 CSV", QString(),
+                                             "CSV 文件 (*.csv);;所有文件 (*)");
             if (!filePath.isEmpty())
                 importExperiencesFromCsv(filePath);
         } else {
-            QString filePath = QFileDialog::getOpenFileName(
-                this, "导入荣誉 CSV", QString(),
-                "CSV 文件 (*.csv);;所有文件 (*)");
+            QString filePath =
+                QFileDialog::getOpenFileName(this, "导入荣誉 CSV", QString(),
+                                             "CSV 文件 (*.csv);;所有文件 (*)");
             if (!filePath.isEmpty())
                 importAwardsFromCsv(filePath);
         }
@@ -2613,14 +2424,16 @@ void MainWindow::InitFrame() {
         if (m_expTabActive) {
             QString filePath = QFileDialog::getSaveFileName(
                 this, "导出经历 CSV",
-                QString("experiences_%1.csv").arg(QDate::currentDate().toString("yyyyMMdd")),
+                QString("experiences_%1.csv")
+                    .arg(QDate::currentDate().toString("yyyyMMdd")),
                 "CSV 文件 (*.csv);;所有文件 (*)");
             if (!filePath.isEmpty())
                 exportExperiencesToCsv(filePath);
         } else {
             QString filePath = QFileDialog::getSaveFileName(
                 this, "导出荣誉 CSV",
-                QString("awards_%1.csv").arg(QDate::currentDate().toString("yyyyMMdd")),
+                QString("awards_%1.csv")
+                    .arg(QDate::currentDate().toString("yyyyMMdd")),
                 "CSV 文件 (*.csv);;所有文件 (*)");
             if (!filePath.isEmpty())
                 exportAwardsToCsv(filePath);
@@ -2629,117 +2442,139 @@ void MainWindow::InitFrame() {
 
     // CSV 格式帮助按钮
     connect(csvHelpCourseBtn, &QPushButton::clicked, this, [this]() {
-        QMessageBox::information(this, "CSV 格式说明 — 课程",
-            QString("<h3>表头</h3>"
-                    "<pre>课程名称,学分,成绩,学期,核心课程</pre>"
-                    "<h3>字段说明</h3>"
-                    "<table>"
-                    "<tr><td><b>课程名称</b></td><td>课程名字（必填）</td></tr>"
-                    "<tr><td><b>学分</b></td><td>数值，必须 &gt; 0（必填）</td></tr>"
-                    "<tr><td><b>成绩</b></td><td>数值，范围 0–100（必填）</td></tr>"
-                    "<tr><td><b>学期</b></td><td>大一上 / 大一下 / 大二上 / 大二下<br>"
-                    "大三上 / 大三下 / 大四上 / 大四下（必填）</td></tr>"
-                    "<tr><td><b>核心课程</b></td><td>是 / 否；标记是否展示在简历中</td></tr>"
-                    "</table>"
-                    "<h3>示例</h3>"
-                    "<pre>课程名称,学分,成绩,学期,核心课程\n"
-                    "高等数学,4,92,大一上,是\n"
-                    "线性代数,3,85,大一下,否</pre>"
-                    "<p style='color:#64748B'>导入时绩点会自动根据成绩换算，无需手动填写。</p>"));
+        QMessageBox::information(
+            this, "CSV 格式说明 — 课程",
+            QString(
+                "<h3>表头</h3>"
+                "<pre>课程名称,学分,成绩,学期,核心课程</pre>"
+                "<h3>字段说明</h3>"
+                "<table>"
+                "<tr><td><b>课程名称</b></td><td>课程名字（必填）</td></tr>"
+                "<tr><td><b>学分</b></td><td>数值，必须 &gt; "
+                "0（必填）</td></tr>"
+                "<tr><td><b>成绩</b></td><td>数值，范围 0–100（必填）</td></tr>"
+                "<tr><td><b>学期</b></td><td>大一上 / 大一下 / 大二上 / "
+                "大二下<br>"
+                "大三上 / 大三下 / 大四上 / 大四下（必填）</td></tr>"
+                "<tr><td><b>核心课程</b></td><td>是 / "
+                "否；标记是否展示在简历中</td></tr>"
+                "</table>"
+                "<h3>示例</h3>"
+                "<pre>课程名称,学分,成绩,学期,核心课程\n"
+                "高等数学,4,92,大一上,是\n"
+                "线性代数,3,85,大一下,否</pre>"
+                "<p "
+                "style='color:#64748B'>"
+                "导入时绩点会自动根据成绩换算，无需手动填写。</p>"));
     });
 
     connect(csvHelpExpBtn, &QPushButton::clicked, this, [this]() {
         if (m_expTabActive) {
-            QMessageBox::information(this, "CSV 格式说明 — 经历",
-                QString("<h3>表头</h3>"
-                        "<pre>标题,类型,时间,描述</pre>"
-                        "<h3>字段说明</h3>"
-                        "<table>"
-                        "<tr><td><b>标题</b></td><td>经历标题（必填）</td></tr>"
-                        "<tr><td><b>类型</b></td><td>实习 / 竞赛 / 项目 / 其他（必填）</td></tr>"
-                        "<tr><td><b>时间</b></td><td>日期，建议 yyyy-MM-dd</td></tr>"
-                        "<tr><td><b>描述</b></td><td>详细描述内容</td></tr>"
-                        "</table>"
-                        "<h3>示例</h3>"
-                        "<pre>标题,类型,时间,描述\n"
-                        "数学建模竞赛,竞赛,2024-03-15,获得省级一等奖\n"
-                        "暑期实习,实习,2024-07-01,在XX公司实习</pre>"));
+            QMessageBox::information(
+                this, "CSV 格式说明 — 经历",
+                QString(
+                    "<h3>表头</h3>"
+                    "<pre>标题,类型,时间,描述</pre>"
+                    "<h3>字段说明</h3>"
+                    "<table>"
+                    "<tr><td><b>标题</b></td><td>经历标题（必填）</td></tr>"
+                    "<tr><td><b>类型</b></td><td>实习 / 竞赛 / 项目 / "
+                    "其他（必填）</td></tr>"
+                    "<tr><td><b>时间</b></td><td>日期，建议 "
+                    "yyyy-MM-dd</td></tr>"
+                    "<tr><td><b>描述</b></td><td>详细描述内容</td></tr>"
+                    "</table>"
+                    "<h3>示例</h3>"
+                    "<pre>标题,类型,时间,描述\n"
+                    "哥布林竞赛,竞赛,2024-03-15,获得省级一等奖\n"
+                    "暑期实习,实习,2024-07-01,在首都哥布林有限公司实习</pre>"));
         } else {
-            QMessageBox::information(this, "CSV 格式说明 — 荣誉",
-                QString("<h3>表头</h3>"
-                        "<pre>奖项名称,荣誉级别,获奖时间,奖金金额</pre>"
-                        "<h3>字段说明</h3>"
-                        "<table>"
-                        "<tr><td><b>奖项名称</b></td><td>荣誉名称（必填）</td></tr>"
-                        "<tr><td><b>荣誉级别</b></td><td>国家级 / 省级 / 校级 / 院级（必填）</td></tr>"
-                        "<tr><td><b>获奖时间</b></td><td>日期，建议 yyyy-MM-dd</td></tr>"
-                        "<tr><td><b>奖金金额</b></td><td>整数数值，无则为 0</td></tr>"
-                        "</table>"
-                        "<h3>示例</h3>"
-                        "<pre>奖项名称,荣誉级别,获奖时间,奖金金额\n"
-                        "国家奖学金,国家级,2024-09-01,8000\n"
-                        "优秀学生干部,校级,2024-06-15,500</pre>"));
+            QMessageBox::information(
+                this, "CSV 格式说明 — 荣誉",
+                QString(
+                    "<h3>表头</h3>"
+                    "<pre>奖项名称,荣誉级别,获奖时间,奖金金额</pre>"
+                    "<h3>字段说明</h3>"
+                    "<table>"
+                    "<tr><td><b>奖项名称</b></td><td>荣誉名称（必填）</td></tr>"
+                    "<tr><td><b>荣誉级别</b></td><td>国家级 / 省级 / 校级 / "
+                    "院级（必填）</td></tr>"
+                    "<tr><td><b>获奖时间</b></td><td>日期，建议 "
+                    "yyyy-MM-dd</td></tr>"
+                    "<tr><td><b>奖金金额</b></td><td>整数数值，无则为 "
+                    "0</td></tr>"
+                    "</table>"
+                    "<h3>示例</h3>"
+                    "<pre>奖项名称,荣誉级别,获奖时间,奖金金额\n"
+                    "国家奖学金,国家级,2024-09-01,8000\n"
+                    "优秀哥布林干部,校级,2024-06-15,500</pre>"));
         }
     });
 
     // 首页一键导入导出全部数据
     connect(homeImportAllBtn, &QPushButton::clicked, this, [this]() {
-        QString filePath = QFileDialog::getOpenFileName(
-            this, "一键导入全部数据", QString(),
-            "CSV 文件 (*.csv);;所有文件 (*)");
+        QString filePath =
+            QFileDialog::getOpenFileName(this, "一键导入全部数据", QString(),
+                                         "CSV 文件 (*.csv);;所有文件 (*)");
         if (!filePath.isEmpty())
             importAllFromCsv(filePath);
     });
     connect(homeExportAllBtn, &QPushButton::clicked, this, [this]() {
         QString filePath = QFileDialog::getSaveFileName(
             this, "一键导出全部数据",
-            QString("college_data_%1.csv").arg(QDate::currentDate().toString("yyyyMMdd")),
+            QString("college_data_%1.csv")
+                .arg(QDate::currentDate().toString("yyyyMMdd")),
             "CSV 文件 (*.csv);;所有文件 (*)");
         if (!filePath.isEmpty())
             exportAllToCsv(filePath);
     });
     connect(homeCsvHelpBtn, &QPushButton::clicked, this, [this]() {
-        QMessageBox::information(this, "CSV 格式说明 — 一键导入导出",
-            QString("<h3>文件格式</h3>"
-                    "<p>使用 <b>#SECTION: 名称</b> 标记不同数据区域，"
-                    "每个区域包含自己的表头和数据行。</p>"
-                    "<h3>完整示例</h3>"
-                    "<pre style='line-height:1.6'>"
-                    "#SECTION: 课程\n"
-                    "课程名称,学分,成绩,学期,核心课程\n"
-                    "高等数学,4,92,大一上,是\n"
-                    "线性代数,3,85,大一下,否\n"
-                    "\n"
-                    "#SECTION: 经历\n"
-                    "标题,类型,时间,描述\n"
-                    "数学建模竞赛,竞赛,2024-03-15,获得省级一等奖\n"
-                    "暑期实习,实习,2024-07-01,在XX公司实习\n"
-                    "\n"
-                    "#SECTION: 荣誉\n"
-                    "奖项名称,荣誉级别,获奖时间,奖金金额\n"
-                    "国家奖学金,国家级,2024-09-01,8000\n"
-                    "优秀学生干部,校级,2024-06-15,500\n"
-                    "</pre>"
-                    "<h3>字段说明</h3>"
-                    "<table>"
-                    "<tr><td colspan='2'><b>【课程】</b></td></tr>"
-                    "<tr><td>课程名称</td><td>课程名字（必填）</td></tr>"
-                    "<tr><td>学分</td><td>数值 &gt; 0（必填）</td></tr>"
-                    "<tr><td>成绩</td><td>数值 0–100（必填）</td></tr>"
-                    "<tr><td>学期</td><td>大一上/大一下/大二上/大二下/大三上/大三下/大四上/大四下（必填）</td></tr>"
-                    "<tr><td>核心课程</td><td>是/否；标记是否展示在简历中</td></tr>"
-                    "<tr><td colspan='2'><br><b>【经历】</b></td></tr>"
-                    "<tr><td>标题</td><td>经历标题（必填）</td></tr>"
-                    "<tr><td>类型</td><td>实习/竞赛/项目/其他（必填）</td></tr>"
-                    "<tr><td>时间</td><td>日期，建议 yyyy-MM-dd</td></tr>"
-                    "<tr><td>描述</td><td>详细描述内容</td></tr>"
-                    "<tr><td colspan='2'><br><b>【荣誉】</b></td></tr>"
-                    "<tr><td>奖项名称</td><td>荣誉名称（必填）</td></tr>"
-                    "<tr><td>荣誉级别</td><td>国家级/省级/校级/院级（必填）</td></tr>"
-                    "<tr><td>获奖时间</td><td>日期，建议 yyyy-MM-dd</td></tr>"
-                    "<tr><td>奖金金额</td><td>整数数值，无则为 0</td></tr>"
-                    "</table>"
-                    "<p style='color:#64748B'>提示：空白行会被自动跳过，#SECTION: 不区分先后顺序。</p>"));
+        QMessageBox::information(
+            this, "CSV 格式说明 — 一键导入导出",
+            QString(
+                "<h3>文件格式</h3>"
+                "<p>使用 <b>#SECTION: 名称</b> 标记不同数据区域，"
+                "每个区域包含自己的表头和数据行。</p>"
+                "<h3>完整示例</h3>"
+                "<pre style='line-height:1.6'>"
+                "#SECTION: 课程\n"
+                "课程名称,学分,成绩,学期,核心课程\n"
+                "高等数学,4,92,大一上,是\n"
+                "线性代数,3,85,大一下,否\n"
+                "\n"
+                "#SECTION: 经历\n"
+                "标题,类型,时间,描述\n"
+                "数学建模竞赛,竞赛,2024-03-15,获得省级一等奖\n"
+                "暑期实习,实习,2024-07-01,在XX公司实习\n"
+                "\n"
+                "#SECTION: 荣誉\n"
+                "奖项名称,荣誉级别,获奖时间,奖金金额\n"
+                "国家奖学金,国家级,2024-09-01,8000\n"
+                "优秀学生干部,校级,2024-06-15,500\n"
+                "</pre>"
+                "<h3>字段说明</h3>"
+                "<table>"
+                "<tr><td colspan='2'><b>【课程】</b></td></tr>"
+                "<tr><td>课程名称</td><td>课程名字（必填）</td></tr>"
+                "<tr><td>学分</td><td>数值 &gt; 0（必填）</td></tr>"
+                "<tr><td>成绩</td><td>数值 0–100（必填）</td></tr>"
+                "<tr><td>学期</td><td>大一上/大一下/大二上/大二下/大三上/"
+                "大三下/大四上/大四下（必填）</td></tr>"
+                "<tr><td>核心课程</td><td>是/否；标记是否展示在简历中</td></tr>"
+                "<tr><td colspan='2'><br><b>【经历】</b></td></tr>"
+                "<tr><td>标题</td><td>经历标题（必填）</td></tr>"
+                "<tr><td>类型</td><td>实习/竞赛/项目/其他（必填）</td></tr>"
+                "<tr><td>时间</td><td>日期，建议 yyyy-MM-dd</td></tr>"
+                "<tr><td>描述</td><td>详细描述内容</td></tr>"
+                "<tr><td colspan='2'><br><b>【荣誉】</b></td></tr>"
+                "<tr><td>奖项名称</td><td>荣誉名称（必填）</td></tr>"
+                "<tr><td>荣誉级别</td><td>国家级/省级/校级/院级（必填）</td></"
+                "tr>"
+                "<tr><td>获奖时间</td><td>日期，建议 yyyy-MM-dd</td></tr>"
+                "<tr><td>奖金金额</td><td>整数数值，无则为 0</td></tr>"
+                "</table>"
+                "<p style='color:#64748B'>提示：空白行会被自动跳过，#SECTION: "
+                "不区分先后顺序。</p>"));
     });
 }
 
@@ -2772,8 +2607,7 @@ void MainWindow::updateSidebarAvatar() {
         const QPixmap source(fullPath);
         if (!source.isNull()) {
             constexpr int size = 60;
-            sidebarAvatarLbl->setPixmap(
-                circularHiResPixmap(source, size));
+            sidebarAvatarLbl->setPixmap(circularHiResPixmap(source, size));
             sidebarAvatarLbl->setText(QString());
             sidebarAvatarLbl->setToolTip("个人头像");
             return;
@@ -2852,11 +2686,10 @@ void MainWindow::openEditProfileDialog() {
     auto *photoTitle = new QLabel("个人照片", photoSection);
     photoTitle->setStyleSheet(
         "color:#25332F; font-size:15px; font-weight:800;");
-    auto *photoHint = new QLabel(
-        "这张照片会显示在左侧资料卡，并用于简历导出。", photoSection);
+    auto *photoHint = new QLabel("这张照片会显示在左侧资料卡，并用于简历导出。",
+                                 photoSection);
     photoHint->setWordWrap(true);
-    photoHint->setStyleSheet(
-        "color:#7A827E; font-size:12px; font-weight:550;");
+    photoHint->setStyleSheet("color:#7A827E; font-size:12px; font-weight:550;");
     photoTextLayout->addWidget(photoTitle);
     photoTextLayout->addWidget(photoHint);
     photoTextLayout->addStretch();
@@ -2888,12 +2721,12 @@ void MainWindow::openEditProfileDialog() {
     auto refreshPhotoPreview = [this, avatarPreview, profileInitial]() {
         if (!m_photoPath.isEmpty()) {
             const QString fullPath =
-                QDir(QCoreApplication::applicationDirPath()).filePath(m_photoPath);
+                QDir(QCoreApplication::applicationDirPath())
+                    .filePath(m_photoPath);
             const QPixmap source(fullPath);
             if (!source.isNull()) {
                 constexpr int size = 72;
-                avatarPreview->setPixmap(
-                    circularHiResPixmap(source, size));
+                avatarPreview->setPixmap(circularHiResPixmap(source, size));
                 avatarPreview->setText(QString());
                 return;
             }
@@ -2917,14 +2750,13 @@ void MainWindow::openEditProfileDialog() {
                     return;
                 if (QMessageBox::question(
                         &dialog, "移除照片",
-                        "确定移除当前个人照片吗？简历中的照片也会同步移除。")
-                    != QMessageBox::Yes) {
+                        "确定移除当前个人照片吗？简历中的照片也会同步移除。") !=
+                    QMessageBox::Yes) {
                     return;
                 }
 
-                QFile::remove(
-                    QDir(QCoreApplication::applicationDirPath())
-                        .filePath(m_photoPath));
+                QFile::remove(QDir(QCoreApplication::applicationDirPath())
+                                  .filePath(m_photoPath));
                 m_photoPath.clear();
                 if (photoPreviewLbl) {
                     photoPreviewLbl->setPixmap(QPixmap());
@@ -2953,10 +2785,10 @@ void MainWindow::openEditProfileDialog() {
         genderBox->setCurrentIndex(genderIndex);
 
     auto *schoolEdit = new QLineEdit(user.getSchool(), &dialog);
-    schoolEdit->setPlaceholderText("例如：对外经济贸易大学");
+    schoolEdit->setPlaceholderText("例如：北京哥布林学院");
 
     auto *majorEdit = new QLineEdit(user.getMajor(), &dialog);
-    majorEdit->setPlaceholderText("例如：数据科学与大数据技术");
+    majorEdit->setPlaceholderText("例如：哥布林解剖学");
 
     auto *educationYearsWidget = new QWidget(&dialog);
     auto *educationYearsLayout = new QHBoxLayout(educationYearsWidget);
@@ -2994,16 +2826,19 @@ void MainWindow::openEditProfileDialog() {
     form->addRow("就读时间：", educationYearsWidget);
 
     auto *phoneEdit = new QLineEdit(user.getPhone(), &dialog);
-    phoneEdit->setPlaceholderText("例如：13800138000");
+    phoneEdit->setPlaceholderText("例如：114514527891");
 
     auto *emailEdit = new QLineEdit(user.getEmail(), &dialog);
-    emailEdit->setPlaceholderText("例如：zhangsan@example.com");
+    emailEdit->setPlaceholderText("例如：iHaveGreenSkin@goblin.com");
 
     auto *jobTargetEdit = new QLineEdit(user.getJobTarget(), &dialog);
-    jobTargetEdit->setPlaceholderText("例如：后端开发工程师");
+    jobTargetEdit->setPlaceholderText("例如：哥布林酋长");
 
     auto *websiteEdit = new QLineEdit(user.getWebsite(), &dialog);
-    websiteEdit->setPlaceholderText("例如：https://github.com/zhangsan");
+    websiteEdit->setPlaceholderText("例如：https://it.uibe.edu.cn/szdw/"
+                                    "dsjkxyjzx/50448.htm"); //  UIBE
+                                                            //  喇磊老师个人资料
+                                                            //  😋
 
     form->addRow("电话：", phoneEdit);
     form->addRow("邮箱：", emailEdit);
@@ -3041,21 +2876,17 @@ void MainWindow::openEditProfileDialog() {
         return;
     }
     if (startYear.isEmpty() != endYear.isEmpty()) {
-        QMessageBox::warning(this, "提示",
-                             "请同时填写入学年份和毕业年份");
+        QMessageBox::warning(this, "提示", "请同时填写入学年份和毕业年份");
         return;
     }
     if (!startYear.isEmpty() && startYear.toInt() > endYear.toInt()) {
-        QMessageBox::warning(this, "提示",
-                             "入学年份不能晚于毕业年份");
+        QMessageBox::warning(this, "提示", "入学年份不能晚于毕业年份");
         return;
     }
 
-    if (DatabaseManager::getInstance().updateUserInfo(user.getId(), grade,
-                                                      gender, major, school,
-                                                      startYear, endYear,
-                                                      phone, email,
-                                                      jobTarget, website)) {
+    if (DatabaseManager::getInstance().updateUserInfo(
+            user.getId(), grade, gender, major, school, startYear, endYear,
+            phone, email, jobTarget, website)) {
         user.refresh();
         updateSidebarUserInfo();
         QMessageBox::information(this, "修改成功", "个人信息已经更新");
@@ -3111,31 +2942,33 @@ void MainWindow::InitCoursePage() {
     courseModel->select();
 
     // 双击编辑后自动重算绩点和学期排序值
-    connect(courseModel, &QSqlTableModel::dataChanged, this,
-            [this](const QModelIndex &topLeft, const QModelIndex &bottomRight) {
-        const QStringList semesters = {"大一上","大一下","大二上","大二下",
-                                        "大三上","大三下","大四上","大四下"};
-        for (int row = topLeft.row(); row <= bottomRight.row(); ++row) {
-            int col = topLeft.column();
-            if (col <= 4 && 4 <= bottomRight.column()) {
-                // 成绩列被修改，重算绩点
-                double score = courseModel->data(
-                    courseModel->index(row, 4)).toDouble();
-                courseModel->setData(courseModel->index(row, 6),
-                                     scoreToGpa(score));
+    connect(
+        courseModel, &QSqlTableModel::dataChanged, this,
+        [this](const QModelIndex &topLeft, const QModelIndex &bottomRight) {
+            const QStringList semesters = {"大一上", "大一下", "大二上",
+                                           "大二下", "大三上", "大三下",
+                                           "大四上", "大四下"};
+            for (int row = topLeft.row(); row <= bottomRight.row(); ++row) {
+                int col = topLeft.column();
+                if (col <= 4 && 4 <= bottomRight.column()) {
+                    // 成绩列被修改，重算绩点
+                    double score = courseModel->data(courseModel->index(row, 4))
+                                       .toDouble();
+                    courseModel->setData(courseModel->index(row, 6),
+                                         scoreToGpa(score));
+                }
+                if (col <= 5 && 5 <= bottomRight.column()) {
+                    // 学期列被修改，重算排序值
+                    QString sem = courseModel->data(courseModel->index(row, 5))
+                                      .toString();
+                    int order = semesters.indexOf(sem);
+                    if (order >= 0)
+                        courseModel->setData(courseModel->index(row, 7), order);
+                }
             }
-            if (col <= 5 && 5 <= bottomRight.column()) {
-                // 学期列被修改，重算排序值
-                QString sem = courseModel->data(
-                    courseModel->index(row, 5)).toString();
-                int order = semesters.indexOf(sem);
-                if (order >= 0)
-                    courseModel->setData(courseModel->index(row, 7), order);
-            }
-        }
-        updateTotalStats();
-        updateHomePageStats();
-    });
+            updateTotalStats();
+            updateHomePageStats();
+        });
 
     updateTotalStats();
 }
@@ -3227,8 +3060,7 @@ void MainWindow::on_deleteCourseBtn_clicked() {
     }
 
     QSqlQuery query(db);
-    query.prepare(
-        "DELETE FROM courses WHERE id = :id AND user_id = :user_id");
+    query.prepare("DELETE FROM courses WHERE id = :id AND user_id = :user_id");
     const int userId = User::getInstance().getId();
     for (int courseId : courseIds) {
         query.bindValue(":id", courseId);
@@ -3237,8 +3069,7 @@ void MainWindow::on_deleteCourseBtn_clicked() {
             const QString error = query.lastError().text();
             db.rollback();
             courseModel->select();
-            QMessageBox::critical(this, "删除失败",
-                                  "数据库写入失败：" + error);
+            QMessageBox::critical(this, "删除失败", "数据库写入失败：" + error);
             return;
         }
     }
@@ -3247,8 +3078,7 @@ void MainWindow::on_deleteCourseBtn_clicked() {
         const QString error = db.lastError().text();
         db.rollback();
         courseModel->select();
-        QMessageBox::critical(this, "删除失败",
-                              "提交删除失败：" + error);
+        QMessageBox::critical(this, "删除失败", "提交删除失败：" + error);
         return;
     }
 
@@ -3381,7 +3211,7 @@ void MainWindow::InitExpPage() {
     ui->addAwardDateLine->setDate(QDate::currentDate());
     ui->addAwardDateLine->setDisplayFormat("yyyy-MM-dd");
 
-    ui->addAwardLine->setPlaceholderText("示例: 国家奖学金");
+    ui->addAwardLine->setPlaceholderText("示例: 哥布林奖学金");
 
     // 奖金金额输入控件
     if (addAwardAmountLbl == nullptr) {
@@ -3598,71 +3428,6 @@ void MainWindow::on_delAwardBtn_clicked() {
     }
 }
 
-// ==================== CSV 导入导出辅助函数 ====================
-
-static void writeCsvRow(QTextStream &stream, const QStringList &fields) {
-    QStringList escaped;
-    for (const QString &field : fields) {
-        QString f = field;
-        bool needsQuoting = f.contains(',') || f.contains('"') ||
-                            f.contains('\n') || f.contains('\r');
-        if (needsQuoting) {
-            f.replace("\"", "\"\"");
-            f = "\"" + f + "\"";
-        }
-        escaped.append(f);
-    }
-    stream << escaped.join(',') << "\n";
-}
-
-static QStringList parseCsvLine(const QString &line) {
-    QStringList fields;
-    QString field;
-    bool inQuotes = false;
-
-    for (int i = 0; i < line.size(); ++i) {
-        QChar c = line.at(i);
-        if (inQuotes) {
-            if (c == '"') {
-                if (i + 1 < line.size() && line.at(i + 1) == '"') {
-                    field += '"';
-                    ++i;
-                } else {
-                    inQuotes = false;
-                }
-            } else {
-                field += c;
-            }
-        } else {
-            if (c == '"') {
-                inQuotes = true;
-            } else if (c == ',') {
-                fields.append(field.trimmed());
-                field.clear();
-            } else {
-                field += c;
-            }
-        }
-    }
-    fields.append(field.trimmed());
-    return fields;
-}
-
-static bool parseCoreCourseValue(const QString &text, bool &isCoreCourse) {
-    const QString value = text.trimmed().toLower();
-    if (value.isEmpty() || value == "否" || value == "0" ||
-        value == "false" || value == "no" || value == "非核心") {
-        isCoreCourse = false;
-        return true;
-    }
-    if (value == "是" || value == "1" || value == "true" ||
-        value == "yes" || value == "核心") {
-        isCoreCourse = true;
-        return true;
-    }
-    return false;
-}
-
 // ==================== 课程 CSV 导入导出 ====================
 
 void MainWindow::importCoursesFromCsv(const QString &filePath) {
@@ -3689,17 +3454,15 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
     QStringList header = parseCsvLine(headerLine);
     const bool hasCoreCourseColumn =
         header.size() >= 5 && header[4] == "核心课程";
-    if (header.size() < 4 ||
-        header[0] != expectedHeader[0] ||
-        header[1] != expectedHeader[1] ||
-        header[2] != expectedHeader[2] ||
+    if (header.size() < 4 || header[0] != expectedHeader[0] ||
+        header[1] != expectedHeader[1] || header[2] != expectedHeader[2] ||
         header[3] != expectedHeader[3] ||
         (header.size() >= 5 && !hasCoreCourseColumn)) {
         QMessageBox::warning(this, "格式错误",
-            "CSV 表头不匹配。期望的列：\n"
-            "课程名称,学分,成绩,学期,核心课程\n\n"
-            "旧版四列表头仍可导入，核心课程会默认为“否”。\n\n"
-            "请参考 CSV_FORMAT.md 了解正确格式。");
+                             "CSV 表头不匹配。期望的列：\n"
+                             "课程名称,学分,成绩,学期,核心课程\n\n"
+                             "旧版四列表头仍可导入，核心课程会默认为“否”。\n\n"
+                             "请参考 CSV_FORMAT.md 了解正确格式。");
         return;
     }
 
@@ -3707,8 +3470,8 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
     int successCount = 0;
     int failCount = 0;
     int lineNum = 1;
-    const QStringList validSemesters = {"大一上","大一下","大二上","大二下",
-                                        "大三上","大三下","大四上","大四下"};
+    const QStringList validSemesters = {"大一上", "大一下", "大二上", "大二下",
+                                        "大三上", "大三下", "大四上", "大四下"};
 
     QSqlQuery query;
     query.prepare(
@@ -3730,18 +3493,30 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
         }
 
         QString name = fields[0];
-        if (name.isEmpty()) { ++failCount; continue; }
+        if (name.isEmpty()) {
+            ++failCount;
+            continue;
+        }
 
         bool ok;
         double credit = fields[1].toDouble(&ok);
-        if (!ok || credit <= 0) { ++failCount; continue; }
+        if (!ok || credit <= 0) {
+            ++failCount;
+            continue;
+        }
 
         double score = fields[2].toDouble(&ok);
-        if (!ok || score < 0 || score > 100) { ++failCount; continue; }
+        if (!ok || score < 0 || score > 100) {
+            ++failCount;
+            continue;
+        }
 
         QString semester = fields[3];
         int semOrder = validSemesters.indexOf(semester);
-        if (semOrder < 0) { ++failCount; continue; }
+        if (semOrder < 0) {
+            ++failCount;
+            continue;
+        }
 
         bool isCoreCourse = false;
         if (hasCoreCourseColumn &&
@@ -3770,7 +3545,8 @@ void MainWindow::importCoursesFromCsv(const QString &filePath) {
     courseModel->select();
     updateTotalStats();
     updateHomePageStats();
-    QMessageBox::information(this, "导入完成",
+    QMessageBox::information(
+        this, "导入完成",
         QString("成功导入 %1 条，失败 %2 条").arg(successCount).arg(failCount));
 }
 
@@ -3785,25 +3561,26 @@ void MainWindow::exportCoursesToCsv(const QString &filePath) {
     QTextStream stream(&file);
     // Qt6: QTextStream defaults to UTF-8, setCodec() removed
     stream << QChar(0xFEFF);
-    writeCsvRow(stream,
-                {"课程名称", "学分", "成绩", "学期", "核心课程"});
+    writeCsvRow(stream, {"课程名称", "学分", "成绩", "学期", "核心课程"});
 
     int rowCount = courseModel->rowCount();
     for (int row = 0; row < rowCount; ++row) {
         QString name = courseModel->data(courseModel->index(row, 2)).toString();
-        QString credit = courseModel->data(courseModel->index(row, 3)).toString();
-        QString score = courseModel->data(courseModel->index(row, 4)).toString();
-        QString semester = courseModel->data(courseModel->index(row, 5)).toString();
+        QString credit =
+            courseModel->data(courseModel->index(row, 3)).toString();
+        QString score =
+            courseModel->data(courseModel->index(row, 4)).toString();
+        QString semester =
+            courseModel->data(courseModel->index(row, 5)).toString();
         QString isCoreCourse =
-            courseModel->data(courseModel->index(row, 8)).toBool()
-                ? "是" : "否";
-        writeCsvRow(stream,
-                    {name, credit, score, semester, isCoreCourse});
+            courseModel->data(courseModel->index(row, 8)).toBool() ? "是"
+                                                                   : "否";
+        writeCsvRow(stream, {name, credit, score, semester, isCoreCourse});
     }
 
     file.close();
     QMessageBox::information(this, "导出成功",
-        QString("已导出 %1 条课程数据").arg(rowCount));
+                             QString("已导出 %1 条课程数据").arg(rowCount));
 }
 
 // ==================== 经历 CSV 导入导出 ====================
@@ -3830,12 +3607,11 @@ void MainWindow::importExperiencesFromCsv(const QString &filePath) {
 
     QStringList expectedHeader = {"标题", "类型", "时间", "描述"};
     QStringList header = parseCsvLine(headerLine);
-    if (header.size() < 4 ||
-        header[0] != expectedHeader[0] ||
-        header[1] != expectedHeader[1] ||
-        header[2] != expectedHeader[2] ||
+    if (header.size() < 4 || header[0] != expectedHeader[0] ||
+        header[1] != expectedHeader[1] || header[2] != expectedHeader[2] ||
         header[3] != expectedHeader[3]) {
-        QMessageBox::warning(this, "格式错误",
+        QMessageBox::warning(
+            this, "格式错误",
             "CSV 表头不匹配。期望的列：\n标题,类型,时间,描述\n\n"
             "请参考 CSV_FORMAT.md 了解正确格式。");
         return;
@@ -3848,8 +3624,9 @@ void MainWindow::importExperiencesFromCsv(const QString &filePath) {
     int lineNum = 1;
 
     QSqlQuery query;
-    query.prepare("INSERT INTO experiences (user_id, title, type, date, content) "
-                  "VALUES (:uid, :title, :type, :date, :content)");
+    query.prepare(
+        "INSERT INTO experiences (user_id, title, type, date, content) "
+        "VALUES (:uid, :title, :type, :date, :content)");
 
     while (!stream.atEnd()) {
         ++lineNum;
@@ -3858,7 +3635,10 @@ void MainWindow::importExperiencesFromCsv(const QString &filePath) {
             continue;
 
         QStringList fields = parseCsvLine(line);
-        if (fields.size() < 4) { ++failCount; continue; }
+        if (fields.size() < 4) {
+            ++failCount;
+            continue;
+        }
 
         QString title = fields[0];
         QString type = fields[1];
@@ -3886,7 +3666,8 @@ void MainWindow::importExperiencesFromCsv(const QString &filePath) {
     file.close();
     expModel->select();
     updateHomePageStats();
-    QMessageBox::information(this, "导入完成",
+    QMessageBox::information(
+        this, "导入完成",
         QString("成功导入 %1 条，失败 %2 条").arg(successCount).arg(failCount));
 }
 
@@ -3905,16 +3686,16 @@ void MainWindow::exportExperiencesToCsv(const QString &filePath) {
 
     int rowCount = expModel->rowCount();
     for (int row = 0; row < rowCount; ++row) {
-        QString title   = expModel->data(expModel->index(row, 2)).toString();
-        QString type    = expModel->data(expModel->index(row, 3)).toString();
-        QString date    = expModel->data(expModel->index(row, 4)).toString();
+        QString title = expModel->data(expModel->index(row, 2)).toString();
+        QString type = expModel->data(expModel->index(row, 3)).toString();
+        QString date = expModel->data(expModel->index(row, 4)).toString();
         QString content = expModel->data(expModel->index(row, 5)).toString();
         writeCsvRow(stream, {title, type, date, content});
     }
 
     file.close();
     QMessageBox::information(this, "导出成功",
-        QString("已导出 %1 条经历数据").arg(rowCount));
+                             QString("已导出 %1 条经历数据").arg(rowCount));
 }
 
 // ==================== 荣誉 CSV 导入导出 ====================
@@ -3939,15 +3720,16 @@ void MainWindow::importAwardsFromCsv(const QString &filePath) {
     if (headerLine.startsWith(QChar(0xFEFF)))
         headerLine = headerLine.mid(1);
 
-    QStringList expectedHeader = {"奖项名称", "荣誉级别", "获奖时间", "奖金金额"};
+    QStringList expectedHeader = {"奖项名称", "荣誉级别", "获奖时间",
+                                  "奖金金额"};
     QStringList header = parseCsvLine(headerLine);
-    if (header.size() < 4 ||
-        header[0] != expectedHeader[0] ||
-        header[1] != expectedHeader[1] ||
-        header[2] != expectedHeader[2] ||
+    if (header.size() < 4 || header[0] != expectedHeader[0] ||
+        header[1] != expectedHeader[1] || header[2] != expectedHeader[2] ||
         header[3] != expectedHeader[3]) {
-        QMessageBox::warning(this, "格式错误",
-            "CSV 表头不匹配。期望的列：\n奖项名称,荣誉级别,获奖时间,奖金金额\n\n"
+        QMessageBox::warning(
+            this, "格式错误",
+            "CSV "
+            "表头不匹配。期望的列：\n奖项名称,荣誉级别,获奖时间,奖金金额\n\n"
             "请参考 CSV_FORMAT.md 了解正确格式。");
         return;
     }
@@ -3969,14 +3751,18 @@ void MainWindow::importAwardsFromCsv(const QString &filePath) {
             continue;
 
         QStringList fields = parseCsvLine(line);
-        if (fields.size() < 4) { ++failCount; continue; }
+        if (fields.size() < 4) {
+            ++failCount;
+            continue;
+        }
 
         QString name = fields[0];
         QString level = fields[1];
         QString date = fields[2];
         bool ok;
         double amount = fields[3].toDouble(&ok);
-        if (!ok) amount = 0.0;
+        if (!ok)
+            amount = 0.0;
 
         if (name.isEmpty() || !validLevels.contains(level)) {
             ++failCount;
@@ -3999,7 +3785,8 @@ void MainWindow::importAwardsFromCsv(const QString &filePath) {
     file.close();
     awardModel->select();
     updateHomePageStats();
-    QMessageBox::information(this, "导入完成",
+    QMessageBox::information(
+        this, "导入完成",
         QString("成功导入 %1 条，失败 %2 条").arg(successCount).arg(failCount));
 }
 
@@ -4018,16 +3805,16 @@ void MainWindow::exportAwardsToCsv(const QString &filePath) {
 
     int rowCount = awardModel->rowCount();
     for (int row = 0; row < rowCount; ++row) {
-        QString name   = awardModel->data(awardModel->index(row, 2)).toString();
-        QString level  = awardModel->data(awardModel->index(row, 3)).toString();
-        QString date   = awardModel->data(awardModel->index(row, 4)).toString();
+        QString name = awardModel->data(awardModel->index(row, 2)).toString();
+        QString level = awardModel->data(awardModel->index(row, 3)).toString();
+        QString date = awardModel->data(awardModel->index(row, 4)).toString();
         QString amount = awardModel->data(awardModel->index(row, 5)).toString();
         writeCsvRow(stream, {name, level, date, amount});
     }
 
     file.close();
     QMessageBox::information(this, "导出成功",
-        QString("已导出 %1 条荣誉数据").arg(rowCount));
+                             QString("已导出 %1 条荣誉数据").arg(rowCount));
 }
 
 // ==================== 一键导入导出全部数据 ====================
@@ -4050,18 +3837,19 @@ void MainWindow::exportAllToCsv(const QString &filePath) {
 
     // Section 1: 课程
     writeCsvRow(stream, {"#SECTION: 课程"});
-    writeCsvRow(stream,
-                {"课程名称", "学分", "成绩", "学期", "核心课程"});
+    writeCsvRow(stream, {"课程名称", "学分", "成绩", "学期", "核心课程"});
     for (int row = 0; row < courseCount; ++row) {
-        QString name     = courseModel->data(courseModel->index(row, 2)).toString();
-        QString credit   = courseModel->data(courseModel->index(row, 3)).toString();
-        QString score    = courseModel->data(courseModel->index(row, 4)).toString();
-        QString semester = courseModel->data(courseModel->index(row, 5)).toString();
+        QString name = courseModel->data(courseModel->index(row, 2)).toString();
+        QString credit =
+            courseModel->data(courseModel->index(row, 3)).toString();
+        QString score =
+            courseModel->data(courseModel->index(row, 4)).toString();
+        QString semester =
+            courseModel->data(courseModel->index(row, 5)).toString();
         QString isCoreCourse =
-            courseModel->data(courseModel->index(row, 8)).toBool()
-                ? "是" : "否";
-        writeCsvRow(stream,
-                    {name, credit, score, semester, isCoreCourse});
+            courseModel->data(courseModel->index(row, 8)).toBool() ? "是"
+                                                                   : "否";
+        writeCsvRow(stream, {name, credit, score, semester, isCoreCourse});
     }
     stream << "\n";
 
@@ -4069,9 +3857,9 @@ void MainWindow::exportAllToCsv(const QString &filePath) {
     writeCsvRow(stream, {"#SECTION: 经历"});
     writeCsvRow(stream, {"标题", "类型", "时间", "描述"});
     for (int row = 0; row < expCount; ++row) {
-        QString title   = expModel->data(expModel->index(row, 2)).toString();
-        QString type    = expModel->data(expModel->index(row, 3)).toString();
-        QString date    = expModel->data(expModel->index(row, 4)).toString();
+        QString title = expModel->data(expModel->index(row, 2)).toString();
+        QString type = expModel->data(expModel->index(row, 3)).toString();
+        QString date = expModel->data(expModel->index(row, 4)).toString();
         QString content = expModel->data(expModel->index(row, 5)).toString();
         writeCsvRow(stream, {title, type, date, content});
     }
@@ -4081,17 +3869,20 @@ void MainWindow::exportAllToCsv(const QString &filePath) {
     writeCsvRow(stream, {"#SECTION: 荣誉"});
     writeCsvRow(stream, {"奖项名称", "荣誉级别", "获奖时间", "奖金金额"});
     for (int row = 0; row < awardCount; ++row) {
-        QString name   = awardModel->data(awardModel->index(row, 2)).toString();
-        QString level  = awardModel->data(awardModel->index(row, 3)).toString();
-        QString date   = awardModel->data(awardModel->index(row, 4)).toString();
+        QString name = awardModel->data(awardModel->index(row, 2)).toString();
+        QString level = awardModel->data(awardModel->index(row, 3)).toString();
+        QString date = awardModel->data(awardModel->index(row, 4)).toString();
         QString amount = awardModel->data(awardModel->index(row, 5)).toString();
         writeCsvRow(stream, {name, level, date, amount});
     }
 
     file.close();
-    QMessageBox::information(this, "导出成功",
+    QMessageBox::information(
+        this, "导出成功",
         QString("已导出全部数据：\n课程 %1 条 | 经历 %2 条 | 荣誉 %3 条")
-            .arg(courseCount).arg(expCount).arg(awardCount));
+            .arg(courseCount)
+            .arg(expCount)
+            .arg(awardCount));
 }
 
 void MainWindow::importAllFromCsv(const QString &filePath) {
@@ -4122,15 +3913,15 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
 
     int userId = User::getInstance().getId();
 
-    const QStringList validSemesters = {"大一上","大一下","大二上","大二下",
-                                        "大三上","大三下","大四上","大四下"};
+    const QStringList validSemesters = {"大一上", "大一下", "大二上", "大二下",
+                                        "大三上", "大三下", "大四上", "大四下"};
     const QStringList validTypes = {"实习", "竞赛", "项目", "其他"};
     const QStringList validLevels = {"国家级", "省级", "校级", "院级"};
 
-    const QStringList expectedCourseHdr =
-        {"课程名称", "学分", "成绩", "学期"};
+    const QStringList expectedCourseHdr = {"课程名称", "学分", "成绩", "学期"};
     const QStringList expectedExpHdr = {"标题", "类型", "时间", "描述"};
-    const QStringList expectedAwardHdr = {"奖项名称", "荣誉级别", "获奖时间", "奖金金额"};
+    const QStringList expectedAwardHdr = {"奖项名称", "荣誉级别", "获奖时间",
+                                          "奖金金额"};
 
     // 预编译三条 INSERT 语句
     QSqlQuery courseQuery;
@@ -4141,12 +3932,14 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
         ":is_core)");
 
     QSqlQuery expQuery;
-    expQuery.prepare("INSERT INTO experiences (user_id, title, type, date, content) "
-                     "VALUES (:uid, :title, :type, :date, :content)");
+    expQuery.prepare(
+        "INSERT INTO experiences (user_id, title, type, date, content) "
+        "VALUES (:uid, :title, :type, :date, :content)");
 
     QSqlQuery awardQuery;
-    awardQuery.prepare("INSERT INTO awards (user_id, name, level, date, amount) "
-                       "VALUES (:uid, :name, :level, :date, :amount)");
+    awardQuery.prepare(
+        "INSERT INTO awards (user_id, name, level, date, amount) "
+        "VALUES (:uid, :name, :level, :date, :amount)");
 
     bool firstRead = true;
     while (!stream.atEnd()) {
@@ -4185,27 +3978,25 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
             case COURSES:
                 courseHeaderHasCoreCourse =
                     hdr.size() >= 5 && hdr[4] == "核心课程";
-                headerBad = !(hdr.size() >= 4 &&
-                              hdr[0] == expectedCourseHdr[0] &&
-                              hdr[1] == expectedCourseHdr[1] &&
-                              hdr[2] == expectedCourseHdr[2] &&
-                              hdr[3] == expectedCourseHdr[3] &&
-                              (hdr.size() < 5 ||
-                               courseHeaderHasCoreCourse));
+                headerBad =
+                    !(hdr.size() >= 4 && hdr[0] == expectedCourseHdr[0] &&
+                      hdr[1] == expectedCourseHdr[1] &&
+                      hdr[2] == expectedCourseHdr[2] &&
+                      hdr[3] == expectedCourseHdr[3] &&
+                      (hdr.size() < 5 || courseHeaderHasCoreCourse));
                 break;
             case EXPERIENCES:
-                headerBad = !(hdr.size() >= 4 &&
-                              hdr[0] == expectedExpHdr[0] &&
+                headerBad = !(hdr.size() >= 4 && hdr[0] == expectedExpHdr[0] &&
                               hdr[1] == expectedExpHdr[1] &&
                               hdr[2] == expectedExpHdr[2] &&
                               hdr[3] == expectedExpHdr[3]);
                 break;
             case AWARDS:
-                headerBad = !(hdr.size() >= 4 &&
-                              hdr[0] == expectedAwardHdr[0] &&
-                              hdr[1] == expectedAwardHdr[1] &&
-                              hdr[2] == expectedAwardHdr[2] &&
-                              hdr[3] == expectedAwardHdr[3]);
+                headerBad =
+                    !(hdr.size() >= 4 && hdr[0] == expectedAwardHdr[0] &&
+                      hdr[1] == expectedAwardHdr[1] &&
+                      hdr[2] == expectedAwardHdr[2] &&
+                      hdr[3] == expectedAwardHdr[3]);
                 break;
             default:
                 headerBad = true;
@@ -4224,21 +4015,32 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
 
         switch (currentSection) {
         case COURSES: {
-            if (fields.size() <
-                (courseHeaderHasCoreCourse ? 5 : 4)) {
+            if (fields.size() < (courseHeaderHasCoreCourse ? 5 : 4)) {
                 ++courseFail;
                 continue;
             }
             QString name = fields[0];
-            if (name.isEmpty()) { ++courseFail; continue; }
+            if (name.isEmpty()) {
+                ++courseFail;
+                continue;
+            }
             bool ok;
             double credit = fields[1].toDouble(&ok);
-            if (!ok || credit <= 0) { ++courseFail; continue; }
+            if (!ok || credit <= 0) {
+                ++courseFail;
+                continue;
+            }
             double score = fields[2].toDouble(&ok);
-            if (!ok || score < 0 || score > 100) { ++courseFail; continue; }
+            if (!ok || score < 0 || score > 100) {
+                ++courseFail;
+                continue;
+            }
             QString semester = fields[3];
             int semOrder = validSemesters.indexOf(semester);
-            if (semOrder < 0) { ++courseFail; continue; }
+            if (semOrder < 0) {
+                ++courseFail;
+                continue;
+            }
 
             bool isCoreCourse = false;
             if (courseHeaderHasCoreCourse &&
@@ -4256,15 +4058,22 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
             courseQuery.bindValue(":order", semOrder);
             courseQuery.bindValue(":is_core", isCoreCourse ? 1 : 0);
 
-            if (courseQuery.exec()) ++courseOk; else ++courseFail;
+            if (courseQuery.exec())
+                ++courseOk;
+            else
+                ++courseFail;
             break;
         }
         case EXPERIENCES: {
-            if (fields.size() < 4) { ++expFail; continue; }
+            if (fields.size() < 4) {
+                ++expFail;
+                continue;
+            }
             QString title = fields[0];
             QString type = fields[1];
             if (title.isEmpty() || !validTypes.contains(type)) {
-                ++expFail; continue;
+                ++expFail;
+                continue;
             }
             expQuery.bindValue(":uid", userId);
             expQuery.bindValue(":title", title);
@@ -4272,19 +4081,27 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
             expQuery.bindValue(":date", fields[2]);
             expQuery.bindValue(":content", fields[3]);
 
-            if (expQuery.exec()) ++expOk; else ++expFail;
+            if (expQuery.exec())
+                ++expOk;
+            else
+                ++expFail;
             break;
         }
         case AWARDS: {
-            if (fields.size() < 4) { ++awardFail; continue; }
+            if (fields.size() < 4) {
+                ++awardFail;
+                continue;
+            }
             QString name = fields[0];
             QString level = fields[1];
             if (name.isEmpty() || !validLevels.contains(level)) {
-                ++awardFail; continue;
+                ++awardFail;
+                continue;
             }
             bool ok;
             double amount = fields[3].toDouble(&ok);
-            if (!ok) amount = 0.0;
+            if (!ok)
+                amount = 0.0;
 
             awardQuery.bindValue(":uid", userId);
             awardQuery.bindValue(":name", name);
@@ -4292,7 +4109,10 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
             awardQuery.bindValue(":date", fields[2]);
             awardQuery.bindValue(":amount", amount);
 
-            if (awardQuery.exec()) ++awardOk; else ++awardFail;
+            if (awardQuery.exec())
+                ++awardOk;
+            else
+                ++awardFail;
             break;
         }
         default:
@@ -4310,26 +4130,14 @@ void MainWindow::importAllFromCsv(const QString &filePath) {
     updateHomePageStats();
 
     QMessageBox::information(this, "导入完成",
-        QString("导入结果：\n"
-                "课程：成功 %1 条，失败 %2 条\n"
-                "经历：成功 %3 条，失败 %4 条\n"
-                "荣誉：成功 %5 条，失败 %6 条")
-            .arg(courseOk).arg(courseFail)
-            .arg(expOk).arg(expFail)
-            .arg(awardOk).arg(awardFail));
-}
-
-// ==================== 导航栏按钮 ====================
-
-void MainWindow::on_navHomeBtn_clicked() {
-    ui->currentPageLbl->setText(ui->navHomeBtn->text());
-}
-void MainWindow::on_navCourseBtn_clicked() {
-    ui->currentPageLbl->setText(ui->navCourseBtn->text());
-}
-void MainWindow::on_navExpBtn_clicked() {
-    ui->currentPageLbl->setText(ui->navExpBtn->text());
-}
-void MainWindow::on_navExportBtn_clicked() {
-    ui->currentPageLbl->setText(ui->navExportBtn->text());
+                             QString("导入结果：\n"
+                                     "课程：成功 %1 条，失败 %2 条\n"
+                                     "经历：成功 %3 条，失败 %4 条\n"
+                                     "荣誉：成功 %5 条，失败 %6 条")
+                                 .arg(courseOk)
+                                 .arg(courseFail)
+                                 .arg(expOk)
+                                 .arg(expFail)
+                                 .arg(awardOk)
+                                 .arg(awardFail));
 }

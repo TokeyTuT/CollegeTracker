@@ -9,4 +9,7 @@
         <file alias="resume-navy.png">assets/resume-preview-navy.png</file>
         <file alias="resume-editorial.png">assets/resume-preview-editorial.png</file>
     </qresource>
+    <qresource prefix="/styles">
+        <file alias="mainwindow.qss">resources/styles/mainwindow.qss</file>
+    </qresource>
 </RCC>

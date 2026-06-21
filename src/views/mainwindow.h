@@ -41,10 +41,6 @@ protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
-    void on_navHomeBtn_clicked();
-    void on_navCourseBtn_clicked();
-    void on_navExpBtn_clicked();
-    void on_navExportBtn_clicked();
     void on_addCourseBtn_clicked();
     void on_deleteCourseBtn_clicked();
     void on_addExpBtn_clicked();

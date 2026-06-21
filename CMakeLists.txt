@@ -36,6 +36,8 @@ set(EXTRA_SOURCES
     src/models/User.cpp
     src/services/ResumeExporter.h
     src/services/ResumeExporter.cpp
+    src/services/CsvUtils.h
+    src/services/CsvUtils.cpp
     resources.qrc
 )
 

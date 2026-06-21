@@ -99,7 +99,7 @@ RegisterDialog::RegisterDialog(QWidget *parent)
     m_confirmEdit->setPlaceholderText("再次输入密码");
     m_confirmEdit->setEchoMode(QLineEdit::Password);
     m_schoolEdit = new QLineEdit(this);
-    m_schoolEdit->setPlaceholderText("例如：浙江大学");
+    m_schoolEdit->setPlaceholderText("例如：北京哥布林学院");
     addField(1, 0, "确认密码", m_confirmEdit);
     addField(1, 1, "学校", m_schoolEdit);
 
@@ -111,7 +111,7 @@ RegisterDialog::RegisterDialog(QWidget *parent)
     addField(2, 1, "性别", m_genderCombo);
 
     m_majorEdit = new QLineEdit(this);
-    m_majorEdit->setPlaceholderText("例如：计算机科学与技术");
+    m_majorEdit->setPlaceholderText("例如：哥布林解剖学");
     addField(3, 0, "专业", m_majorEdit);
     form->addWidget(m_majorEdit, 7, 0, 1, 2);
 
