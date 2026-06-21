@@ -82,7 +82,7 @@ AddCourseDialog::AddCourseDialog(QWidget *parent)
     };
 
     nameEdit = new QLineEdit(this);
-    nameEdit->setPlaceholderText("例如：哥布林生物学");
+    nameEdit->setPlaceholderText("例如：哥布林高等数学");
     addField(0, 0, "课程名称", nameEdit);
     form->addWidget(nameEdit, 1, 0, 1, 2);
 

@@ -38,6 +38,8 @@ set(EXTRA_SOURCES
     src/services/ResumeExporter.cpp
     src/services/CsvUtils.h
     src/services/CsvUtils.cpp
+    src/services/AvatarUtils.h
+    src/services/AvatarUtils.cpp
     src/views/pages/HomePage.h
     src/views/pages/HomePage.cpp
     src/views/pages/CoursePage.h

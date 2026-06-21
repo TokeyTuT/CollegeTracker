@@ -109,9 +109,9 @@ LoginDialog::LoginDialog(QWidget *parent)
         layout->addWidget(*field);
     };
 
-    addField("用户名", "输入你的用户名", &m_usernameEdit);
+    addField("用户名", "例如：洞穴学霸007", &m_usernameEdit);
     layout->addSpacing(18);
-    addField("密码", "输入登录密码", &m_passwordEdit);
+    addField("密码", "输入你的秘密咒语", &m_passwordEdit);
     m_passwordEdit->setEchoMode(QLineEdit::Password);
 
     layout->addSpacing(8);

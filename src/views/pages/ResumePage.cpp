@@ -1,5 +1,6 @@
 #include "ResumePage.h"
 
+#include "AvatarUtils.h"
 #include "DatabaseMannager.h"
 #include "PhotoCropDialog.h"
 #include "ResumeExporter.h"
@@ -38,27 +39,6 @@
 namespace {
 
 constexpr qreal kHiResScale = 4.0;
-
-QPixmap circularPixmap(const QPixmap &source, int logicalSize) {
-    if (source.isNull() || logicalSize <= 0)
-        return {};
-    const int pixelSize = qCeil(logicalSize * kHiResScale);
-    const QPixmap scaled =
-        source.scaled(pixelSize, pixelSize, Qt::KeepAspectRatioByExpanding,
-                      Qt::SmoothTransformation);
-    const int x = (scaled.width() - pixelSize) / 2;
-    const int y = (scaled.height() - pixelSize) / 2;
-    QPixmap result(pixelSize, pixelSize);
-    result.fill(Qt::transparent);
-    QPainter painter(&result);
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    QPainterPath path;
-    path.addEllipse(2, 2, pixelSize - 4, pixelSize - 4);
-    painter.setClipPath(path);
-    painter.drawPixmap(-x, -y, scaled);
-    result.setDevicePixelRatio(kHiResScale);
-    return result;
-}
 
 QFrame *sectionCard(const QString &title) {
     auto *card = new QFrame;
@@ -128,12 +108,14 @@ void ResumePage::buildUi() {
     auto *photoCard = sectionCard(QStringLiteral("个人照片"));
     auto *photoLayout = static_cast<QVBoxLayout *>(photoCard->layout());
     auto *photoHeader = new QHBoxLayout;
-    m_photoPreview = new QLabel(QStringLiteral("暂无照片"), photoCard);
+    m_photoPreview = new QLabel(photoCard);
     m_photoPreview->setFixedSize(96, 96);
     m_photoPreview->setAlignment(Qt::AlignCenter);
     m_photoPreview->setStyleSheet(QStringLiteral(
         "background:#F4F1EA;border:1px dashed #D6D0C4;"
         "border-radius:48px;color:#7A827E;"));
+    m_photoPreview->setPixmap(
+        AvatarUtils::circularAvatar(QString(), 96));
     auto *choosePhotoButton =
         new QPushButton(QStringLiteral("导入照片"), photoCard);
     choosePhotoButton->setObjectName(QStringLiteral("selectPhotoBtn"));
@@ -229,7 +211,10 @@ void ResumePage::buildUi() {
     skillsHeader->addWidget(editSkillsButton);
     skillsLayout->addLayout(skillsHeader);
     m_skillsLabel =
-        new QLabel(QStringLiteral("尚未填写技能，点击编辑补充。"), skillsCard);
+        new QLabel(
+            QStringLiteral(
+                "技能树还是空的。点击编辑，点亮 Qt 法术、火把维护或史莱姆沟通。"),
+            skillsCard);
     m_skillsLabel->setWordWrap(true);
     m_skillsLabel->setStyleSheet(QStringLiteral(
         "color:#59635F;font-size:13px;font-weight:550;padding:2px 0;"));
@@ -252,7 +237,9 @@ void ResumePage::buildUi() {
     summaryHeader->addWidget(editSummaryButton);
     summaryLayout->addLayout(summaryHeader);
     m_summaryLabel =
-        new QLabel(QStringLiteral("尚未填写个人总结，点击编辑补充。"),
+        new QLabel(QStringLiteral(
+                       "这只哥布林还没写冒险者自述。点击编辑，讲讲你的专业、"
+                       "特长和远征目标。"),
                    summaryCard);
     m_summaryLabel->setWordWrap(true);
     m_summaryLabel->setStyleSheet(QStringLiteral(
@@ -408,7 +395,7 @@ void ResumePage::choosePhoto(QWidget *dialogParent) {
         return;
     }
     m_photoPath = QStringLiteral("photos/") + fileName;
-    m_photoPreview->setPixmap(circularPixmap(cropped, 96));
+    m_photoPreview->setPixmap(AvatarUtils::circularPixmap(cropped, 96));
     m_photoPreview->setText(QString());
     saveProfile();
     emit photoChanged(m_photoPath);
@@ -420,8 +407,9 @@ void ResumePage::removePhoto() {
                           .filePath(m_photoPath));
     }
     m_photoPath.clear();
-    m_photoPreview->setPixmap(QPixmap());
-    m_photoPreview->setText(QStringLiteral("暂无照片"));
+    m_photoPreview->setPixmap(
+        AvatarUtils::circularAvatar(QString(), 96));
+    m_photoPreview->setText(QString());
     saveProfile();
     emit photoChanged(m_photoPath);
 }
@@ -451,12 +439,15 @@ void ResumePage::refresh() {
     m_photoPath = profile.value(QStringLiteral("photo_path")).toString();
     m_skillsLabel->setText(
         m_skillsText.isEmpty()
-            ? QStringLiteral("尚未填写技能，点击编辑补充。")
+            ? QStringLiteral(
+                  "技能树还是空的。点击编辑，点亮 Qt 法术、火把维护或史莱姆沟通。")
             : m_skillsText.split('\n', Qt::SkipEmptyParts)
                   .join(QStringLiteral("  ·  ")));
     m_summaryLabel->setText(
         m_summaryText.isEmpty()
-            ? QStringLiteral("尚未填写个人总结，点击编辑补充。")
+            ? QStringLiteral(
+                  "这只哥布林还没写冒险者自述。点击编辑，讲讲你的专业、"
+                  "特长和远征目标。")
             : m_summaryText);
 
     const QString templateId =
@@ -474,18 +465,9 @@ void ResumePage::refresh() {
         m_templateCards.at(i)->setChecked(i == index);
     updateTemplateDescription();
 
-    if (!m_photoPath.isEmpty()) {
-        const QPixmap photo(
-            QDir(QCoreApplication::applicationDirPath())
-                .filePath(m_photoPath));
-        if (!photo.isNull()) {
-            m_photoPreview->setPixmap(circularPixmap(photo, 96));
-            m_photoPreview->setText(QString());
-        }
-    } else {
-        m_photoPreview->setPixmap(QPixmap());
-        m_photoPreview->setText(QStringLiteral("暂无照片"));
-    }
+    m_photoPreview->setPixmap(
+        AvatarUtils::circularAvatar(m_photoPath, 96));
+    m_photoPreview->setText(QString());
     emit photoChanged(m_photoPath);
 }
 
@@ -496,12 +478,13 @@ void ResumePage::editSkills() {
     auto *layout = new QVBoxLayout(&dialog);
     layout->setContentsMargins(24, 22, 24, 18);
     layout->setSpacing(14);
-    auto *hint =
-        new QLabel(QStringLiteral("每行填写一个技能，例如：C++ / Qt / SQLite / Git"));
+    auto *hint = new QLabel(QStringLiteral(
+        "每行填写一个技能，例如：C++ / Qt / SQLite / 洞穴勘探"));
     hint->setWordWrap(true);
     auto *edit = new QPlainTextEdit;
     edit->setPlainText(m_skillsText);
-    edit->setPlaceholderText(QStringLiteral("每行一个技能..."));
+    edit->setPlaceholderText(
+        QStringLiteral("例如：火把维护\n史莱姆沟通\nQt Widgets"));
     edit->setStyleSheet(Theme::inputStyle());
     auto *buttons = new QDialogButtonBox(
         QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
@@ -517,7 +500,9 @@ void ResumePage::editSkills() {
         m_skillsText = edit->toPlainText().trimmed();
         m_skillsLabel->setText(
             m_skillsText.isEmpty()
-                ? QStringLiteral("尚未填写技能，点击编辑补充。")
+                ? QStringLiteral(
+                      "技能树还是空的。点击编辑，点亮 Qt 法术、火把维护或"
+                      "史莱姆沟通。")
                 : m_skillsText.split('\n', Qt::SkipEmptyParts)
                       .join(QStringLiteral("  ·  ")));
         saveProfile();
@@ -531,12 +516,13 @@ void ResumePage::editSummary() {
     auto *layout = new QVBoxLayout(&dialog);
     layout->setContentsMargins(24, 22, 24, 18);
     layout->setSpacing(14);
-    auto *hint =
-        new QLabel(QStringLiteral("简要介绍自己的专业背景、核心优势和求职意向"));
+    auto *hint = new QLabel(
+        QStringLiteral("简要介绍专业背景、核心优势和你的冒险目标"));
     hint->setWordWrap(true);
     auto *edit = new QPlainTextEdit;
     edit->setPlainText(m_summaryText);
-    edit->setPlaceholderText(QStringLiteral("请输入个人总结..."));
+    edit->setPlaceholderText(QStringLiteral(
+        "例如：来自首都哥布林大学，擅长把混乱洞穴整理成清晰的数据结构……"));
     edit->setStyleSheet(Theme::inputStyle());
     auto *buttons = new QDialogButtonBox(
         QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
@@ -552,7 +538,9 @@ void ResumePage::editSummary() {
         m_summaryText = edit->toPlainText().trimmed();
         m_summaryLabel->setText(
             m_summaryText.isEmpty()
-                ? QStringLiteral("尚未填写个人总结，点击编辑补充。")
+                ? QStringLiteral(
+                      "这只哥布林还没写冒险者自述。点击编辑，讲讲你的专业、"
+                      "特长和远征目标。")
                 : m_summaryText);
         saveProfile();
     }

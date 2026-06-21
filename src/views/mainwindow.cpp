@@ -2,6 +2,7 @@
 #include "./ui_mainwindow.h"
 
 #include "CoursePage.h"
+#include "AvatarUtils.h"
 #include "DatabaseMannager.h"
 #include "ExperiencePage.h"
 #include "HomePage.h"
@@ -20,41 +21,14 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
-#include <QPainter>
-#include <QPainterPath>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <QSizePolicy>
 #include <QStyle>
 #include <QVBoxLayout>
-#include <QtMath>
 
 namespace {
-
-constexpr qreal kHiResScale = 4.0;
-
-QPixmap circularPixmap(const QPixmap &source, int logicalSize) {
-    if (source.isNull() || logicalSize <= 0)
-        return {};
-    const int pixelSize = qCeil(logicalSize * kHiResScale);
-    const QPixmap scaled =
-        source.scaled(pixelSize, pixelSize, Qt::KeepAspectRatioByExpanding,
-                      Qt::SmoothTransformation);
-    const int x = (scaled.width() - pixelSize) / 2;
-    const int y = (scaled.height() - pixelSize) / 2;
-    QPixmap result(pixelSize, pixelSize);
-    result.fill(Qt::transparent);
-    QPainter painter(&result);
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-    QPainterPath path;
-    path.addEllipse(2, 2, pixelSize - 4, pixelSize - 4);
-    painter.setClipPath(path);
-    painter.drawPixmap(-x, -y, scaled);
-    result.setDevicePixelRatio(kHiResScale);
-    return result;
-}
 
 QString educationYear(const QString &date) {
     const QRegularExpressionMatch match =
@@ -250,21 +224,12 @@ void MainWindow::updateSidebarAvatar() {
         return;
     const QString photoPath =
         m_resumePage ? m_resumePage->photoPath() : QString();
-    if (!photoPath.isEmpty()) {
-        const QPixmap source(
-            QDir(QCoreApplication::applicationDirPath())
-                .filePath(photoPath));
-        if (!source.isNull()) {
-            m_sidebarAvatarLabel->setPixmap(circularPixmap(source, 60));
-            m_sidebarAvatarLabel->setText(QString());
-            return;
-        }
-    }
-    m_sidebarAvatarLabel->setPixmap(QPixmap());
-    QString initial = User::getInstance().getUsername().trimmed().left(1);
-    if (initial.isEmpty())
-        initial = QStringLiteral("我");
-    m_sidebarAvatarLabel->setText(initial.toUpper());
+    m_sidebarAvatarLabel->setPixmap(
+        AvatarUtils::circularAvatar(photoPath, 60));
+    m_sidebarAvatarLabel->setText(QString());
+    m_sidebarAvatarLabel->setToolTip(
+        photoPath.isEmpty() ? QStringLiteral("默认哥布林头像")
+                            : QStringLiteral("个人头像"));
 }
 
 void MainWindow::openEditProfileDialog() {
@@ -311,9 +276,9 @@ void MainWindow::openEditProfileDialog() {
     avatarPreview->setStyleSheet(QStringLiteral(
         "background:#E5EEE9;color:#315C53;border:2px solid #8AA89F;"
         "border-radius:36px;font-size:22px;font-weight:850;"));
-    auto *photoText =
-        new QLabel(QStringLiteral("这张照片会显示在侧栏，并用于简历导出。"),
-                   photoSection);
+    auto *photoText = new QLabel(
+        QStringLiteral("未上传照片时，由这位沉思哥布林代班。头像也会用于简历导出。"),
+        photoSection);
     photoText->setWordWrap(true);
     auto *photoButtons = new QVBoxLayout;
     auto *changePhotoButton =
@@ -327,21 +292,10 @@ void MainWindow::openEditProfileDialog() {
     photoLayout->addLayout(photoButtons);
     layout->addWidget(photoSection);
 
-    const QString initial = user.getUsername().trimmed().left(1);
-    auto refreshPhotoPreview = [this, avatarPreview, initial]() {
+    auto refreshPhotoPreview = [this, avatarPreview]() {
         const QString path = m_resumePage->photoPath();
-        if (!path.isEmpty()) {
-            const QPixmap source(
-                QDir(QCoreApplication::applicationDirPath()).filePath(path));
-            if (!source.isNull()) {
-                avatarPreview->setPixmap(circularPixmap(source, 72));
-                avatarPreview->setText(QString());
-                return;
-            }
-        }
-        avatarPreview->setPixmap(QPixmap());
-        avatarPreview->setText(initial.isEmpty() ? QStringLiteral("我")
-                                                 : initial.toUpper());
+        avatarPreview->setPixmap(AvatarUtils::circularAvatar(path, 72));
+        avatarPreview->setText(QString());
     };
     refreshPhotoPreview();
     connect(changePhotoButton, &QPushButton::clicked, &dialog,
@@ -378,7 +332,9 @@ void MainWindow::openEditProfileDialog() {
                                   ? QStringLiteral("不显示")
                                   : user.getGender());
     auto *schoolEdit = new QLineEdit(user.getSchool(), &dialog);
+    schoolEdit->setPlaceholderText(QStringLiteral("例如：首都哥布林大学"));
     auto *majorEdit = new QLineEdit(user.getMajor(), &dialog);
+    majorEdit->setPlaceholderText(QStringLiteral("例如：地下城数据科学"));
 
     auto *yearsWidget = new QWidget(&dialog);
     auto *yearsLayout = new QHBoxLayout(yearsWidget);
@@ -406,9 +362,16 @@ void MainWindow::openEditProfileDialog() {
     yearsLayout->addStretch();
 
     auto *phoneEdit = new QLineEdit(user.getPhone(), &dialog);
+    phoneEdit->setPlaceholderText(QStringLiteral("例如：114-514-1919"));
     auto *emailEdit = new QLineEdit(user.getEmail(), &dialog);
+    emailEdit->setPlaceholderText(
+        QStringLiteral("例如：chief@goblin.edu"));
     auto *jobTargetEdit = new QLineEdit(user.getJobTarget(), &dialog);
+    jobTargetEdit->setPlaceholderText(
+        QStringLiteral("例如：地下城数据分析师"));
     auto *websiteEdit = new QLineEdit(user.getWebsite(), &dialog);
+    websiteEdit->setPlaceholderText(
+        QStringLiteral("例如：https://goblin.example/cave"));
     form->addRow(QStringLiteral("学校："), schoolEdit);
     form->addRow(QStringLiteral("年级："), gradeBox);
     form->addRow(QStringLiteral("性别："), genderBox);

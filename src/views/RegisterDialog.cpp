@@ -88,18 +88,18 @@ RegisterDialog::RegisterDialog(QWidget *parent)
     };
 
     m_usernameEdit = new QLineEdit(this);
-    m_usernameEdit->setPlaceholderText("用于登录");
+    m_usernameEdit->setPlaceholderText("例如：绿皮学者");
     m_passwordEdit = new QLineEdit(this);
-    m_passwordEdit->setPlaceholderText("至少 6 位");
+    m_passwordEdit->setPlaceholderText("至少 6 位，别用 goblin123");
     m_passwordEdit->setEchoMode(QLineEdit::Password);
     addField(0, 0, "用户名", m_usernameEdit);
     addField(0, 1, "密码", m_passwordEdit);
 
     m_confirmEdit = new QLineEdit(this);
-    m_confirmEdit->setPlaceholderText("再次输入密码");
+    m_confirmEdit->setPlaceholderText("再念一遍秘密咒语");
     m_confirmEdit->setEchoMode(QLineEdit::Password);
     m_schoolEdit = new QLineEdit(this);
-    m_schoolEdit->setPlaceholderText("例如：北京哥布林学院");
+    m_schoolEdit->setPlaceholderText("例如：首都哥布林大学");
     addField(1, 0, "确认密码", m_confirmEdit);
     addField(1, 1, "学校", m_schoolEdit);
 
@@ -111,7 +111,7 @@ RegisterDialog::RegisterDialog(QWidget *parent)
     addField(2, 1, "性别", m_genderCombo);
 
     m_majorEdit = new QLineEdit(this);
-    m_majorEdit->setPlaceholderText("例如：哥布林解剖学");
+    m_majorEdit->setPlaceholderText("例如：地下城数据科学");
     addField(3, 0, "专业", m_majorEdit);
     form->addWidget(m_majorEdit, 7, 0, 1, 2);
 

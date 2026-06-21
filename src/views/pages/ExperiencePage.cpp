@@ -117,14 +117,14 @@ void ExperiencePage::buildUi() {
          QStringLiteral("项目"), QStringLiteral("其他")});
     m_experienceTitle = new QLineEdit(m_experienceForm);
     m_experienceTitle->setPlaceholderText(
-        QStringLiteral("示例：校园项目负责人"));
+        QStringLiteral("示例：哥布林学生会财务总管"));
     m_experienceDate = new QDateEdit(m_experienceForm);
     m_experienceDate->setCalendarPopup(true);
     m_experienceDate->setDisplayFormat(QStringLiteral("yyyy-MM-dd"));
     m_experienceDate->setDate(QDate::currentDate());
     m_experienceDescription = new QLineEdit(m_experienceForm);
     m_experienceDescription->setPlaceholderText(
-        QStringLiteral("示例：负责数据整理与展示"));
+        QStringLiteral("示例：管理三箱金币与五支火把"));
 
     experienceGrid->addWidget(formLabel(QStringLiteral("类型"),
                                         m_experienceForm),
@@ -174,7 +174,8 @@ void ExperiencePage::buildUi() {
     awardGrid->setHorizontalSpacing(12);
     awardGrid->setVerticalSpacing(10);
     m_awardName = new QLineEdit(m_awardForm);
-    m_awardName->setPlaceholderText(QStringLiteral("示例：国家奖学金"));
+    m_awardName->setPlaceholderText(
+        QStringLiteral("示例：年度最具潜力哥布林奖"));
     m_awardDate = new QDateEdit(m_awardForm);
     m_awardDate->setCalendarPopup(true);
     m_awardDate->setDisplayFormat(QStringLiteral("yyyy-MM-dd"));

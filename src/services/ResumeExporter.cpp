@@ -1,5 +1,6 @@
 #include "ResumeExporter.h"
 
+#include "AvatarUtils.h"
 #include "DatabaseMannager.h"
 
 #include <QCoreApplication>
@@ -160,14 +161,7 @@ QString ResumeExporter::textList(const QString &text) {
 }
 
 QString ResumeExporter::imageDataUrl(const QString &photoPath) {
-    if (photoPath.trimmed().isEmpty())
-        return {};
-
-    QFileInfo info(photoPath);
-    QString fullPath = photoPath;
-    if (info.isRelative())
-        fullPath = QDir(QCoreApplication::applicationDirPath())
-                       .filePath(photoPath);
+    const QString fullPath = AvatarUtils::resolvedPhotoPath(photoPath);
 
     QImage image(fullPath);
     if (image.isNull())

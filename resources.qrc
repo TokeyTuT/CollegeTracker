@@ -12,4 +12,7 @@
     <qresource prefix="/styles">
         <file alias="mainwindow.qss">resources/styles/mainwindow.qss</file>
     </qresource>
+    <qresource prefix="/avatars">
+        <file alias="default-goblin.png">assets/default-goblin-avatar.png</file>
+    </qresource>
 </RCC>
