@@ -2,21 +2,13 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QSqlTableModel>
-#include <QMessageBox>
-#include <QInputDialog>
-#include <QTableView>
-#include <QLabel>
-#include <QList>
-#include <QPushButton>
-#include <QDoubleSpinBox>
 
-class QShowEvent;
-class QResizeEvent;
-class QEvent;
-class QComboBox;
-class QToolButton;
-class ResumeExporter;
+class CoursePage;
+class ExperiencePage;
+class HomePage;
+class QLabel;
+class QPushButton;
+class ResumePage;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -24,8 +16,7 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
@@ -35,105 +26,25 @@ public:
 signals:
     void logoutRequested();
 
-protected:
-    void showEvent(QShowEvent *event) override;
-    void resizeEvent(QResizeEvent *event) override;
-    bool eventFilter(QObject *watched, QEvent *event) override;
-
-private slots:
-    void on_addCourseBtn_clicked();
-    void on_deleteCourseBtn_clicked();
-    void on_addExpBtn_clicked();
-    void on_DelExpBtn_clicked();
-    void on_addAwardBtn_clicked();
-    void on_delAwardBtn_clicked();
-
 private:
     Ui::MainWindow *ui;
-    QSqlTableModel *courseModel;
-    QSqlTableModel *expModel;
-    QSqlTableModel *awardModel;
+    HomePage *m_homePage = nullptr;
+    CoursePage *m_coursePage = nullptr;
+    ExperiencePage *m_experiencePage = nullptr;
+    ResumePage *m_resumePage = nullptr;
+    QLabel *m_sidebarAvatarLabel = nullptr;
+    QPushButton *m_editProfileButton = nullptr;
+    QPushButton *m_logoutButton = nullptr;
 
-    QLabel *homeChartLabel = nullptr;
-    QLabel *homeCourseCountLbl = nullptr;
-    QLabel *homeGpaLbl = nullptr;
-    QLabel *homeCompetitionCountLbl = nullptr;
-    QLabel *homeInternshipCountLbl = nullptr;
-    QLabel *homeProjectCountLbl = nullptr;
-    QLabel *homeAwardCountLbl = nullptr;
-    QLabel *sidebarAvatarLbl = nullptr;
-    QPushButton *editProfileBtn = nullptr;
-    QPushButton *logoutBtn = nullptr;
-    QPushButton *expTabBtn = nullptr;
-    QPushButton *awardTabBtn = nullptr;
-    QPushButton *importCourseCsvBtn = nullptr;
-    QPushButton *exportCourseCsvBtn = nullptr;
-    QPushButton *resetCourseBtn = nullptr;
-    QPushButton *importExpCsvBtn = nullptr;
-    QPushButton *exportExpCsvBtn = nullptr;
-    QPushButton *csvHelpCourseBtn = nullptr;
-    QPushButton *csvHelpExpBtn = nullptr;
-    QPushButton *homeImportAllBtn = nullptr;
-    QPushButton *homeExportAllBtn = nullptr;
-    QPushButton *homeCsvHelpBtn = nullptr;
-    QDoubleSpinBox *addAwardAmountSpin = nullptr;
-    QLabel *addAwardAmountLbl = nullptr;
-
-    // 简历导出页控件
-    QLabel *photoPreviewLbl = nullptr;
-    QPushButton *selectPhotoBtn = nullptr;
-    QLabel *skillsLbl = nullptr;
-    QPushButton *editSkillsBtn = nullptr;
-    QLabel *summaryLbl = nullptr;
-    QPushButton *editSummaryBtn = nullptr;
-    QComboBox *resumeTemplateCombo = nullptr;
-    QList<QToolButton *> resumeTemplateCards;
-    QLabel *resumeTemplateDescriptionLbl = nullptr;
-    QWidget *resumePreviewOverlay = nullptr;
-    QLabel *resumePreviewLargeLbl = nullptr;
-    QLabel *resumePreviewTitleLbl = nullptr;
-    QPushButton *previewResumeBtn = nullptr;
-    QPushButton *exportResumePdfBtn = nullptr;
-    ResumeExporter *resumeExporter = nullptr;
-    QString m_photoPath;
-    QString m_skillsText;
-    QString m_summaryText;
-
-    bool m_expTabActive = true;  // true = 课外活动, false = 个人荣誉
-
-    void InitFrame();
-    void InitCoursePage();
-    void InitExpPage();
-
-    void updateTotalStats();
+    void createPages();
+    void initFrame();
+    void applyModernStyle();
+    void setCurrentPage(int index, const QString &title,
+                        const QString &subtitle, QPushButton *activeButton);
     void updateSidebarUserInfo();
     void updateSidebarAvatar();
     void openEditProfileDialog();
     void logout();
-    void applyModernStyle();
-    void setupTableView(QTableView *tableView);
-    void buildHomePage();
-    void buildExportPage();
-    void loadResumeProfile();
-    void editSkills();
-    void editSummary();
-    void saveResumeToDb();
-    void showResumeTemplateMagnifier();
-    void hideResumeTemplateMagnifier();
-    void updateResumeTemplateMagnifier();
-    void updateHomePageStats();
-    void resetAllCourses();
-    double scoreToGpa(double score) const;
-
-    // CSV 导入导出
-    void importCoursesFromCsv(const QString &filePath);
-    void exportCoursesToCsv(const QString &filePath);
-    void importExperiencesFromCsv(const QString &filePath);
-    void exportExperiencesToCsv(const QString &filePath);
-    void importAwardsFromCsv(const QString &filePath);
-    void exportAwardsToCsv(const QString &filePath);
-    void importAllFromCsv(const QString &filePath);
-    void exportAllToCsv(const QString &filePath);
 };
 
 #endif // MAINWINDOW_H

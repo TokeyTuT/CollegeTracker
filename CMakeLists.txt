@@ -38,6 +38,16 @@ set(EXTRA_SOURCES
     src/services/ResumeExporter.cpp
     src/services/CsvUtils.h
     src/services/CsvUtils.cpp
+    src/views/pages/HomePage.h
+    src/views/pages/HomePage.cpp
+    src/views/pages/CoursePage.h
+    src/views/pages/CoursePage.cpp
+    src/views/pages/ExperiencePage.h
+    src/views/pages/ExperiencePage.cpp
+    src/views/pages/ResumePage.h
+    src/views/pages/ResumePage.cpp
+    src/views/dialogs/PhotoCropDialog.h
+    src/views/dialogs/PhotoCropDialog.cpp
     resources.qrc
 )
 
@@ -66,6 +76,8 @@ endif()
 
 target_include_directories(CollegeTracker PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/views
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/views/pages
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/views/dialogs
     ${CMAKE_CURRENT_SOURCE_DIR}/src/models
     ${CMAKE_CURRENT_SOURCE_DIR}/src/controllers
     ${CMAKE_CURRENT_SOURCE_DIR}/src/services
