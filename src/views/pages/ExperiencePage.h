@@ -36,6 +36,7 @@ private:
     QPushButton *m_importButton = nullptr;
     QPushButton *m_exportButton = nullptr;
     QPushButton *m_helpButton = nullptr;
+    QPushButton *m_resetButton = nullptr;
     QTableView *m_experienceTable = nullptr;
     QTableView *m_awardTable = nullptr;
     QFrame *m_experienceForm = nullptr;
@@ -56,6 +57,8 @@ private:
     void deleteExperience();
     void addAward();
     void deleteAward();
+    void resetAllExperiences();
+    void resetAllAwards();
     void importExperiencesFromCsv(const QString &filePath);
     void exportExperiencesToCsv(const QString &filePath);
     void importAwardsFromCsv(const QString &filePath);

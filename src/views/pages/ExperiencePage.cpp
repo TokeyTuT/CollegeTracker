@@ -66,6 +66,7 @@ void ExperiencePage::buildUi() {
     m_importButton = new QPushButton(QStringLiteral("导入 CSV"), this);
     m_exportButton = new QPushButton(QStringLiteral("导出 CSV"), this);
     m_helpButton = new QPushButton(QStringLiteral("?"), this);
+    m_resetButton = new QPushButton(QStringLiteral("清空数据"), this);
 
     m_experienceTabButton->setObjectName(QStringLiteral("expTabBtn"));
     m_awardTabButton->setObjectName(QStringLiteral("awardTabBtn"));
@@ -77,6 +78,10 @@ void ExperiencePage::buildUi() {
     m_helpButton->setProperty("variant", "tool");
     m_helpButton->setFixedSize(40, 40);
     m_helpButton->setToolTip(QStringLiteral("查看 CSV 格式说明"));
+    m_resetButton->setObjectName(QStringLiteral("resetExpAwardBtn"));
+    m_resetButton->setProperty("variant", "quietDanger");
+    m_resetButton->setToolTip(
+        QStringLiteral("清空当前标签页的全部记录"));
 
     toolbar->addWidget(m_experienceTabButton);
     toolbar->addWidget(m_awardTabButton);
@@ -84,6 +89,7 @@ void ExperiencePage::buildUi() {
     toolbar->addWidget(m_importButton);
     toolbar->addWidget(m_exportButton);
     toolbar->addWidget(m_helpButton);
+    toolbar->addWidget(m_resetButton);
     mainLayout->addLayout(toolbar);
 
     m_experienceTable = new QTableView(this);
@@ -234,6 +240,12 @@ void ExperiencePage::buildUi() {
             &ExperiencePage::deleteAward);
     connect(m_helpButton, &QPushButton::clicked, this,
             &ExperiencePage::showCsvHelp);
+    connect(m_resetButton, &QPushButton::clicked, this, [this]() {
+        if (m_experienceTabActive)
+            resetAllExperiences();
+        else
+            resetAllAwards();
+    });
     connect(m_importButton, &QPushButton::clicked, this, [this]() {
         const QString title =
             m_experienceTabActive ? QStringLiteral("导入经历 CSV")
@@ -471,6 +483,68 @@ void ExperiencePage::deleteAward() {
                               m_awardModel->lastError().text());
         return;
     }
+    refresh();
+    emit dataChanged();
+}
+
+void ExperiencePage::resetAllExperiences() {
+    const int count = m_experienceModel->rowCount();
+    if (count == 0) {
+        QMessageBox::information(this, QStringLiteral("清空经历"),
+                                 QStringLiteral("当前没有经历数据。"));
+        return;
+    }
+
+    const auto result = QMessageBox::warning(
+        this, QStringLiteral("清空全部经历"),
+        QStringLiteral("此操作将清空当前用户的全部 %1 条经历，且无法撤销。\n\n"
+                       "确定要继续吗？")
+            .arg(count),
+        QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
+    if (result != QMessageBox::Yes)
+        return;
+
+    QSqlQuery query;
+    query.prepare(
+        QStringLiteral("DELETE FROM experiences WHERE user_id = :user_id"));
+    query.bindValue(QStringLiteral(":user_id"), User::getInstance().getId());
+    if (!query.exec()) {
+        QMessageBox::critical(this, QStringLiteral("清空失败"),
+                              query.lastError().text());
+        return;
+    }
+
+    refresh();
+    emit dataChanged();
+}
+
+void ExperiencePage::resetAllAwards() {
+    const int count = m_awardModel->rowCount();
+    if (count == 0) {
+        QMessageBox::information(this, QStringLiteral("清空荣誉"),
+                                 QStringLiteral("当前没有荣誉数据。"));
+        return;
+    }
+
+    const auto result = QMessageBox::warning(
+        this, QStringLiteral("清空全部荣誉"),
+        QStringLiteral("此操作将清空当前用户的全部 %1 条荣誉，且无法撤销。\n\n"
+                       "确定要继续吗？")
+            .arg(count),
+        QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
+    if (result != QMessageBox::Yes)
+        return;
+
+    QSqlQuery query;
+    query.prepare(
+        QStringLiteral("DELETE FROM awards WHERE user_id = :user_id"));
+    query.bindValue(QStringLiteral(":user_id"), User::getInstance().getId());
+    if (!query.exec()) {
+        QMessageBox::critical(this, QStringLiteral("清空失败"),
+                              query.lastError().text());
+        return;
+    }
+
     refresh();
     emit dataChanged();
 }
