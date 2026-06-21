@@ -1,5 +1,7 @@
 #include "DatabaseMannager.h"
 
+#include <QCryptographicHash>
+#include <QRandomGenerator>
 #include <QSqlRecord>
 
 namespace {
@@ -252,6 +254,7 @@ void DatabaseManager::migrateTables() {
     ensureColumn("users", "gender", "TEXT DEFAULT ''");
     ensureColumn("users", "major", "TEXT DEFAULT ''");
     ensureColumn("users", "school", "TEXT DEFAULT ''");
+    ensureColumn("users", "password_salt", "TEXT DEFAULT ''");
 
     ensureColumn("courses", "user_id", "INTEGER NOT NULL DEFAULT 1");
     ensureColumn("courses", "gpa", "REAL DEFAULT 0");
@@ -380,6 +383,34 @@ void DatabaseManager::migrateTables() {
         "    AND TRIM(COALESCE(u.school, '')) <> ''"
         ")");
 
+    // 迁移已有明文密码：为空 salt 的用户生成随机盐值并哈希其密码
+    query.prepare("SELECT id, password FROM users "
+                  "WHERE (password_salt IS NULL OR password_salt = '') "
+                  "AND password IS NOT NULL AND password != ''");
+    if (query.exec()) {
+        while (query.next()) {
+            const int userId = query.value(0).toInt();
+            const QString plainPassword = query.value(1).toString();
+
+            QByteArray saltBytes(16, Qt::Uninitialized);
+            QRandomGenerator::global()->fillRange(
+                reinterpret_cast<quint32 *>(saltBytes.data()),
+                saltBytes.size() / sizeof(quint32));
+            const QString salt = QString::fromLatin1(saltBytes.toHex());
+            const QString hashedPassword = hashPassword(plainPassword, salt);
+
+            QSqlQuery updateQuery(m_db);
+            updateQuery.prepare("UPDATE users SET password = :hash, "
+                                "password_salt = :salt WHERE id = :id");
+            updateQuery.bindValue(":hash", hashedPassword);
+            updateQuery.bindValue(":salt", salt);
+            updateQuery.bindValue(":id", userId);
+            if (!updateQuery.exec())
+                qWarning() << "密码迁移失败 user_id=" << userId
+                           << updateQuery.lastError().text();
+        }
+    }
+
     qDebug() << "数据库迁移完成";
 }
 
@@ -494,6 +525,12 @@ double DatabaseManager::scoreToGpa(double score) {
     return 0.0;
 }
 
+QString DatabaseManager::hashPassword(const QString &password, const QString &salt) {
+    QByteArray data = (salt + password).toUtf8();
+    QByteArray hash = QCryptographicHash::hash(data, QCryptographicHash::Sha256);
+    return QString::fromLatin1(hash.toHex());
+}
+
 QVariantMap DatabaseManager::getTotalStats(int userId) {
     QVariantMap stats;
     QSqlQuery query;
@@ -533,11 +570,19 @@ bool DatabaseManager::registerUser(const QString &username, const QString &passw
     if (!m_db.transaction())
         return false;
 
+    // 生成随机盐值
+    QByteArray saltBytes(16, Qt::Uninitialized);
+    QRandomGenerator::global()->fillRange(reinterpret_cast<quint32 *>(saltBytes.data()),
+                                          saltBytes.size() / sizeof(quint32));
+    const QString salt = QString::fromLatin1(saltBytes.toHex());
+    const QString hashedPassword = hashPassword(password, salt);
+
     QSqlQuery query(m_db);
-    query.prepare("INSERT INTO users (username, password, grade, gender, major, school) "
-                  "VALUES (:username, :password, :grade, :gender, :major, :school)");
+    query.prepare("INSERT INTO users (username, password, password_salt, grade, gender, major, school) "
+                  "VALUES (:username, :password, :password_salt, :grade, :gender, :major, :school)");
     query.bindValue(":username", username);
-    query.bindValue(":password", password);
+    query.bindValue(":password", hashedPassword);
+    query.bindValue(":password_salt", salt);
     query.bindValue(":grade", grade);
     query.bindValue(":gender", gender);
     query.bindValue(":major", major);
@@ -576,12 +621,15 @@ bool DatabaseManager::registerUser(const QString &username, const QString &passw
 
 int DatabaseManager::loginUser(const QString &username, const QString &password) {
     QSqlQuery query;
-    query.prepare("SELECT id FROM users WHERE username = :username AND password = :password");
+    query.prepare("SELECT id, password, password_salt FROM users WHERE username = :username");
     query.bindValue(":username", username);
-    query.bindValue(":password", password);
 
     if (query.exec() && query.next()) {
-        return query.value(0).toInt();
+        const QString storedHash = query.value(1).toString();
+        const QString salt = query.value(2).toString();
+        const QString inputHash = hashPassword(password, salt);
+        if (inputHash == storedHash)
+            return query.value(0).toInt();
     }
     return -1;
 }

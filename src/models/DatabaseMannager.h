@@ -66,6 +66,7 @@ public:
     static double scoreToGpa(double score);
 
 private:
+    static QString hashPassword(const QString &password, const QString &salt);
     DatabaseManager();
     ~DatabaseManager();
 
