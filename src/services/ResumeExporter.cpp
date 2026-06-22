@@ -13,6 +13,7 @@
 #include <QProcess>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include <QStringConverter>
 #include <QTextStream>
 #include <QTimer>
 #include <QUrl>
@@ -21,6 +22,10 @@
 #include <QVariantMap>
 
 namespace {
+
+void setUtf8Encoding(QTextStream &stream) {
+    stream.setEncoding(QStringConverter::Utf8);
+}
 
 QString html(const QVariant &value) {
     return value.toString().toHtmlEscaped();
@@ -293,7 +298,7 @@ QString ResumeExporter::generateHtml(int userId,
     }
 
     QTextStream templateStream(&templateFile);
-    templateStream.setCodec("UTF-8");
+    setUtf8Encoding(templateStream);
     QString document = templateStream.readAll();
 
     QString fullName = profile.value("full_name").toString().trimmed();
@@ -528,7 +533,7 @@ QString ResumeExporter::generatePreviewFile(
     }
 
     QTextStream stream(&file);
-    stream.setCodec("UTF-8");
+    setUtf8Encoding(stream);
     stream << document;
     file.close();
     return filePath;

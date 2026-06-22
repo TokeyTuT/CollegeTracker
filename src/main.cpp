@@ -12,12 +12,6 @@
 #include"DatabaseMannager.h"
 int main(int argc, char *argv[])
 {
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    // Qt5 默认可能先按低分辨率绘制，再交给系统放大。
-    // 在创建 QApplication 前启用高 DPI，避免图表、图标和头像发虚。
-    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-    QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-#endif
     QApplication a(argc, argv);
     QApplication::setQuitOnLastWindowClosed(false);
 

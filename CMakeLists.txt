@@ -10,8 +10,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Sql LinguistTools)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Sql LinguistTools)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Sql LinguistTools)
 
 set(TS_FILES CollegeTracker_zh_CN.ts)
 
@@ -53,27 +52,12 @@ set(EXTRA_SOURCES
     resources.qrc
 )
 
-if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(CollegeTracker
-        MANUAL_FINALIZATION
-        ${PROJECT_SOURCES}
-        ${EXTRA_SOURCES}
-    )
-    qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
-else()
-    if(ANDROID)
-        add_library(CollegeTracker SHARED
-            ${PROJECT_SOURCES}
-            ${EXTRA_SOURCES}
-        )
-    else()
-        add_executable(CollegeTracker
-            ${PROJECT_SOURCES}
-            ${EXTRA_SOURCES}
-        )
-    endif()
-    qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
-endif()
+qt_add_executable(CollegeTracker
+    MANUAL_FINALIZATION
+    ${PROJECT_SOURCES}
+    ${EXTRA_SOURCES}
+)
+qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 
 
 target_include_directories(CollegeTracker PRIVATE
@@ -86,15 +70,11 @@ target_include_directories(CollegeTracker PRIVATE
 )
 
 target_link_libraries(CollegeTracker PRIVATE
-    Qt${QT_VERSION_MAJOR}::Widgets
-    Qt${QT_VERSION_MAJOR}::Sql
+    Qt6::Widgets
+    Qt6::Sql
 )
 
-if(${QT_VERSION} VERSION_LESS 6.1.0)
-  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.CollegeTracker)
-endif()
 set_target_properties(CollegeTracker PROPERTIES
-    ${BUNDLE_ID_OPTION}
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
@@ -108,6 +88,4 @@ install(TARGETS CollegeTracker
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-if(QT_VERSION_MAJOR EQUAL 6)
-    qt_finalize_executable(CollegeTracker)
-endif()
+qt_finalize_executable(CollegeTracker)
