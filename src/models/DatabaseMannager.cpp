@@ -1,4 +1,5 @@
 #include "DatabaseMannager.h"
+#include "AppDataPaths.h"
 
 #include <QCryptographicHash>
 #include <QRandomGenerator>
@@ -29,10 +30,11 @@ QVariant valueOrDefault(const QVariantMap &data, const QString &key,
 } // namespace
 
 DatabaseManager::DatabaseManager() {
+    AppDataPaths::migrateLegacyData();
     m_db = QSqlDatabase::addDatabase("QSQLITE");
-    QString dbPath = QCoreApplication::applicationDirPath() + "/college_tracker.db";
+    const QString dbPath = AppDataPaths::databaseFilePath();
     m_db.setDatabaseName(dbPath);
-    qDebug() << "数据库创建成功";
+    qDebug() << "数据库路径：" << dbPath;
 }
 
 DatabaseManager::~DatabaseManager() {

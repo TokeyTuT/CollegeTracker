@@ -8,7 +8,6 @@
 #include <QString>
 #include <QVariantList>
 #include <QVariantMap>
-#include <QCoreApplication>
 
 class DatabaseManager {
 public:

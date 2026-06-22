@@ -1,7 +1,6 @@
 #include "AvatarUtils.h"
+#include "AppDataPaths.h"
 
-#include <QCoreApplication>
-#include <QDir>
 #include <QFileInfo>
 #include <QPainter>
 #include <QPainterPath>
@@ -21,12 +20,7 @@ QString resolvedPhotoPath(const QString &photoPath) {
     if (photoPath.trimmed().isEmpty())
         return defaultAvatarResource();
 
-    QString fullPath = photoPath;
-    if (!photoPath.startsWith(QStringLiteral(":/")) &&
-        QFileInfo(photoPath).isRelative()) {
-        fullPath = QDir(QCoreApplication::applicationDirPath())
-                       .filePath(photoPath);
-    }
+    const QString fullPath = AppDataPaths::resolveStoredPath(photoPath);
     return QFileInfo::exists(fullPath) ? fullPath : defaultAvatarResource();
 }
 

@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 
+if(APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING
+        "Minimum supported macOS version")
+endif()
+
 project(CollegeTracker VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
@@ -39,6 +44,8 @@ set(EXTRA_SOURCES
     src/services/CsvUtils.cpp
     src/services/AvatarUtils.h
     src/services/AvatarUtils.cpp
+    src/services/AppDataPaths.h
+    src/services/AppDataPaths.cpp
     src/views/pages/HomePage.h
     src/views/pages/HomePage.cpp
     src/views/pages/CoursePage.h
@@ -75,6 +82,8 @@ target_link_libraries(CollegeTracker PRIVATE
 )
 
 set_target_properties(CollegeTracker PROPERTIES
+    MACOSX_BUNDLE_GUI_IDENTIFIER com.collegetracker.CollegeTracker
+    MACOSX_BUNDLE_BUNDLE_NAME CollegeTracker
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE

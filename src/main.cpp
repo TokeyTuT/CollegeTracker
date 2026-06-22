@@ -13,6 +13,10 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+    QCoreApplication::setOrganizationName(QStringLiteral("CollegeTracker"));
+    QCoreApplication::setOrganizationDomain(
+        QStringLiteral("com.collegetracker"));
+    QCoreApplication::setApplicationName(QStringLiteral("CollegeTracker"));
     QApplication::setQuitOnLastWindowClosed(false);
 
     // 强制使用浅色模式，避免在 macOS / Windows 深色模式下被系统颜色影响。

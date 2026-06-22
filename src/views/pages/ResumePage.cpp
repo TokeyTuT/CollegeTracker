@@ -1,5 +1,6 @@
 #include "ResumePage.h"
 
+#include "AppDataPaths.h"
 #include "AvatarUtils.h"
 #include "DatabaseMannager.h"
 #include "PhotoCropDialog.h"
@@ -10,7 +11,6 @@
 #include <QApplication>
 #include <QButtonGroup>
 #include <QComboBox>
-#include <QCoreApplication>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
@@ -374,9 +374,7 @@ void ResumePage::choosePhoto(QWidget *dialogParent) {
         return;
     }
 
-    const QString photosDir =
-        QDir(QCoreApplication::applicationDirPath())
-            .filePath(QStringLiteral("photos"));
+    const QString photosDir = AppDataPaths::photosDirectory();
     if (!QDir().mkpath(photosDir)) {
         QMessageBox::warning(dialogParent, QStringLiteral("提示"),
                              QStringLiteral("无法创建照片目录"));
@@ -394,7 +392,7 @@ void ResumePage::choosePhoto(QWidget *dialogParent) {
                              QStringLiteral("照片保存失败"));
         return;
     }
-    m_photoPath = QStringLiteral("photos/") + fileName;
+    m_photoPath = AppDataPaths::storedPhotoPath(fileName);
     m_photoPreview->setPixmap(AvatarUtils::circularPixmap(cropped, 96));
     m_photoPreview->setText(QString());
     saveProfile();
@@ -403,8 +401,7 @@ void ResumePage::choosePhoto(QWidget *dialogParent) {
 
 void ResumePage::removePhoto() {
     if (!m_photoPath.isEmpty()) {
-        QFile::remove(QDir(QCoreApplication::applicationDirPath())
-                          .filePath(m_photoPath));
+        QFile::remove(AppDataPaths::resolveStoredPath(m_photoPath));
     }
     m_photoPath.clear();
     m_photoPreview->setPixmap(
