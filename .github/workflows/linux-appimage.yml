@@ -1,0 +1,104 @@
+name: Build Linux AppImage
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/linux-appimage.yml"
+      - "packaging/linux/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            curl \
+            imagemagick \
+            libfuse2 \
+            libgl1-mesa-dev \
+            libqt6sql6-sqlite \
+            ninja-build \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            qt6-tools-dev \
+            qt6-tools-dev-tools
+
+      - name: Configure
+        run: >
+          cmake -S . -B build-linux
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_INSTALL_PREFIX=/usr
+
+      - name: Build
+        run: cmake --build build-linux --parallel
+
+      - name: Create AppDir
+        run: |
+          DESTDIR="$GITHUB_WORKSPACE/AppDir" cmake --install build-linux
+
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+
+          cp packaging/linux/com.collegetracker.CollegeTracker.desktop \
+            AppDir/usr/share/applications/
+
+          convert assets/default-goblin-avatar.png \
+            -resize 256x256 \
+            AppDir/usr/share/icons/hicolor/256x256/apps/com.collegetracker.CollegeTracker.png
+
+      - name: Build AppImage
+        run: |
+          mkdir -p tools
+
+          curl -L \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
+            -o tools/linuxdeploy-x86_64.AppImage
+
+          curl -L \
+            https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage \
+            -o tools/linuxdeploy-plugin-qt-x86_64.AppImage
+
+          chmod +x tools/*.AppImage
+
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          export QMAKE=/usr/bin/qmake6
+          export EXTRA_QT_MODULES=sql
+          export LDAI_OUTPUT=CollegeTracker-Linux-x86_64.AppImage
+
+          tools/linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --executable AppDir/usr/bin/CollegeTracker \
+            --desktop-file packaging/linux/com.collegetracker.CollegeTracker.desktop \
+            --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/com.collegetracker.CollegeTracker.png \
+            --plugin qt \
+            --output appimage
+
+      - name: Verify package
+        shell: bash
+        run: |
+          test -f CollegeTracker-Linux-x86_64.AppImage
+          test -f AppDir/usr/plugins/sqldrivers/libqsqlite.so
+
+          if find AppDir -type f \
+            \( -name "*.db" -o -name "*.db-wal" -o -name "*.db-shm" \) \
+            | grep -q .; then
+            echo "Database files must not be included in the package"
+            exit 1
+          fi
+
+      - name: Upload Linux package
+        uses: actions/upload-artifact@v4
+        with:
+          name: CollegeTracker-Linux-x86_64
+          path: CollegeTracker-Linux-x86_64.AppImage

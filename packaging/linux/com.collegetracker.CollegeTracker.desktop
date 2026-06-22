@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=CollegeTracker
+Comment=Track courses, experiences, awards, and resumes
+Exec=CollegeTracker
+Icon=com.collegetracker.CollegeTracker
+Categories=Education;Office;
+Terminal=false
