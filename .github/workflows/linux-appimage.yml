@@ -7,6 +7,11 @@ on:
       - main
     paths:
       - ".github/workflows/linux-appimage.yml"
+      - "CMakeLists.txt"
+      - "resources.qrc"
+      - "src/**"
+      - "ui/**"
+      - "assets/default-goblin-avatar.png"
       - "packaging/linux/**"
 
 jobs:
