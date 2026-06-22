@@ -81,15 +81,20 @@ Thumbs.db
 *.res
 *.rc
 
-# Claude AI
+# Local AI assistant files
 .claude/
+/AGENTS.md
+/CLAUDE.md
+/GEMINI.md
+/COPILOT.md
 
 # Database
 *.db
 
-# CSV files
+# CSV files outside the shared example-data directory
 *.csv
+!temp_data/
+!temp_data/*.csv
 
 # .cache Files
 .cache/
-
