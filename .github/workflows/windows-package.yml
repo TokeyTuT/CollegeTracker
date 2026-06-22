@@ -1,0 +1,57 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.11.0"
+          arch: "win64_msvc2022_64"
+          cache: true
+
+      - name: Configure
+        run: >
+          cmake -S . -B build-win
+          -G "Visual Studio 17 2022"
+          -A x64
+
+      - name: Build
+        run: cmake --build build-win --config Release --parallel
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force package
+          Copy-Item build-win\Release\CollegeTracker.exe package\
+
+          windeployqt `
+            --release `
+            --compiler-runtime `
+            --no-translations `
+            package\CollegeTracker.exe
+
+          Get-ChildItem package\sqldrivers\*.dll |
+            Where-Object Name -ne "qsqlite.dll" |
+            Remove-Item
+
+          $databases = Get-ChildItem package -Recurse -File |
+            Where-Object Extension -In ".db", ".db-wal", ".db-shm"
+
+          if ($databases) {
+            throw "Database files must not be included in the package"
+          }
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: CollegeTracker-Windows-x64
+          path: package/
