@@ -2,15 +2,14 @@
 
 #include "DatabaseMannager.h"
 #include "RegisterDialog.h"
-#include "Theme.h"
+
 #include "User.h"
 
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QVBoxLayout>
 
-LoginDialog::LoginDialog(QWidget *parent)
-    : QDialog(parent) {
+LoginDialog::LoginDialog(QWidget *parent) : QDialog(parent) {
     setWindowTitle("College Tracker · 登录");
     setModal(true);
     setFixedSize(460, 590);
@@ -139,15 +138,13 @@ LoginDialog::LoginDialog(QWidget *parent)
     footer->setAlignment(Qt::AlignCenter);
     layout->addWidget(footer);
 
-    connect(m_loginBtn, &QPushButton::clicked,
-            this, &LoginDialog::onLoginClicked);
-    connect(m_registerBtn, &QPushButton::clicked,
-            this, &LoginDialog::onOpenRegister);
+    connect(m_loginBtn, &QPushButton::clicked, this,
+            &LoginDialog::onLoginClicked);
+    connect(m_registerBtn, &QPushButton::clicked, this,
+            &LoginDialog::onOpenRegister);
 }
 
-QString LoginDialog::getUsername() const {
-    return m_usernameEdit->text();
-}
+QString LoginDialog::getUsername() const { return m_usernameEdit->text(); }
 
 void LoginDialog::onLoginClicked() {
     const QString username = m_usernameEdit->text().trimmed();

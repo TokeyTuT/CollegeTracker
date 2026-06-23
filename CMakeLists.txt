@@ -29,12 +29,12 @@ set(PROJECT_SOURCES
 set(EXTRA_SOURCES
     src/models/DatabaseMannager.h
     src/models/DatabaseMannager.cpp
-    src/views/AddCourseDialog.h
-    src/views/AddCourseDialog.cpp
-    src/views/LoginDialog.h
-    src/views/LoginDialog.cpp
-    src/views/RegisterDialog.h
-    src/views/RegisterDialog.cpp
+    src/views/dialogs/AddCourseDialog.h
+    src/views/dialogs/AddCourseDialog.cpp
+    src/views/dialogs/LoginDialog.h
+    src/views/dialogs/LoginDialog.cpp
+    src/views/dialogs/RegisterDialog.h
+    src/views/dialogs/RegisterDialog.cpp
     src/models/User.h
     src/models/User.cpp
     src/services/ResumeExporter.h

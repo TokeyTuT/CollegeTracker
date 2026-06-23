@@ -572,6 +572,7 @@ bool DatabaseManager::registerUser(const QString &username, const QString &passw
     if (!m_db.transaction())
         return false;
 
+    // 对用户名密码进行加密处理，这里用的是经典算法 SHA-256 加盐哈希
     // 生成随机盐值
     QByteArray saltBytes(16, Qt::Uninitialized);
     QRandomGenerator::global()->fillRange(reinterpret_cast<quint32 *>(saltBytes.data()),
@@ -629,6 +630,7 @@ int DatabaseManager::loginUser(const QString &username, const QString &password)
     if (query.exec() && query.next()) {
         const QString storedHash = query.value(1).toString();
         const QString salt = query.value(2).toString();
+        // 对密码进行盐哈希处理，然后对比数据库数据
         const QString inputHash = hashPassword(password, salt);
         if (inputHash == storedHash)
             return query.value(0).toInt();

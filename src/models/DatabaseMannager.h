@@ -39,7 +39,7 @@ public:
     QVariantMap getResumeProfile(int userId);
     bool updateResumeProfile(int userId, const QVariantMap &profile);
 
-    // 教育经历
+    // 教育经历（留了接口并实现了，但是还没有实际应用）
     QVariantList getEducationRecords(int userId, bool visibleOnly = false);
     int addEducationRecord(int userId, const QVariantMap &education);
     bool updateEducationRecord(int userId, int educationId,
