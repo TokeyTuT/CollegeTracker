@@ -17,7 +17,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Sql LinguistTools)
 
-set(TS_FILES CollegeTracker_zh_CN.ts)
 
 set(PROJECT_SOURCES
         src/main.cpp
@@ -66,7 +65,7 @@ qt_add_executable(CollegeTracker
     ${PROJECT_SOURCES}
     ${EXTRA_SOURCES}
 )
-qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
+
 
 
 target_include_directories(CollegeTracker PRIVATE

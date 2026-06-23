@@ -937,7 +937,8 @@ sequenceDiagram
 
 - `README.md`：项目定位和基本介绍；
 - `CSV_FORMAT.md`：CSV 表头、字段、示例和常见问题；
-- `RESUME_DATABASE.md`：简历数据库结构和接口说明；
+- `DATABASE.md`：项目数据库结构、关系、迁移和接口说明；
+- `RESUME_EXPORT.md`：简历导出机制与新增模板维护说明；
 - 本文档：项目展示与答辩材料。
 
 ### 11.6 仓库卫生

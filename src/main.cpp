@@ -35,20 +35,11 @@ int main(int argc, char *argv[])
     lightPalette.setColor(QPalette::HighlightedText, QColor(255, 255, 255));
     a.setPalette(lightPalette);
 
-
+    // 初始化数据库
     DatabaseManager &db = DatabaseManager::getInstance();
     db.initDatabase();
 
 
-    QTranslator translator;
-    const QStringList uiLanguages = QLocale::system().uiLanguages();
-    for (const QString &locale : uiLanguages) {
-        const QString baseName = "CollegeTracker_" + QLocale(locale).name();
-        if (translator.load(":/i18n/" + baseName)) {
-            a.installTranslator(&translator);
-            break;
-        }
-    }
 
     while (true) {
         LoginDialog login;
