@@ -5,6 +5,7 @@
 #include "DatabaseMannager.h"
 #include "PhotoCropDialog.h"
 #include "ResumeExporter.h"
+#include "ResumeTemplateRegistry.h"
 #include "Theme.h"
 #include "User.h"
 
@@ -148,34 +149,27 @@ void ResumePage::buildUi() {
     galleryLayout->addLayout(galleryHeader);
 
     m_templateCombo = new QComboBox(this);
-    m_templateCombo->addItem(QStringLiteral("经典学术"),
-                             QStringLiteral("classic"));
-    m_templateCombo->addItem(QStringLiteral("深海蓝双栏"),
-                             QStringLiteral("navy"));
-    m_templateCombo->addItem(QStringLiteral("暖色编辑风"),
-                             QStringLiteral("editorial"));
     m_templateCombo->hide();
 
-    const QStringList names = {QStringLiteral("经典学术"),
-                               QStringLiteral("深海蓝双栏"),
-                               QStringLiteral("暖色编辑风")};
-    const QStringList resources = {
-        QStringLiteral(":/previews/resume-classic.png"),
-        QStringLiteral(":/previews/resume-navy.png"),
-        QStringLiteral(":/previews/resume-editorial.png")};
+    const QList<ResumeTemplateDefinition> &resumeTemplates =
+        ResumeTemplateRegistry::templates();
     auto *group = new QButtonGroup(templateGallery);
     group->setExclusive(true);
     auto *previewRow = new QHBoxLayout;
     previewRow->setContentsMargins(6, 0, 6, 0);
     previewRow->setSpacing(28);
-    for (int index = 0; index < names.size(); ++index) {
+    for (int index = 0; index < resumeTemplates.size(); ++index) {
+        const ResumeTemplateDefinition &resumeTemplate =
+            resumeTemplates.at(index);
+        m_templateCombo->addItem(resumeTemplate.displayName,
+                                 resumeTemplate.id);
         auto *button = new QToolButton(templateGallery);
         button->setObjectName(QStringLiteral("resumeTemplatePreview"));
         button->setCheckable(true);
         button->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-        button->setIcon(paperIcon(resources.at(index)));
+        button->setIcon(paperIcon(resumeTemplate.previewResource));
         button->setIconSize(QSize(170, 226));
-        button->setText(names.at(index));
+        button->setText(resumeTemplate.displayName);
         button->setCursor(Qt::PointingHandCursor);
         button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         button->setFixedHeight(264);
@@ -447,10 +441,8 @@ void ResumePage::refresh() {
                   "特长和远征目标。")
             : m_summaryText);
 
-    const QString templateId =
-        profile.value(QStringLiteral("template_id"),
-                      QStringLiteral("classic"))
-            .toString();
+    const QString templateId = ResumeTemplateRegistry::normalizedId(
+        profile.value(QStringLiteral("template_id")).toString());
     int index = m_templateCombo->findData(templateId);
     if (index < 0)
         index = 0;
@@ -544,16 +536,10 @@ void ResumePage::editSummary() {
 }
 
 void ResumePage::updateTemplateDescription() {
-    const QString id = m_templateCombo->currentData().toString();
-    if (id == QStringLiteral("navy"))
-        m_templateDescription->setText(
-            QStringLiteral("左侧信息轨道与右侧履历，适合技术岗和项目型简历。"));
-    else if (id == QStringLiteral("editorial"))
-        m_templateDescription->setText(
-            QStringLiteral("暖灰纸张与编辑式编号，适合商科、研究和综合岗位。"));
-    else
-        m_templateDescription->setText(
-            QStringLiteral("传统学术排版，信息清晰，适合通用申请。"));
+    const ResumeTemplateDefinition &resumeTemplate =
+        ResumeTemplateRegistry::findById(
+            m_templateCombo->currentData().toString());
+    m_templateDescription->setText(resumeTemplate.description);
 }
 
 bool ResumePage::eventFilter(QObject *watched, QEvent *event) {
@@ -607,13 +593,11 @@ void ResumePage::hideTemplatePreview() {
 }
 
 void ResumePage::updateTemplatePreview() {
-    const QStringList resources = {
-        QStringLiteral(":/previews/resume-classic.png"),
-        QStringLiteral(":/previews/resume-navy.png"),
-        QStringLiteral(":/previews/resume-editorial.png")};
-    const int index =
-        qBound(0, m_templateCombo->currentIndex(), resources.size() - 1);
-    const QPixmap source(resources.at(index));
+    const int index = qMax(0, m_templateCombo->currentIndex());
+    const ResumeTemplateDefinition &resumeTemplate =
+        ResumeTemplateRegistry::findById(
+            m_templateCombo->itemData(index).toString());
+    const QPixmap source(resumeTemplate.previewResource);
     if (source.isNull())
         return;
     m_previewTitleLabel->setText(

@@ -40,6 +40,8 @@ set(EXTRA_SOURCES
     src/models/User.cpp
     src/services/ResumeExporter.h
     src/services/ResumeExporter.cpp
+    src/services/ResumeTemplateRegistry.h
+    src/services/ResumeTemplateRegistry.cpp
     src/services/CsvUtils.h
     src/services/CsvUtils.cpp
     src/services/AvatarUtils.h

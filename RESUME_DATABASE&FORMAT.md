@@ -55,8 +55,24 @@ db.updateResumeProfile(userId, profile);
 `updateResumeProfile()` 是 upsert 接口，但采用完整覆盖语义。未提供的字段会被
 保存为空字符串。
 
-`template_id` 可选值为 `classic`、`navy`、`editorial`，分别对应经典学术、
-深海蓝双栏和暖色编辑风模板。未知值会回退到 `classic`。
+`template_id` 的可选值统一登记在
+`src/services/ResumeTemplateRegistry.cpp`。未知值会回退到注册表中的第一项
+（当前为 `classic`）。
+
+## 新增简历模板
+
+模板名称、说明、HTML 资源和预览图资源均由 `ResumeTemplateRegistry` 统一管理。
+页面展示、浏览器预览和 PDF 导出共用该注册表，不需要分别维护模板白名单。
+
+新增模板时：
+
+1. 在 `templates/` 添加 HTML，保持与现有模板相同的 `{{...}}` 占位符协议。
+2. 在 `assets/` 添加模板预览图。
+3. 在 `resources.qrc` 中注册这两个资源。
+4. 在 `ResumeTemplateRegistry.cpp` 的 `registeredTemplates` 中增加一项。
+
+模板 ID 一旦发布后应保持稳定，因为用户当前选择会保存到
+`resume_profiles.template_id`。
 
 ## 教育经历
 

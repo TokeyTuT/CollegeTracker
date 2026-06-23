@@ -2,6 +2,7 @@
 
 #include "AvatarUtils.h"
 #include "DatabaseMannager.h"
+#include "ResumeTemplateRegistry.h"
 
 #include <QCoreApplication>
 #include <QBuffer>
@@ -280,17 +281,11 @@ QString ResumeExporter::generateHtml(int userId,
         return {};
     }
 
-    QString templateId =
-        profile.value("template_id").toString().trimmed().toLower();
-    QString templateResource = ":/templates/resume_template.html";
-    if (templateId == "navy")
-        templateResource = ":/templates/resume_template_navy.html";
-    else if (templateId == "editorial")
-        templateResource = ":/templates/resume_template_editorial.html";
-    else
-        templateId = "classic";
+    const ResumeTemplateDefinition &resumeTemplate =
+        ResumeTemplateRegistry::findById(
+            profile.value("template_id").toString());
 
-    QFile templateFile(templateResource);
+    QFile templateFile(resumeTemplate.htmlResource);
     if (!templateFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         if (errorMessage)
             *errorMessage = QStringLiteral("无法读取内置简历模板");
@@ -510,15 +505,11 @@ QString ResumeExporter::generatePreviewFile(
         DatabaseManager::getInstance().getUserInfo(userId);
     const QString username =
         safeFileComponent(user.value("username").toString());
-    QString templateId =
+    const QString templateId = ResumeTemplateRegistry::normalizedId(
         DatabaseManager::getInstance()
             .getResumeProfile(userId)
             .value("template_id")
-            .toString()
-            .trimmed()
-            .toLower();
-    if (templateId != "navy" && templateId != "editorial")
-        templateId = "classic";
+            .toString());
     const QString filePath =
         QDir(previewDir)
             .filePath(username + "_Resume_" + templateId + "_Preview.html");
