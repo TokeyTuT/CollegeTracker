@@ -572,7 +572,7 @@ bool DatabaseManager::registerUser(const QString &username, const QString &passw
     if (!m_db.transaction())
         return false;
 
-    // 对用户名密码进行加密处理，这里用的是经典算法 SHA-256 加盐哈希
+    // 对用户名密码进行加密处理，这里用的是经典算法  SHA-256 
     // 生成随机盐值
     QByteArray saltBytes(16, Qt::Uninitialized);
     QRandomGenerator::global()->fillRange(reinterpret_cast<quint32 *>(saltBytes.data()),
