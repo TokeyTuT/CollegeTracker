@@ -1,0 +1,88 @@
+name: Build macOS App
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/macos-package.yml"
+      - "CMakeLists.txt"
+      - "resources.qrc"
+      - "src/**"
+      - "ui/**"
+      - "assets/**"
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.10.3"
+          arch: "clang_64"
+          cache: true
+
+      - name: Configure
+        run: >
+          cmake -S . -B build-macos
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
+
+      - name: Build
+        run: cmake --build build-macos --parallel
+
+      - name: Deploy Qt libraries into app bundle
+        run: |
+          macdeployqt \
+            build-macos/CollegeTracker.app \
+            -verbose=1
+
+      - name: Verify package
+        shell: bash
+        run: |
+          test -d build-macos/CollegeTracker.app
+          test -f build-macos/CollegeTracker.app/Contents/MacOS/CollegeTracker
+          test -d build-macos/CollegeTracker.app/Contents/PlugIns/sqldrivers || true
+
+          # Ensure no stray database files end up in the bundle
+          if find build-macos/CollegeTracker.app -type f \
+            \( -name "*.db" -o -name "*.db-wal" -o -name "*.db-shm" \) \
+            | grep -q .; then
+            echo "Database files must not be included in the package"
+            exit 1
+          fi
+
+      - name: Create DMG
+        run: |
+          APP_NAME="CollegeTracker"
+          DMG_NAME="${APP_NAME}-macOS-ARM64.dmg"
+          STAGING_DIR="dmg_staging"
+
+          mkdir -p "${STAGING_DIR}"
+          cp -R build-macos/${APP_NAME}.app "${STAGING_DIR}/"
+
+          # Create a symlink to /Applications for drag-to-install UX
+          ln -s /Applications "${STAGING_DIR}/Applications"
+
+          # Create the DMG
+          hdiutil create \
+            -volname "${APP_NAME}" \
+            -srcfolder "${STAGING_DIR}" \
+            -ov \
+            -format UDZO \
+            "${DMG_NAME}"
+
+          echo "DMG_NAME=${DMG_NAME}" >> $GITHUB_ENV
+
+      - name: Upload macOS package
+        uses: actions/upload-artifact@v4
+        with:
+          name: CollegeTracker-macOS-ARM64
+          path: CollegeTracker-macOS-ARM64.dmg
