@@ -164,6 +164,58 @@ QHeaderView::section {
     font-size: 12px; font-weight: 800;
 }
 QTableCornerButton::section { background: #E7E2D8; border: none; }
+
+/* -------- QCalendarWidget 修复：避免 QTableView / QHeaderView 样式泄漏 -------- */
+QCalendarWidget {
+    background: #FFFEFA;
+    border: 1px solid #D6D0C4;
+    border-radius: 10px;
+}
+QCalendarWidget QToolButton {
+    color: #17201D;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    min-width: 32px;
+    min-height: 28px;
+    font-size: 13px;
+    font-weight: 700;
+    margin: 4px;
+}
+QCalendarWidget QToolButton:hover {
+    background: #DDEBE6;
+}
+QCalendarWidget QToolButton::menu-indicator {
+    image: none;
+}
+/* 日历内部的表格视图 —— 重置全局 QTableView 样式 */
+QCalendarWidget QTableView {
+    background: #FFFEFA;
+    alternate-background-color: #F7F5EF;
+    border: none;
+    border-radius: 0;
+    outline: none;
+    gridline-color: transparent;
+}
+QCalendarWidget QTableView::item {
+    padding: 2px;
+    border-bottom: none;
+}
+/* 日历顶部的星期头 —— 重置全局 QHeaderView 样式 */
+QCalendarWidget QHeaderView::section {
+    background: #E7E2D8;
+    color: #46524E;
+    border: none;
+    border-right: none;
+    padding: 4px 2px;
+    font-size: 11px;
+    font-weight: 700;
+}
+QCalendarWidget QSpinBox {
+    /* 年月选择器 */
+    min-height: 26px;
+    font-size: 13px;
+}
 QScrollBar:vertical {
     background: transparent; width: 10px; margin: 4px 2px;
 }
