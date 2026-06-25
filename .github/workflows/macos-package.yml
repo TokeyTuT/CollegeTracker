@@ -44,6 +44,14 @@ jobs:
             build-macos/CollegeTracker.app \
             -verbose=1
 
+      - name: Ad-hoc code sign
+        run: |
+          # Ad-hoc signing prevents macOS from showing "damaged" error.
+          # Users still need to right-click → Open on first launch since
+          # the app isn't notarized.
+          codesign --deep --force --verify --verbose --sign - \
+            build-macos/CollegeTracker.app
+
       - name: Verify package
         shell: bash
         run: |
@@ -78,6 +86,9 @@ jobs:
             -ov \
             -format UDZO \
             "${DMG_NAME}"
+
+          # Sign the DMG so Gatekeeper doesn't flag it as damaged
+          codesign --force --verify --verbose --sign - "${DMG_NAME}"
 
           echo "DMG_NAME=${DMG_NAME}" >> $GITHUB_ENV
 
