@@ -1,4 +1,6 @@
-# 哥布林小组展示说明（7 组）
+# SHOWCASE 
+
+![defaultPhoto](https://cdn.jsdelivr.net/gh/TokeyTuT/my-image-storage@main/img/defaultPhoto.png)
 
 
 
@@ -101,11 +103,11 @@ CollegeTracker/
 ├── assets/           默认头像和模板预览图
 ```
 
+
+
 ### 架构风格
 
 项目采用“分层架构 + Qt Model/View + 事件驱动”的设计风格。
-
-当前系统没有为了形式而建立复杂的独立 Controller 对象
 
 用户交互协调主要由 `MainWindow`、各功能页面和 Qt 槽函数完成；
 
@@ -186,7 +188,7 @@ flowchart TB
 | 模型与会话层 | DatabaseManager、User、QSqlTableModel | 数据访问、统计聚合、登录状态、表格模型 |
 | 数据与资源层 | SQLite、HTML 模板、QSS、图片、CSV、PDF | 持久化数据和静态资源 |
 
-
+**这么模块化设计方便了后续维护**
 
 
 
@@ -216,12 +218,9 @@ static User& getInstance() {
 }
 ```
 
-应用价值：
 
-- 统一数据库连接和数据访问；
-- 避免重复创建连接；
-- 页面能够方便地获取当前用户；
-- 通过删除复制构造和赋值运算，防止错误复制。
+
+
 
 ### 事件驱动风格
 
@@ -246,27 +245,31 @@ sequenceDiagram
 
 ### Qt Model/View 架构
 
-项目采用的是一种基于 Qt 特有的 MVD 架构的“非严格 MVC 架构”。它体现了 MVC 的职责划分，但没有设置独立的 Controller 类。
+项目采用的是一种基于 Qt 特有的 MVD 架构。
 
 比如：课程、经历和荣誉页面使用：
 
 - `QSqlTableModel` 作为数据模型；
+
+    >   -   在这个项目中，使用了 Qt 提供的 `QSqlTableModel` 类作为数据模型。
+    >   -   模型被直接绑定到了数据库中的 `courses` 表，并通过 `m_model->setFilter(...)` 实现每个用户只能看到自己的数据
+    >   -   底层的数据库交互和数据处理逻辑则由 `DatabaseManager` 单例来负责维护。
+
 - `QTableView` 作为数据视图；
-- SQLite 作为持久化数据源。
 
-模型负责查询、编辑和提交，视图负责显示和选择。这种设计减少了手工同步表格控件与数据库的代码。
+-  `CoursePage.cpp` 中，定义了一个名为 `CoreCourseDelegate` 的类，它继承自底层的 `QStyledItemDelegate`。这个委托被专门应用在了第 8 列（即“核心课程”列）上：
 
-课程页面还通过：
-
-```cpp
-m_model->setFilter(QStringLiteral("user_id = %1").arg(userId));
-```
-
-实现每个用户只能看到自己的数据。
+    ```c++
+    m_tableView->setItemDelegateForColumn(8, new CoreCourseDelegate(m_tableView))
+    ```
 
 
 
 ---
+
+
+
+
 
 ## 数据库详细设计
 
@@ -279,6 +282,8 @@ m_model->setFilter(QStringLiteral("user_id = %1").arg(userId));
 - 与 Qt SQL 模块结合紧密；
 - 适合个人档案类桌面应用；
 - 便于备份、迁移和跨平台使用。
+
+
 
 ### E-R 关系（实体关系图）
 
@@ -375,27 +380,28 @@ erDiagram
 | `courses` | 课程、成绩、学分、GPA 和核心课程 |
 | `experiences` | 实习、竞赛、项目和其他经历 |
 | `awards` | 荣誉、级别、日期、奖金和简历描述 |
-| `resume_profiles` | 一名用户一份简历基本资料与模板配置 |
+| `resume_profiles` | 一名用户一份简历基本资料与模板配置 xx |
 | `education_records` | 一名用户可拥有多条教育经历 |
+
+
 
 ### 数据隔离
 
-系统在多个层面执行用户隔离，各种查表操作都是基于user_id 操作，具体如下：
-
-1. `User` 单例保存当前用户 ID；
-2. `QSqlTableModel` 使用 `user_id` 过滤；
-3. 删除、更新操作同时校验记录 ID 和用户 ID；
-4. 统计、简历和 CSV 导出全部按用户查询。
-
-这保证了同一设备上的不同账号不会混用课程、经历或荣誉数据。
+系统在多个层面执行用户隔离，各种查表操作都是基于user_id 操作,这保证了同一设备上的不同账号不会混用课程、经历或荣誉数据。
 
 
 
 更多数据库的信息，[点我](DATABASE.md) 😋
 
+
+
+
+
 ---
 
 ## 关键业务详细设计
+
+
 
 ### 程序启动与登录流程
 
@@ -425,18 +431,13 @@ sequenceDiagram
 
 程序通过事件循环实现“登录 → 主窗口 → 退出 → 重新登录”，无需重启应用。
 
+
+
 ### 用户密码加密
 
 项目使用了经典加密算法来保护用户密码 —— SHA-256 哈希盐加密
 
-注册时：
-
-1. 生成 16 字节随机盐值；
-2. 将盐值与密码组合；
-3. 使用 SHA-256 计算哈希；
-4. 分别保存哈希值和盐值。
-
-登录时使用数据库中的盐值重新计算输入密码哈希并比对。
+注册时通过加密算法写入数据库，登录时使用数据库中的盐值重新计算输入密码哈希并比对。
 
 注册时对密码加密代码：
 
@@ -480,7 +481,7 @@ int DatabaseManager::loginUser(const QString &username, const QString &password)
 
 
 
-**该方案避免数据库直接保存明文密码，也能够防止相同密码产生完全相同的存储结果。**
+**该方案避免数据库直接保存明文密码，也能够防止相同密码产生完全相同的存储结果。** ~~（但其实没什么用，因为就算加密了密码，也能直接在本地直接打开数据库）~~ (本机路径：<u>*~/Library/Application\ Support/CollegeTracker/CollegeTracker/college_tracker.db*</u>)
 
 
 
@@ -490,16 +491,6 @@ CSV 能力分为两类：
 
 - 课程、经历、荣誉单独导入导出；
 - 首页一键导入导出全部数据。
-
-导入过程包括：
-
-1. 处理 UTF-8 BOM；
-2. 识别表头；
-3. 解析带逗号、双引号的字段；
-4. 校验课程分数、学分、学期、经历类型和荣誉级别；
-5. 自动计算 GPA；
-6. 逐条记录成功与失败数量；
-7. 完成后刷新所有相关页面。
 
 全量 CSV 使用分区格式：
 
@@ -518,6 +509,8 @@ CSV 能力分为两类：
 
 **具体的导入导出格式，点我 [CSV_FORMAT](CSV_FORMAT.md) 😋**
 
+
+
 ### 头像处理
 
 头像功能包含：
@@ -533,6 +526,8 @@ CSV 能力分为两类：
 - 头像删除和侧边栏同步。
 
 照片最终保存到标准应用数据目录，而不是依赖原图片路径，因此原图片移动或删除后，应用仍可正常使用头像。
+
+
 
 ### 简历生成与 PDF 导出
 
@@ -562,39 +557,6 @@ sequenceDiagram
 
 >    程序先将数据库数据渲染为本地 HTML，再通过 `QProcess`调用 Chromium 的 `--headless --print-to-pdf`功能，将 HTML 页面打印为 PDF。
 
-导出流程中的工程细节：
-
-- 根据模板 ID 选择对应 HTML；
-
-- 对用户文本执行 HTML 转义，生成用户专属 HTML；
-
-- 用户头像照片转换为 Base64，避免生成结果依赖临时图片路径；
-
-- 用户可以在 Chrome、Edge、Safari 中打开生成的 HTML 文件，对自己的简历进行预览
-
-- 调用浏览器中的无头打印功能，把简历生成的 HTML 转换为 PDF（这个功能并不是依靠 Qt 的，而是需要用户主机上含有一款主流浏览器！！！） 
-
-- 异步检验结果
-    `QProcess`不会阻塞主界面。程序监听浏览器的结束信号：
-
-    ```c++
-    connect(process, &QProcess::finished, ...);
-    ```
-
-    同时每 250 毫秒检测一次目标 PDF：
-
-    ```c++
-    if (output.exists() && output.size() > 0) {
-        process->terminate();
-    }
-    ```
-
-    当完成之后，浏览器发出信号，返回导出结果
-
-- 30 秒超时保护：超时后会结束浏览器进程、删除不完整文件并提示用户
-
-- 自动清理临时目录；
-
 
 
 
@@ -609,23 +571,14 @@ sequenceDiagram
 
 | 经典学术 | 深海蓝双栏 | 暖色编辑风 |
 |---|---|---|
-| ![经典学术模板](assets/resume-preview-classic.png) | ![深海蓝双栏模板](assets/resume-preview-navy.png) | ![暖色编辑风模板](assets/resume-preview-editorial.png) |
+| ![经典学术模板](https://cdn.jsdelivr.net/gh/TokeyTuT/my-image-storage@main/img/resume-preview-classic.png) | ![深海蓝双栏模板](https://cdn.jsdelivr.net/gh/TokeyTuT/my-image-storage@main/img/resume-preview-navy.png) | ![暖色编辑风模板](https://cdn.jsdelivr.net/gh/TokeyTuT/my-image-storage@main/img/resume-preview-editorial.png) |
 | 适合通用申请和学术材料 | 适合技术岗和项目型简历 | 适合商科、研究和综合岗位 |
 
 **用户可点击卡片切换模板，也可按空格进入大图预览。**
 
 **我们预留了 HTML 接口，以便后续扩展继续添加模版，具体的模板 HTML 标准和 API 食用教程，点我 [RESUME_EXPORT.md](RESUME_EXPORT.md) 😋**
 
-
-
-### 跨平台工程化
-
-- CMake 统一构建；
-- Qt Resource 嵌入模板、图片和样式；
-- Windows 使用 `windeployqt` 打包依赖；
-- Linux 使用 `linuxdeploy` 构建 AppImage；
-- 数据存储使用 `QStandardPaths` 适配不同操作系统；
-- PDF 导出自动搜索各平台可用的 Chromium 浏览器。
+（可扩展性）
 
 
 
@@ -633,24 +586,13 @@ sequenceDiagram
 
 ## 系统实现与运行效果
 
-### 视觉设计
-
-系统采用暖象牙白与深绿色为主色：
-
-- 浅色固定主题，避免系统深色模式造成显示异常；
-- 卡片式布局和轻量阴影增强层级；
-- 侧边栏提供稳定导航；
-- 主操作、次操作、危险操作使用不同按钮语义和颜色；
-- 表格使用交替行色、隐藏技术字段和整行选择；
-- 登录、注册、课程录入、头像裁剪均使用独立对话框；
-- ~~**默认哥布林头像和文案增强产品辨识度**。~~ (🧌)
-
 
 
 
 ### **运行稳定性处理**
 
 - 删除和清空操作需要二次确认；
+- 导入 CSV 时格式错误会自动检测并提示用户
 - 日期输入禁止选择未来时间；
 - 成绩范围限制为 0–100；
 - 学分必须大于 0；
@@ -662,13 +604,31 @@ sequenceDiagram
 
 
 
+### 可扩展性
+
+1.  **可扩展的简历模板注册机制**：
+
+    项目引入了 `ResumeTemplateRegistry`（模板注册中心），并将具体的主题样式抽离为了独立的 HTML 模板。这意味着当用户需要更多个性化的简历样式时，开发人员完全不需要修改 C++ 业务代码只需编写一套新的 HTML/CSS 模板并将其注册到系统中，即可瞬间获得全新的动态简历主题。
+
+2.  **预留了部分接口**：
+
+    预留了 `getEducationRecords`、`addEducationRecord`（教育经历管理）等接口，并注明了“留了接口并实现了，但是还没有实际应用”。如果后续要添加新增教育经理的功能，开发者可以直接调用这个接口管理教育经理，方便了后续开发。
+
+
+
 ---
 
 ## 项目过程管理规范
 
 ### Git 版本管理
 
-项目使用 Git 保存完整开发历史。当前仓库包含 60 次提交，并采用功能分支推进不同模块：
+<img src="https://cdn.jsdelivr.net/gh/TokeyTuT/my-image-storage@main/img/image-20260625111908414.png" alt="image-20260625111908414" style="zoom:25%;" />
+
+<img src="https://cdn.jsdelivr.net/gh/TokeyTuT/my-image-storage@main/img/image-20260625112014216.png" alt="image-20260625112014216" style="zoom:25%;" />
+
+
+
+项目使用 Git 保存完整开发历史，并且使用 github 远程托管代码 ([仓库点我😙](https://github.com/TokeyTuT/CollegeTracker))。当前仓库包含 60+ 提交，并采用功能分支推进不同模块：
 
 - `develop-ui-test`：界面优化与首页功能；
 - `import-export-and-merge-nav`：CSV 和导航整合；
@@ -677,24 +637,7 @@ sequenceDiagram
 - `optimize-ui`、`warm-ivory-redesign`：视觉设计；
 - `reconstruct-mainwindow-tokey`：主窗口重构。
 
-主要功能通过合并提交进入主分支，例如：
 
-- 合并 CSV 导入导出功能；
-- 合并 UI 优化和首页修复；
-- 合并简历导出、资料编辑和头像功能；
-- 合并登录退出循环功能。
-
-这种方式使不同功能能够相对独立开发，并保留清晰的演进记录。
-
-### 构建规范
-
-- 使用 CMake 管理工程；
-- 启用 `AUTOUIC`、`AUTOMOC`、`AUTORCC`；
-- 使用 C++17；
-- 统一维护源文件列表；
-- 资源通过 `resources.qrc` 嵌入；
-- 使用标准安装规则支持打包；
-- Linux 环境中严格处理文件名大小写。
 
 ### 文档规范
 
@@ -704,75 +647,18 @@ sequenceDiagram
 - `CSV_FORMAT.md`：CSV 表头、字段、示例和常见问题；
 - `DATABASE.md`：项目数据库结构、关系、迁移和接口说明；
 - `RESUME_EXPORT.md`：简历导出机制与新增模板维护说明；
-- 本文档：项目展示与答辩材料。
-
-### 仓库卫生
-
-`.gitignore` 排除了：
-
-- 编译产物；
-- IDE 配置；
-- 系统临时文件；
-- 本地数据库；
-- 用户 CSV 数据；
-- 缓存和生成文件。
-
-同时保留 `temp_data/` 中的共享示例数据，便于演示和测试。
-
----
-
-## 项目质量与工程亮点
-
-### 安全性
-
-- 密码加盐哈希；
-- SQL 参数绑定；
-- 用户级数据过滤；
-- 删除操作附带用户 ID 条件；
-- 本地隐私数据不进入安装包；
-- 相对照片路径防止目录穿越。
-
-### 可靠性
-
-- 注册、个人资料同步等复合操作使用事务；
-- 批量删除课程使用事务；
-- 模型提交失败时回滚；
-- 数据库开启外键约束；
-- PDF 导出包含错误、进程和超时处理。
-
-### 兼容性
-
-- 自动迁移旧数据；
-- 兼容旧版四列课程 CSV；
-- 处理 UTF-8 BOM；
-- 处理 CSV 中的逗号、引号和换行；
-- 兼容旧头像格式；
-- 数据目录适配 Windows、Linux、macOS。
 
 
 
-## 项目总结
 
-College Tracker 已经完成了从基础 CRUD 到完整产品闭环的演进：
 
-- 在功能上，覆盖课程、成绩、经历、荣誉、统计、导入导出和简历；
-- 在架构上，实现页面、服务、模型、数据和资源的分层；
-- 在设计上，应用单例、Model/View、观察者、门面和委托等模式；
-- 在数据上，具备外键、索引、事务、用户隔离和自动迁移；
-- 在体验上，具备统一视觉、数据联动、模板预览和头像处理；
-- 在工程上，具备 Git 分支协作、文档、跨平台构建和自动打包；
-- 在价值上，将日常大学生活记录转化为可分析、可迁移、可输出的个人成长资产。
+### 打包工作流
 
-最终，项目形成了一条清晰的价值链：
+项目采用了 Github Action 功能，构建了一套 Linux、macOS、Windows 的自动化打包流，使得开发者在每次提交之后都能够自动打包成三个系统的可执行文件。
 
-```mermaid
-flowchart LR
-    Record["持续记录"] --> Structure["结构化存储"]
-    Structure --> Analyze["统计与趋势分析"]
-    Analyze --> Backup["CSV 备份与迁移"]
-    Structure --> Resume["简历自动聚合"]
-    Resume --> Preview["多模板预览"]
-    Preview --> PDF["PDF 输出"]
-```
+具体打包描述文件，[点我😋](https://github.com/TokeyTuT/CollegeTracker/tree/main/.github/workflows)
 
-> 项目的核心不是“保存几张表”，而是帮助学生把大学期间发生过的事情，持续整理成能够理解自己、证明自己并服务未来选择的数据。
+
+
+
+

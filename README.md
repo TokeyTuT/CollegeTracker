@@ -12,3 +12,6 @@
 
 本项目现已支持支持多平台：Linux、Windows、macOS
 下载请点[这里](https://github.com/TokeyTuT/CollegeTracker/releases/tag/v1.0.0)
+
+
+同时，我们编写了开发者帮助文档，详见 [docs 目录](docs)
